@@ -33,12 +33,12 @@ test('invites: crear invitación y aceptar', async ({ page, request }) => {
 
   // Abrir invitación sin sesión
   await page.goto(inviteUrl);
-  await expect(page.getByRole('heading', { name: 'Invitación al equipo' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Invitación al equipo|Team invitation/ })).toBeVisible();
 
   // Crear cuenta con el mismo email
   const invitedPassword = 'password-e2e-456';
   if (ownerSession.mode === 'registered') {
-    await page.getByRole('link', { name: 'Crear cuenta' }).click();
+    await page.getByRole('link', { name: /Crear cuenta|Create account/ }).click();
     await expect(page).toHaveURL(/\/register/);
 
     await page.getByTestId('register-name').fill('Invitado');
@@ -54,7 +54,7 @@ test('invites: crear invitación y aceptar', async ({ page, request }) => {
       name: 'Invitado',
     });
 
-    await page.getByRole('link', { name: 'Iniciar sesión' }).click();
+    await page.getByRole('link', { name: /Iniciar sesión|Sign in/ }).click();
     await expect(page).toHaveURL(/\/login/);
     await page.getByTestId('login-email').fill(invitedEmail);
     await page.getByTestId('login-password').fill(invitedPassword);
@@ -64,7 +64,7 @@ test('invites: crear invitación y aceptar', async ({ page, request }) => {
 
   // Volver a la URL de invitación ya con sesión: se acepta y redirige a ajustes.
   await page.goto(inviteUrl);
-  await expect(page.getByText('Procesando invitación…')).toBeVisible();
+  await expect(page.getByText(/Procesando invitación|Processing invitation/)).toBeVisible();
   await expect(page).toHaveURL(/\/settings\?tab=team/, { timeout: 30_000 });
 });
 

@@ -24,9 +24,8 @@ test('canal -> generación (mock) -> revisión -> programar', async ({ page, req
   await setSessionToken(page, token);
   await page.goto('/');
 
-  // Dashboard (analytics org) carga sin bloquear.
+  // Dashboard carga (usuarios nuevos ven empty state, no el grid de stats).
   await expect(page.getByRole('heading', { name: /Hola,|Panel de inicio|Hi,|Dashboard/ })).toBeVisible();
-  await expect(page.getByText(/Generaciones activas|Active generations/)).toBeVisible();
 
   await page.goto('/channels');
 

@@ -3,7 +3,7 @@ import rateLimit from 'express-rate-limit';
 /** Límite en login/registro para frenar fuerza bruta. */
 export const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 30,
+  max: process.env.E2E_TESTS === 'true' ? 1_000 : 30,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.' },
