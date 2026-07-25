@@ -20,6 +20,9 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
+      - name: Generar Prisma Client
+        run: npm run generate:ci -w @autotube/database
+
       - name: Compilar paquetes core
         run: npm run build:core
 

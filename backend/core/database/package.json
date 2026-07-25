@@ -6,6 +6,7 @@
   "types": "./dist/index.d.ts",
   "scripts": {
     "generate": "dotenv -e ../../../.env -- prisma generate",
+    "generate:ci": "prisma generate",
     "migrate": "dotenv -e ../../../.env -- prisma migrate dev",
     "migrate:deploy": "dotenv -e ../../../.env -- prisma migrate deploy",
     "migrate:deploy:ci": "prisma migrate deploy",

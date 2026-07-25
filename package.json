@@ -13,7 +13,7 @@
   ],
   "scripts": {
     "build": "npm run build:core && npm run build -w backend/api -w worker -w frontend",
-    "build:core": "npm run build -w @autotube/shared -w @autotube/config -w @autotube/database -w @autotube/llm -w @autotube/prompt-engine -w @autotube/job-queue -w @autotube/template-engine -w @autotube/content-scorer -w @autotube/idea-generator -w @autotube/script-generator -w @autotube/media-generator -w @autotube/video-renderer -w @autotube/analytics -w @autotube/youtube-publisher",
+    "build:core": "npm run build -w @autotube/shared -w @autotube/config -w @autotube/database -w @autotube/llm -w @autotube/prompt-engine -w @autotube/job-queue -w @autotube/template-engine -w @autotube/content-scorer -w @autotube/idea-generator -w @autotube/script-generator -w @autotube/media-generator -w @autotube/video-renderer -w @autotube/youtube-publisher -w @autotube/analytics",
     "dev": "concurrently --handle-input -n api,worker,web -c blue,green,yellow \"npm run dev -w backend/api\" \"npm run dev -w worker\" \"npm run dev -w frontend\"",
     "dev:stop": "bash infrastructure/scripts/kill-dev-ports.sh",
     "dev:clean": "bash infrastructure/scripts/kill-dev-ports.sh && npm run clean:web && npm run build:core && npm run dev",

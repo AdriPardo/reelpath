@@ -128,8 +128,6 @@ export async function assertOrgCanTriggerPipeline(
   const limits = await resolveOrgPlanLimits(orgId);
   if (limits.unlimited) return;
 
-  return;
-
   assertTrialActive(org.plan, org.trialEndsAt, locale);
 
   if (typeof limits.maxPipelinesPerDay === 'number') {
