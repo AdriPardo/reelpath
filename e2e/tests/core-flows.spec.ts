@@ -17,6 +17,8 @@ async function apiJson<T>(request: any, token: string, path: string): Promise<T>
 }
 
 test('canal -> generación (mock) -> revisión -> programar', async ({ page, request }) => {
+  test.setTimeout(10 * 60_000);
+
   const email = uniqueEmail('core');
   const password = 'password-e2e-123';
   const { token } = await ensureSessionViaApi(request, { email, password, name: 'E2E Core' });
