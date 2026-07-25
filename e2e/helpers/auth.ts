@@ -47,12 +47,27 @@ export async function ensureSessionViaApi(
     return { token, mode: 'registered' };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    // Email ya registrado → login
+    if (/409|ya está registrado|already/i.test(message)) {
+      const { token } = await loginViaApi(request, {
+        email: params.email,
+        password: params.password,
+      });
+      return { token, mode: 'registered' };
+    }
     if (!/Registro deshabilitado/i.test(message)) throw err;
 
     const adminEmail = process.env.E2E_ADMIN_EMAIL ?? 'admin@reelpath.local';
     const adminPassword = process.env.E2E_ADMIN_PASSWORD ?? 'changeme';
-    const { token } = await loginViaApi(request, { email: adminEmail, password: adminPassword });
-    return { token, mode: 'admin_login' };
+    try {
+      const { token } = await loginViaApi(request, { email: adminEmail, password: adminPassword });
+      return { token, mode: 'admin_login' };
+    } catch (adminErr) {
+      throw new Error(
+        `ensureSessionViaApi: registro cerrado y admin no disponible (${adminEmail}). ` +
+          `Original: ${message}. Admin: ${adminErr instanceof Error ? adminErr.message : String(adminErr)}`,
+      );
+    }
   }
 }
 

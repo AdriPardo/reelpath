@@ -65,12 +65,12 @@ test('canal -> generación (mock) -> revisión -> programar', async ({ page, req
   expect(video, 'Debe existir al menos un vídeo pendiente de revisión').toBeTruthy();
 
   await page.goto(`/videos/${video!.id}`);
-  await expect(page.getByText('Revisión')).toBeVisible();
+  await expect(page.getByText(/Revisión|Review/i)).toBeVisible();
 
   await page.getByTestId('review-approve-open').click();
-  await expect(page.getByRole('heading', { name: 'Programar publicación' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Programar publicación|Schedule publish/i })).toBeVisible();
 
-  await page.getByRole('radio', { name: /Elegir fecha manual/ }).check();
+  await page.getByRole('radio', { name: /Elegir fecha manual|Choose manual date/i }).check();
   await page.getByTestId('schedule-confirm').click();
 
   await expect

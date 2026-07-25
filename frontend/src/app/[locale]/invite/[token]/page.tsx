@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { Link, useRouter } from '@/i18n/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
@@ -12,7 +12,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 
 export default function InvitePage() {
   const t = useTranslations('auth');
-  const params = useParams() as { token?: string | string[] } | null;
+  const params = useParams() as { token?: string | string[]; locale?: string } | null;
   const token = typeof params?.token === 'string' ? params.token : '';
   const { session, loading, refresh } = useAuth();
   const router = useRouter();
