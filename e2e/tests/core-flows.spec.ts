@@ -102,8 +102,7 @@ test('canal -> generación (mock) -> revisión -> programar', async ({ page, req
   }
 
   await page.goto(`/videos/${video!.id}`);
-  await expect(page.getByText(/Revisión|Review/i)).toBeVisible();
-
+  await expect(page.getByTestId('review-approve-open')).toBeVisible();
   await page.getByTestId('review-approve-open').click();
   await expect(page.getByRole('heading', { name: /Programar publicación|Schedule publish/i })).toBeVisible();
 
