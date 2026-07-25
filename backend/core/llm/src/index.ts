@@ -125,7 +125,11 @@ class MockLlmClient implements LlmClient {
   async completeJson<T>(prompt: string, _system?: string, _options?: { maxTokens?: number }): Promise<T> {
     this.logMock();
 
-    if (prompt.includes('ideas de vídeo') && prompt.includes('Responde en JSON array')) {
+    if (
+      prompt.includes('ideas de vídeo') ||
+      prompt.includes('clave "ideas"') ||
+      /"ideas"\s*:/.test(prompt)
+    ) {
       return {
         ideas: [
           {

@@ -24,5 +24,7 @@ test('billing: cambio de plan muestra error si Stripe no está configurado', asy
   const upgrade = page.getByRole('button', { name: /Mejorar a este plan|Upgrade to this plan/i }).first();
   await upgrade.click();
 
-  await expect(page.getByRole('alert')).toContainText(/Stripe|configurad|secret key|facturación|billing/i);
+  await expect(page.locator('.settings-plan-alert')).toContainText(
+    /Stripe|configurad|secret key|facturación|billing/i,
+  );
 });
