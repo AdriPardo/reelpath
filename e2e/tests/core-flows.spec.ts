@@ -49,7 +49,7 @@ test('canal -> generación (mock) -> revisión -> programar', async ({ page, req
   await expect(page).toHaveURL(/\/pipelines\/[^/]+/);
   const pipelineId = page.url().split('/pipelines/')[1]!.split(/[?#]/)[0]!;
 
-  // Espera a que el pipeline deje de estar "en progreso" (mocks deberían hacerlo razonable).
+  // Espera a estado terminal (incluye pasos reales: generating_*, rendering_video, etc.).
   await expect
     .poll(
       async () => {
@@ -57,13 +57,16 @@ test('canal -> generación (mock) -> revisión -> programar', async ({ page, req
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = (await res.json()) as { status: string; error?: string | null };
-        return data;
+        if (/^(failed|cancelled)$/i.test(data.status)) {
+          throw new Error(
+            `Pipeline terminó en ${data.status}${data.error ? ` — ${data.error}` : ''}`,
+          );
+        }
+        return data.status;
       },
       { timeout: 8 * 60_000, intervals: [2000, 5000, 5000, 10_000] },
     )
-    .toMatchObject({
-      status: expect.not.stringMatching(/scheduled|running|processing|queued|in_progress|generating/i),
-    });
+    .toMatch(/^(pending_review|completed)$/i);
 
   const pipelineRes = await request.get(`${API_URL}/api/pipelines/${pipelineId}`, {
     headers: { Authorization: `Bearer ${token}` },
@@ -73,10 +76,6 @@ test('canal -> generación (mock) -> revisión -> programar', async ({ page, req
     error?: string | null;
     videos?: Array<{ id: string; reviewStatus: string }>;
   };
-  expect(
-    pipeline.status,
-    `Pipeline terminó en estado inesperado: ${pipeline.status}${pipeline.error ? ` — ${pipeline.error}` : ''}`,
-  ).toMatch(/pending_review|completed|await_review/i);
 
   let video =
     pipeline.videos?.find((v) => v.reviewStatus === 'pending') ??
