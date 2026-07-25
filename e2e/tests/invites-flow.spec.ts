@@ -45,7 +45,7 @@ test('invites: crear invitación y aceptar', async ({ page, request }) => {
     await page.getByTestId('register-email').fill(invitedEmail);
     await page.getByTestId('register-password').fill(invitedPassword);
     await page.getByTestId('register-submit').click();
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveURL(/\/(?:en|es)\/?$/);
   } else {
     // Si el registro público está deshabilitado, crear el usuario invitado vía API usando token admin/owner.
     await registerViaApiWithToken(request, ownerToken, {
@@ -59,7 +59,7 @@ test('invites: crear invitación y aceptar', async ({ page, request }) => {
     await page.getByTestId('login-email').fill(invitedEmail);
     await page.getByTestId('login-password').fill(invitedPassword);
     await page.getByTestId('login-submit').click();
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveURL(/\/(?:en|es)\/?$/);
   }
 
   // Volver a la URL de invitación ya con sesión: se acepta y redirige a ajustes.

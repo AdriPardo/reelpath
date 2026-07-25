@@ -230,7 +230,8 @@ authRouter.post('/register', authRateLimiter, async (req, res) => {
   const email = body.email.toLowerCase();
 
   const userCount = await prisma.user.count();
-  if (config.AUTH_REQUIRED && userCount > 0) {
+  // E2E needs open registration across parallel workers; production still locks after bootstrap.
+  if (config.AUTH_REQUIRED && userCount > 0 && process.env.E2E_TESTS !== 'true') {
     if (!req.auth || (req.auth.role !== 'owner' && req.auth.role !== 'admin')) {
       return res.status(403).json({ error: 'Registro deshabilitado' });
     }

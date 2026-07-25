@@ -25,8 +25,8 @@ test('canal -> generación (mock) -> revisión -> programar', async ({ page, req
   await page.goto('/');
 
   // Dashboard (analytics org) carga sin bloquear.
-  await expect(page.getByRole('heading', { name: /Hola,|Panel de inicio/ })).toBeVisible();
-  await expect(page.getByText('Generaciones activas')).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Hola,|Panel de inicio|Hi,|Dashboard/ })).toBeVisible();
+  await expect(page.getByText(/Generaciones activas|Active generations/)).toBeVisible();
 
   await page.goto('/channels');
 

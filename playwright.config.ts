@@ -15,6 +15,10 @@ export default defineConfig({
   use: {
     baseURL,
     headless: isCI ? true : true,
+    locale: 'es-ES',
+    extraHTTPHeaders: {
+      'Accept-Language': 'es-ES,es;q=0.9',
+    },
     viewport: { width: 1280, height: 800 },
     ignoreHTTPSErrors: true,
     trace: 'retain-on-failure',
