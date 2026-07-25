@@ -49,12 +49,23 @@ test('canal -> generación (mock) -> revisión -> programar', async ({ page, req
         const res = await request.get(`${API_URL}/api/pipelines/${pipelineId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        const data = (await res.json()) as { status: string };
-        return data.status;
+        const data = (await res.json()) as { status: string; error?: string | null };
+        return data;
       },
       { timeout: 8 * 60_000, intervals: [2000, 5000, 5000, 10_000] },
     )
-    .not.toMatch(/scheduled|running|processing|queued|in_progress|generating/i);
+    .toMatchObject({
+      status: expect.not.stringMatching(/scheduled|running|processing|queued|in_progress|generating/i),
+    });
+
+  const pipelineRes = await request.get(`${API_URL}/api/pipelines/${pipelineId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const pipeline = (await pipelineRes.json()) as { status: string; error?: string | null };
+  expect(
+    pipeline.status,
+    `Pipeline terminó en estado inesperado: ${pipeline.status}${pipeline.error ? ` — ${pipeline.error}` : ''}`,
+  ).toMatch(/pending_review|completed/i);
 
   const pendingVideos = await apiJson<Array<{ id: string; pipelineRunId: string; reviewStatus: string }>>(
     request,

@@ -56,6 +56,9 @@ jobs:
       - name: Instalar Playwright (Chromium)
         run: npx playwright install --with-deps chromium
 
+      - name: Instalar ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
       - name: Arrancar API, worker y frontend (background)
         env:
           NODE_ENV: test
@@ -98,3 +101,13 @@ jobs:
           PLAYWRIGHT_BASE_URL: http://localhost:3000
           PLAYWRIGHT_API_URL: http://localhost:4000
         run: npm run test:e2e
+
+      - name: Volcar logs si falla E2E
+        if: failure()
+        run: |
+          echo "===== api.log ====="
+          tail -n 200 api.log || true
+          echo "===== worker.log ====="
+          tail -n 200 worker.log || true
+          echo "===== frontend.log ====="
+          tail -n 100 frontend.log || true

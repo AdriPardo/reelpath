@@ -11,11 +11,9 @@ test('billing: cambio de plan muestra error si Stripe no está configurado', asy
   const { token } = await ensureSessionViaApi(request, { email, password, name: 'E2E Billing' });
 
   await setSessionToken(page, token);
-  await page.goto('/settings');
+  await page.goto('/settings?tab=plan');
 
   await expect(page.getByRole('heading', { name: /Ajustes|Settings/ })).toBeVisible();
-
-  await page.getByTestId('settings-tab-plan').or(page.getByTestId('settings-tab-side-plan')).first().click();
   await page.getByRole('button', { name: /Ver planes y mejorar|Mejorar plan|View plans and upgrade|Upgrade plan/i }).click();
   await expect(page.getByText(/Planes disponibles|Available plans/i)).toBeVisible();
 
