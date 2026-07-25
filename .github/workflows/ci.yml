@@ -73,6 +73,7 @@ jobs:
           STORAGE_PATH: ./storage
           NEXT_PUBLIC_API_URL: http://localhost:4000
           NEXT_PUBLIC_AUTH_REQUIRED: 'true'
+          DEFAULT_REVIEW_REQUIRED: 'true'
         run: |
           nohup npm run start -w backend/api > api.log 2>&1 &
           nohup npm run start -w worker > worker.log 2>&1 &

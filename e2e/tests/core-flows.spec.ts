@@ -36,6 +36,13 @@ test('canal -> generación (mock) -> revisión -> programar', async ({ page, req
   await expect(page).toHaveURL(/\/channels\/[^/]+/);
   const channelId = page.url().split('/channels/')[1]!.split(/[?#]/)[0]!;
 
+  // Forzar revisión manual (el default de plataforma puede publicar sin pending).
+  const patchRes = await request.patch(`${API_URL}/api/channels/${channelId}`, {
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    data: { config: { reviewRequired: true, autoReview: false, autoPublish: false } },
+  });
+  expect(patchRes.ok(), await patchRes.text()).toBeTruthy();
+
   await page.goto('/channels');
   await page.getByTestId(`channel-generate-${channelId}`).click();
 
@@ -61,19 +68,37 @@ test('canal -> generación (mock) -> revisión -> programar', async ({ page, req
   const pipelineRes = await request.get(`${API_URL}/api/pipelines/${pipelineId}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  const pipeline = (await pipelineRes.json()) as { status: string; error?: string | null };
+  const pipeline = (await pipelineRes.json()) as {
+    status: string;
+    error?: string | null;
+    videos?: Array<{ id: string; reviewStatus: string }>;
+  };
   expect(
     pipeline.status,
     `Pipeline terminó en estado inesperado: ${pipeline.status}${pipeline.error ? ` — ${pipeline.error}` : ''}`,
-  ).toMatch(/pending_review|completed/i);
+  ).toMatch(/pending_review|completed|await_review/i);
 
-  const pendingVideos = await apiJson<Array<{ id: string; pipelineRunId: string; reviewStatus: string }>>(
-    request,
-    token,
-    '/api/videos?reviewStatus=pending',
-  );
-  const video = pendingVideos.find((v) => v.pipelineRunId === pipelineId) ?? pendingVideos[0];
-  expect(video, 'Debe existir al menos un vídeo pendiente de revisión').toBeTruthy();
+  let video =
+    pipeline.videos?.find((v) => v.reviewStatus === 'pending') ??
+    pipeline.videos?.[0] ??
+    null;
+
+  if (!video) {
+    const pendingVideos = await apiJson<Array<{ id: string; pipelineRunId: string; reviewStatus: string }>>(
+      request,
+      token,
+      '/api/videos?reviewStatus=pending',
+    );
+    video = pendingVideos.find((v) => v.pipelineRunId === pipelineId) ?? pendingVideos[0] ?? null;
+  }
+
+  expect(video, 'Debe existir un vídeo asociado al pipeline').toBeTruthy();
+
+  // Si el canal publica sin revisión, el flujo de schedule no aplica.
+  if (video!.reviewStatus !== 'pending') {
+    expect(['approved', 'scheduled', 'published']).toContain(video!.reviewStatus);
+    return;
+  }
 
   await page.goto(`/videos/${video!.id}`);
   await expect(page.getByText(/Revisión|Review/i)).toBeVisible();

@@ -14,7 +14,11 @@ test('billing: cambio de plan muestra error si Stripe no está configurado', asy
   await page.goto('/settings?tab=plan');
 
   await expect(page.getByRole('heading', { name: /Ajustes|Settings/ })).toBeVisible();
-  await page.getByRole('button', { name: /Ver planes y mejorar|Mejorar plan|View plans and upgrade|Upgrade plan/i }).click();
+  const viewPlans = page.getByRole('button', {
+    name: /Ver planes y mejorar|Mejorar plan|View plans and upgrade|Upgrade plan/i,
+  });
+  await expect(viewPlans).toBeVisible({ timeout: 20_000 });
+  await viewPlans.click();
   await expect(page.getByText(/Planes disponibles|Available plans/i)).toBeVisible();
 
   const upgrade = page.getByRole('button', { name: /Mejorar a este plan|Upgrade to this plan/i }).first();
