@@ -1,0 +1,554 @@
+import type { Job } from 'bullmq';
+import { existsSync } from 'node:fs';
+import { parseChannelConfig } from '@autotube/config';
+import { resolveOrgOpenAiApiKey } from '@autotube/database';
+import { clearOrgOpenAiApiKey, setOrgOpenAiApiKey } from '@autotube/llm';
+import { scoreVideoQuality } from '@autotube/content-scorer';
+import { prisma } from '@autotube/database';
+import { generateIdeas, ensureSelectedIdea } from '@autotube/idea-generator';
+import { enqueuePipelineStep } from '@autotube/job-queue';
+import { generateMedia } from '@autotube/media-generator';
+import { generateScript } from '@autotube/script-generator';
+import type { ChannelConfig, PipelineJobPayload, PipelineRunMetadata, ScriptVariant } from '@autotube/shared';
+import { computeShortPublishSlots, parseScheduledPublishAt, resolveDefaultShortCount, resolveMixedShortsCounts, resolvePlannerConfig, resolveSplitShortsCount } from '@autotube/shared';
+import { renderVideo, splitVideoForShorts } from '@autotube/video-renderer';
+import { publishToYouTube, publishYouTubeShortsClips } from '@autotube/youtube-publisher';
+import { syncVideoAnalytics } from '@autotube/analytics';
+import { generateDedicatedShort } from './dedicated-short.js';
+import { notifyPipelineReadyForReview } from './pipeline-notify.js';
+import { notifyPipelineFailed } from './pipeline-notify-failed.js';
+
+async function updatePipelineStatus(
+  pipelineRunId: string,
+  status: string,
+  currentStep?: string,
+  error?: string,
+) {
+  await prisma.pipelineRun.update({
+    where: { id: pipelineRunId },
+    data: {
+      status,
+      currentStep: currentStep ?? null,
+      error: error ?? null,
+      completedAt:
+        status === 'completed' || status === 'failed' || status === 'cancelled'
+          ? new Date()
+          : undefined,
+    },
+  });
+}
+
+async function isYouTubeAlreadyPublished(pipelineRunId: string): Promise<boolean> {
+  const video = await prisma.video.findFirst({
+    where: { pipelineRunId },
+    select: { reviewStatus: true, youtubeVideoId: true },
+  });
+  if (!video) return false;
+  return Boolean(video.youtubeVideoId) || video.reviewStatus === 'published';
+}
+
+async function isUploadPipeline(pipelineRunId: string): Promise<boolean> {
+  const run = await prisma.pipelineRun.findUnique({
+    where: { id: pipelineRunId },
+    select: { metadata: true },
+  });
+  const meta = run?.metadata as { source?: string } | null;
+  return meta?.source === 'upload';
+}
+
+async function finalizePreReviewClipStep(
+  pipelineRunId: string,
+  channelId: string,
+): Promise<void> {
+  if (await isYouTubeAlreadyPublished(pipelineRunId)) {
+    await updatePipelineStatus(pipelineRunId, 'completed', 'publish');
+    return;
+  }
+  if (await isUploadPipeline(pipelineRunId)) {
+    await updatePipelineStatus(pipelineRunId, 'pending_review', 'await_review');
+    await notifyPipelineReadyForReview(pipelineRunId);
+    return;
+  }
+  await enqueuePipelineStep({ pipelineRunId, channelId }, 'auto_review');
+}
+
+function wantsYoutubeShortsClips(config: ChannelConfig): boolean {
+  return config.publishYoutubeShorts === true && config.videoFormat === 'long';
+}
+
+function needsVerticalClipSplit(config: ChannelConfig): boolean {
+  return wantsYoutubeShortsClips(config);
+}
+
+function usesDedicatedShort(config: ChannelConfig): boolean {
+  return config.shortsMode === 'dedicated' && wantsYoutubeShortsClips(config);
+}
+
+function usesMixedShorts(config: ChannelConfig): boolean {
+  return config.shortsMode === 'mixed' && wantsYoutubeShortsClips(config);
+}
+
+function verticalClipStep(config: ChannelConfig): 'split_shorts' | 'generate_short' {
+  // Mixto: siempre cortar del largo primero; dedicated: solo teasers propios.
+  if (usesDedicatedShort(config)) return 'generate_short';
+  return 'split_shorts';
+}
+
+async function ensureLongSplitBeforeDedicated(
+  pipelineRunId: string,
+  config: ChannelConfig,
+): Promise<boolean> {
+  if (!usesMixedShorts(config)) return true;
+  const { splitCount } = resolveMixedShortsCounts(config);
+  if (splitCount <= 0) return true;
+
+  const splitClip = await prisma.videoClip.findFirst({
+    where: {
+      pipelineRunId,
+      platform: 'short_source',
+      partIndex: { lt: splitCount },
+    },
+    select: { id: true },
+  });
+  return Boolean(splitClip);
+}
+
+async function enqueueAfterClipSplit(
+  pipelineRunId: string,
+  channelId: string,
+  config: ChannelConfig,
+): Promise<void> {
+  if (wantsYoutubeShortsClips(config)) {
+    await enqueuePipelineStep({ pipelineRunId, channelId }, 'publish_youtube_shorts');
+    return;
+  }
+  await enqueuePipelineStep({ pipelineRunId, channelId }, 'sync_analytics');
+}
+
+export async function processPipelineJob(job: Job<PipelineJobPayload>): Promise<void> {
+  const { pipelineRunId, channelId, step = 'generate_ideas', youtubeOnly, splitOnly } = job.data;
+
+  const run = await prisma.pipelineRun.findUniqueOrThrow({
+    where: { id: pipelineRunId },
+    include: { channel: true },
+  });
+
+  if (run.status === 'cancelled') {
+    console.info(`[pipeline] Omitiendo pipeline cancelado ${pipelineRunId} (paso=${step})`);
+    return;
+  }
+
+  const orgApiKey = await resolveOrgOpenAiApiKey(run.channel.organizationId);
+  setOrgOpenAiApiKey(orgApiKey ?? undefined);
+
+  try {
+    await runPipelineStep(job, run, { pipelineRunId, channelId, step, youtubeOnly, splitOnly });
+  } finally {
+    clearOrgOpenAiApiKey();
+  }
+}
+
+async function runPipelineStep(
+  job: Job<PipelineJobPayload>,
+  run: Awaited<ReturnType<typeof prisma.pipelineRun.findUniqueOrThrow>> & { channel: { id: string; organizationId: string; name: string; config: unknown } },
+  ctx: {
+    pipelineRunId: string;
+    channelId: string;
+    step: string;
+    youtubeOnly?: boolean;
+    splitOnly?: boolean;
+  },
+): Promise<void> {
+  const { pipelineRunId, channelId, step, youtubeOnly, splitOnly } = ctx;
+
+  const config = parseChannelConfig(run.channel.config);
+
+  async function requireApprovedVideo(pipelineRunId: string): Promise<{ id: string; reviewStatus: string }> {
+    const video = await prisma.video.findFirstOrThrow({ where: { pipelineRunId } });
+    const publishable = new Set(['approved', 'published', 'scheduled']);
+    if (config.reviewRequired && !publishable.has(video.reviewStatus)) {
+      console.info(`[pipeline] Video ${video.id} awaiting approval (status=${video.reviewStatus})`);
+      await updatePipelineStatus(pipelineRunId, 'pending_review', 'await_review');
+      throw new Error('SKIP_AWAITING_REVIEW');
+    }
+    return video;
+  }
+
+  function getPipelineScheduledPublishAt(): Date | null {
+    const metadata = run.metadata as PipelineRunMetadata | null;
+    return parseScheduledPublishAt(metadata?.scheduledPublishAt);
+  }
+
+  try {
+    switch (step) {
+      case 'generate_ideas': {
+        await updatePipelineStatus(pipelineRunId, 'generating_ideas', step);
+        await generateIdeas({ channelId, pipelineRunId, config });
+        await enqueuePipelineStep({ pipelineRunId, channelId }, 'select_idea');
+        break;
+      }
+
+      case 'select_idea': {
+        await updatePipelineStatus(pipelineRunId, 'selecting_idea', step);
+        const idea = await ensureSelectedIdea({ channelId, pipelineRunId, config });
+        if (!idea) {
+          throw new Error('No hay ideas disponibles para seleccionar');
+        }
+        await enqueuePipelineStep({ pipelineRunId, channelId }, 'generate_script');
+        break;
+      }
+
+      case 'generate_script': {
+        await updatePipelineStatus(pipelineRunId, 'generating_script', step);
+        const idea = await prisma.videoIdea.findFirstOrThrow({
+          where: { pipelineRunId, isSelected: true },
+        });
+        const { loadConfig, getOpenAiModel, isScriptDevMode } = await import('@autotube/config');
+        const cfg = loadConfig();
+        const scriptMode = cfg.useMocks
+          ? 'MOCK (sin coste API)'
+          : `OpenAI ${getOpenAiModel()}`;
+        console.info(
+          `[worker] generate_script — ${scriptMode}` +
+            (isScriptDevMode() ? ', dev económico' : '') +
+            `, canal ${channelId}`,
+        );
+        await generateScript({
+          channelId,
+          pipelineRunId,
+          config,
+          idea: { title: idea.title, hook: idea.hook, angle: idea.angle },
+        });
+        await enqueuePipelineStep({ pipelineRunId, channelId }, 'generate_media');
+        break;
+      }
+
+      case 'generate_media': {
+        await updatePipelineStatus(pipelineRunId, 'generating_media', step);
+        const scriptRecord = await prisma.script.findFirstOrThrow({ where: { pipelineRunId } });
+        const variant = scriptRecord.selectedVariant as unknown as ScriptVariant;
+        const org = await prisma.organization.findUnique({
+          where: { id: run.channel.organizationId },
+          select: { plan: true },
+        });
+        console.info(
+          `[worker] generate_media — modo=${config.visualSourceMode ?? 'mixed'} plan=${org?.plan ?? 'trial'}`,
+        );
+        await generateMedia({
+          pipelineRunId,
+          script: variant,
+          language: config.language,
+          aspectRatio: config.aspectRatio,
+          retentionMode: config.retentionMode,
+          videoMotionIntensity: config.videoMotionIntensity,
+          visualSourceMode: config.visualSourceMode,
+          orgPlan: org?.plan,
+        });
+        await enqueuePipelineStep({ pipelineRunId, channelId }, 'render_video');
+        break;
+      }
+
+      case 'render_video': {
+        await updatePipelineStatus(pipelineRunId, 'rendering_video', step);
+        const scriptRecord = await prisma.script.findFirstOrThrow({ where: { pipelineRunId } });
+        const assets = await prisma.mediaAsset.findMany({ where: { pipelineRunId } });
+        const variant = scriptRecord.selectedVariant as unknown as ScriptVariant;
+
+        await renderVideo({
+          pipelineRunId,
+          channelId,
+          templateId: config.templateId,
+          script: variant,
+          assets: assets.map((a) => ({
+            sceneIndex: a.sceneIndex,
+            type: a.type as 'audio' | 'image' | 'subtitle' | 'video',
+            path: a.path,
+            metadata: a.metadata as Record<string, unknown>,
+          })),
+          title: scriptRecord.title,
+          description: scriptRecord.description,
+          tags: scriptRecord.tags,
+          format: config.videoFormat,
+          aspectRatio: config.aspectRatio,
+          reviewRequired: config.reviewRequired,
+          retentionMode: config.retentionMode,
+          videoMotionIntensity: config.videoMotionIntensity,
+        });
+
+        const clipSplit = needsVerticalClipSplit(config);
+
+        if (config.reviewRequired && clipSplit) {
+          await enqueuePipelineStep(
+            { pipelineRunId, channelId, splitOnly: true },
+            verticalClipStep(config),
+          );
+        } else if (config.reviewRequired) {
+          await enqueuePipelineStep({ pipelineRunId, channelId }, 'auto_review');
+        } else {
+          await enqueuePipelineStep({ pipelineRunId, channelId }, 'publish');
+        }
+        break;
+      }
+
+      case 'auto_review': {
+        await updatePipelineStatus(pipelineRunId, 'auto_reviewing', step);
+        const video = await prisma.video.findFirstOrThrow({ where: { pipelineRunId } });
+        const scriptRecord = await prisma.script.findFirstOrThrow({ where: { pipelineRunId } });
+        const variant = scriptRecord.selectedVariant as unknown as ScriptVariant;
+        const assets = await prisma.mediaAsset.findMany({ where: { pipelineRunId } });
+
+        const report = scoreVideoQuality({
+          script: variant,
+          format: config.videoFormat,
+          durationSec: video.durationSec,
+          filePathExists: video.filePath ? existsSync(video.filePath) : false,
+          hasThumbnail: video.thumbnailPath ? existsSync(video.thumbnailPath) : false,
+          sceneImageIndexes: assets.filter((a) => a.type === 'image').map((a) => a.sceneIndex),
+          sceneAudioIndexes: assets.filter((a) => a.type === 'audio').map((a) => a.sceneIndex),
+          hasSubtitles: assets.some((a) => a.type === 'subtitle'),
+          title: video.title,
+          description: video.description,
+          forbiddenTopics: config.forbiddenTopics,
+          minScoreToApprove: config.autoApproveMinScore,
+        });
+
+        await prisma.video.update({
+          where: { id: video.id },
+          data: {
+            qualityScore: report.score,
+            qualityReport: report as unknown as object,
+          },
+        });
+
+        const canAutoApprove = config.autoReview === true && report.autoApproved;
+        console.info(
+          `[pipeline] auto_review score=${report.score} passed=${report.passed} autoApprove=${canAutoApprove}`,
+        );
+
+        if (canAutoApprove) {
+          await prisma.video.update({
+            where: { id: video.id },
+            data: { reviewStatus: 'approved' },
+          });
+          await enqueuePipelineStep(
+            { pipelineRunId, channelId, youtubeOnly: true },
+            'publish',
+          );
+        } else {
+          await updatePipelineStatus(pipelineRunId, 'pending_review', 'await_review');
+          await notifyPipelineReadyForReview(pipelineRunId);
+        }
+        break;
+      }
+
+      case 'publish': {
+        await updatePipelineStatus(pipelineRunId, 'publishing', step);
+        const video = await requireApprovedVideo(pipelineRunId);
+
+        const publishYoutube = config.publishYoutube !== false;
+        const clipSplit = needsVerticalClipSplit(config) && !youtubeOnly;
+
+        const existingSchedule = (
+          await prisma.video.findUnique({
+            where: { id: video.id },
+            select: { scheduledPublishAt: true },
+          })
+        )?.scheduledPublishAt;
+        const metadataSchedule = getPipelineScheduledPublishAt();
+        const scheduleAt =
+          existingSchedule && existingSchedule.getTime() > Date.now()
+            ? existingSchedule
+            : metadataSchedule;
+
+        if (scheduleAt && scheduleAt.getTime() > Date.now()) {
+          await prisma.video.update({
+            where: { id: video.id },
+            data: { reviewStatus: 'scheduled', scheduledPublishAt: scheduleAt },
+          });
+        } else if (video.reviewStatus === 'pending') {
+          await prisma.video.update({
+            where: { id: video.id },
+            data: { reviewStatus: 'approved' },
+          });
+        }
+
+        if (publishYoutube) {
+          await publishToYouTube(video.id);
+        } else if (video.reviewStatus !== 'published') {
+          await prisma.video.update({
+            where: { id: video.id },
+            data: { reviewStatus: 'published', publishedAt: new Date() },
+          });
+        }
+
+        if (clipSplit) {
+          await enqueuePipelineStep({ pipelineRunId, channelId }, verticalClipStep(config));
+        } else if (wantsYoutubeShortsClips(config)) {
+          // Flujo de revisión/aprobación (youtubeOnly): los clips verticales ya se
+          // dividieron antes de la revisión. Súbelos ahora como YouTube Shorts.
+          await enqueuePipelineStep(
+            { pipelineRunId, channelId, youtubeOnly },
+            'publish_youtube_shorts',
+          );
+        } else if (youtubeOnly) {
+          await updatePipelineStatus(pipelineRunId, 'completed', 'publish');
+        } else {
+          await enqueuePipelineStep({ pipelineRunId, channelId }, 'sync_analytics');
+        }
+        break;
+      }
+
+      case 'split_shorts': {
+        const isPreReviewSplit = Boolean(splitOnly || config.reviewRequired);
+        await updatePipelineStatus(
+          pipelineRunId,
+          isPreReviewSplit ? 'rendering_video' : 'publishing',
+          step,
+        );
+        const video = splitOnly
+          ? await prisma.video.findFirstOrThrow({ where: { pipelineRunId } })
+          : await requireApprovedVideo(pipelineRunId);
+
+        if (usesMixedShorts(config)) {
+          const { splitCount, dedicatedCount } = resolveMixedShortsCounts(config);
+          await splitVideoForShorts(video.id, config.shortsClipMaxSec, { maxParts: splitCount });
+          if (dedicatedCount > 0) {
+            await enqueuePipelineStep(
+              { pipelineRunId, channelId, splitOnly: isPreReviewSplit || undefined },
+              'generate_short',
+            );
+          } else if (isPreReviewSplit) {
+            await finalizePreReviewClipStep(pipelineRunId, channelId);
+          } else {
+            await enqueueAfterClipSplit(pipelineRunId, channelId, config);
+          }
+        } else {
+          const splitCount = resolveSplitShortsCount(config);
+          await splitVideoForShorts(
+            video.id,
+            config.shortsClipMaxSec,
+            splitCount != null ? { maxParts: splitCount } : undefined,
+          );
+          if (isPreReviewSplit) {
+            await finalizePreReviewClipStep(pipelineRunId, channelId);
+          } else {
+            await enqueueAfterClipSplit(pipelineRunId, channelId, config);
+          }
+        }
+        break;
+      }
+
+      case 'generate_short': {
+        const isPreReview = Boolean(splitOnly || config.reviewRequired);
+        await updatePipelineStatus(
+          pipelineRunId,
+          isPreReview ? 'rendering_video' : 'publishing',
+          step,
+        );
+        if (!splitOnly) {
+          await requireApprovedVideo(pipelineRunId);
+        } else {
+          await prisma.video.findFirstOrThrow({ where: { pipelineRunId } });
+        }
+
+        if (usesMixedShorts(config)) {
+          const hasSplitClip = await ensureLongSplitBeforeDedicated(pipelineRunId, config);
+          if (!hasSplitClip) {
+            console.warn(
+              `[pipeline] Modo mixto: falta corte del largo; reencolando split_shorts antes de teasers`,
+            );
+            await enqueuePipelineStep(
+              { pipelineRunId, channelId, splitOnly: isPreReview || undefined },
+              'split_shorts',
+            );
+            break;
+          }
+
+          const { splitCount, dedicatedCount } = resolveMixedShortsCounts(config);
+          await generateDedicatedShort(pipelineRunId, channelId, config, {
+            count: dedicatedCount,
+            startPartIndex: splitCount,
+            replaceMode: 'dedicated-only',
+          });
+        } else {
+          await generateDedicatedShort(pipelineRunId, channelId, config);
+        }
+
+        if (isPreReview) {
+          await finalizePreReviewClipStep(pipelineRunId, channelId);
+        } else {
+          await enqueueAfterClipSplit(pipelineRunId, channelId, config);
+        }
+        break;
+      }
+
+      case 'publish_youtube_shorts': {
+        await updatePipelineStatus(pipelineRunId, 'publishing', step);
+        const video = await requireApprovedVideo(pipelineRunId);
+        // baseTime = fecha programada del vídeo largo si la hubiera; si no, ahora (al aprobar).
+        // El Short 0 sale con el vídeo largo y los siguientes se escalonan cada intervalDays.
+        const scheduledAt = (
+          await prisma.video.findUnique({
+            where: { id: video.id },
+            select: { scheduledPublishAt: true },
+          })
+        )?.scheduledPublishAt;
+        const baseTime =
+          scheduledAt && scheduledAt.getTime() > Date.now() ? scheduledAt : new Date();
+
+        const planner = resolvePlannerConfig(config);
+        const sourceClipCount = await prisma.videoClip.count({
+          where: { pipelineRunId, platform: 'short_source' },
+        });
+        const shortCount = sourceClipCount > 0 ? sourceClipCount : resolveDefaultShortCount(config);
+        const scheduledSlots =
+          planner.publishPlannerEnabled && shortCount > 0
+            ? computeShortPublishSlots(baseTime, shortCount, config)
+            : undefined;
+
+        await publishYouTubeShortsClips(pipelineRunId, {
+          baseTime,
+          intervalDays: config.shortsPublishIntervalDays ?? 1,
+          scheduledSlots,
+        });
+        await enqueuePipelineStep({ pipelineRunId, channelId }, 'sync_analytics');
+        break;
+      }
+
+      case 'sync_analytics': {
+        await updatePipelineStatus(pipelineRunId, 'syncing_analytics', step);
+        const video = await prisma.video.findFirst({ where: { pipelineRunId } });
+        if (video) await syncVideoAnalytics(video.id);
+        await updatePipelineStatus(pipelineRunId, 'completed', step);
+        break;
+      }
+
+      case 'optimize_prompts': {
+        console.info(`[pipeline] optimize_prompts omitido (noop) run=${pipelineRunId}`);
+        await updatePipelineStatus(pipelineRunId, 'completed', step);
+        break;
+      }
+
+      default:
+        throw new Error(`Paso de pipeline desconocido: ${step}`);
+    }
+  } catch (err) {
+    if (err instanceof Error && err.message === 'SKIP_AWAITING_REVIEW') {
+      return;
+    }
+    const message = err instanceof Error ? err.message : String(err);
+    await updatePipelineStatus(pipelineRunId, 'failed', step, message);
+    await notifyPipelineFailed({
+      pipelineRunId,
+      organizationId: run.channel.organizationId,
+      channelName: run.channel.name,
+      error: message,
+    });
+    throw err;
+  }
+}
+
+export async function resumeAfterApproval(pipelineRunId: string): Promise<void> {
+  const run = await prisma.pipelineRun.findUniqueOrThrow({ where: { id: pipelineRunId } });
+  await enqueuePipelineStep({ pipelineRunId, channelId: run.channelId }, 'publish');
+}

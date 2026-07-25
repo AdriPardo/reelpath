@@ -1,0 +1,61 @@
+{
+  "name": "autotube",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Plataforma de generación y publicación automatizada de vídeos para YouTube",
+  "workspaces": [
+    "packages/shared",
+    "backend/core/*",
+    "backend/services/*",
+    "backend/api",
+    "worker",
+    "frontend"
+  ],
+  "scripts": {
+    "build": "npm run build:core && npm run build -w backend/api -w worker -w frontend",
+    "build:core": "npm run build -w @autotube/shared -w @autotube/config -w @autotube/database -w @autotube/llm -w @autotube/prompt-engine -w @autotube/job-queue -w @autotube/template-engine -w @autotube/content-scorer -w @autotube/idea-generator -w @autotube/script-generator -w @autotube/media-generator -w @autotube/video-renderer -w @autotube/analytics -w @autotube/youtube-publisher",
+    "dev": "concurrently --handle-input -n api,worker,web -c blue,green,yellow \"npm run dev -w backend/api\" \"npm run dev -w worker\" \"npm run dev -w frontend\"",
+    "dev:stop": "bash infrastructure/scripts/kill-dev-ports.sh",
+    "dev:clean": "bash infrastructure/scripts/kill-dev-ports.sh && npm run clean:web && npm run build:core && npm run dev",
+    "clean:web": "rm -rf frontend/.next frontend/node_modules/.cache",
+    "dev:api": "npm run dev -w backend/api",
+    "dev:worker": "npm run dev -w worker",
+    "dev:web": "npm run dev -w frontend",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "db:generate": "npm run generate -w @autotube/database",
+    "db:migrate": "npm run migrate -w @autotube/database",
+    "db:migrate:deploy": "npm run migrate:deploy -w @autotube/database",
+    "db:seed": "npm run seed -w @autotube/database",
+    "pipeline:demo": "dotenv -e .env -- tsx worker/src/demo.ts",
+    "pipeline:topic": "dotenv -e .env -- tsx infrastructure/scripts/pipeline-trigger-topic.ts",
+    "pipeline:recover": "dotenv -e .env -- tsx infrastructure/scripts/pipeline-recover-stuck.ts",
+    "tts:test": "dotenv -e .env -- tsx backend/services/media-generator/src/tts-test.ts",
+    "image:test": "dotenv -e .env -- tsx backend/services/media-generator/src/image-test.ts",
+    "youtube:auth": "dotenv -e .env -- tsx infrastructure/scripts/youtube-oauth.ts",
+    "youtube:thumbnail": "dotenv -e .env -- tsx infrastructure/scripts/youtube-set-thumbnail.ts",
+    "youtube:make-public": "dotenv -e .env -- tsx infrastructure/scripts/youtube-make-public.ts",
+    "channel:auto-publish": "dotenv -e .env -- tsx infrastructure/scripts/set-channel-auto-publish.ts",
+    "storage:cleanup": "dotenv -e .env -- tsx infrastructure/scripts/cleanup-storage.ts",
+    "stripe:setup": "dotenv -e .env -- tsx scripts/setup-stripe-products.ts",
+    "stripe:verify": "dotenv -e .env -- tsx scripts/verify-stripe-config.ts",
+    "email:test": "dotenv -e .env -- tsx scripts/test-email.ts",
+    "pre-deploy:check": "dotenv -e .env -- tsx scripts/pre-deploy-check.ts",
+    "pre-deploy:check:prod": "dotenv -e .env -- env NODE_ENV=production tsx scripts/pre-deploy-check.ts --strict-prod",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:build": "docker compose build",
+    "docker:prod": "docker compose -f docker-compose.yml -f infrastructure/docker/docker-compose.prod.yml",
+    "docker:prod:up": "docker compose -f docker-compose.yml -f infrastructure/docker/docker-compose.prod.yml up -d",
+    "docker:prod:deploy": "bash infrastructure/scripts/deploy-prod.sh"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "dotenv-cli": "^8.0.0",
+    "@playwright/test": "^1.55.0",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

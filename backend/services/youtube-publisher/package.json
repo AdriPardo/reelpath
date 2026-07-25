@@ -1,0 +1,19 @@
+{
+  "name": "@autotube/youtube-publisher",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "@autotube/config": "*",
+    "@autotube/database": "*",
+    "googleapis": "^144.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

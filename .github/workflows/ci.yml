@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Compilar paquetes core
+        run: npm run build:core
+
+      - name: Compilar API, worker y frontend
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:4000
+          NEXT_PUBLIC_AUTH_REQUIRED: 'true'
+        run: |
+          npm run build -w backend/api -w worker
+          npm run build:ci -w frontend
+
+      - name: Tests backend/api
+        run: npm run test -w backend/api
+
+      - name: Tests packages/shared
+        run: npm run test -w @autotube/shared
+
+      - name: Levantar servicios (postgres/redis)
+        run: |
+          docker compose up -d postgres redis
+          docker compose ps
+
+      - name: Migraciones + seed (DB)
+        env:
+          DATABASE_URL: postgresql://autotube:autotube@localhost:5433/autotube
+          E2E_TESTS: 'true'
+        run: |
+          npm run migrate:deploy:ci -w @autotube/database
+          npm run seed:ci -w @autotube/database
+
+      - name: Instalar Playwright (Chromium)
+        run: npx playwright install --with-deps chromium
+
+      - name: Arrancar API, worker y frontend (background)
+        env:
+          NODE_ENV: test
+          E2E_TESTS: 'true'
+          MOCK_EXTERNAL_APIS: 'true'
+          AUTH_REQUIRED: 'true'
+          AUTH_SECRET: e2e-ci-secret
+          API_PORT: '4000'
+          FRONTEND_URL: http://localhost:3000
+          DATABASE_URL: postgresql://autotube:autotube@localhost:5433/autotube
+          REDIS_URL: redis://localhost:6379
+          STORAGE_PATH: ./storage
+          NEXT_PUBLIC_API_URL: http://localhost:4000
+          NEXT_PUBLIC_AUTH_REQUIRED: 'true'
+        run: |
+          nohup npm run start -w backend/api > api.log 2>&1 &
+          nohup npm run start -w worker > worker.log 2>&1 &
+          nohup npm run start -w frontend > frontend.log 2>&1 &
+
+          echo "Esperando a que la API responda..."
+          for i in {1..60}; do
+            if curl -fsS http://localhost:4000/health > /dev/null; then
+              echo "API OK"
+              break
+            fi
+            sleep 2
+          done
+
+          echo "Esperando a que el frontend responda..."
+          for i in {1..60}; do
+            if curl -fsS http://localhost:3000/ > /dev/null; then
+              echo "Frontend OK"
+              break
+            fi
+            sleep 2
+          done
+
+      - name: Ejecutar E2E (Playwright)
+        env:
+          PLAYWRIGHT_BASE_URL: http://localhost:3000
+          PLAYWRIGHT_API_URL: http://localhost:4000
+        run: npm run test:e2e

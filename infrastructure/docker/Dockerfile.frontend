@@ -1,0 +1,28 @@
+FROM node:20-alpine AS deps
+WORKDIR /app
+COPY package.json package-lock.json* ./
+COPY packages/shared/package.json ./packages/shared/
+COPY frontend/package.json ./frontend/
+RUN npm install --workspace=frontend --workspace=@autotube/shared --include-workspace-root
+
+FROM deps AS build
+ARG NEXT_PUBLIC_API_URL=https://localhost
+ARG NEXT_PUBLIC_AUTH_REQUIRED=true
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_AUTH_REQUIRED=$NEXT_PUBLIC_AUTH_REQUIRED
+COPY packages/shared ./packages/shared
+COPY frontend ./frontend
+RUN npm run build -w @autotube/shared
+WORKDIR /app/frontend
+RUN npx next build
+
+FROM node:20-alpine AS runner
+WORKDIR /app/frontend
+ENV NODE_ENV=production
+COPY --from=build /app/frontend/.next/standalone ./
+COPY --from=build /app/frontend/.next/static ./.next/static
+COPY --from=build /app/frontend/public ./public
+EXPOSE 3000
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
+CMD ["node", "frontend/server.js"]

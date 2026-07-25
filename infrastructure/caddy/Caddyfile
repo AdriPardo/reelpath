@@ -1,0 +1,45 @@
+# AutoTube — reverse proxy con HTTPS automático (Let's Encrypt)
+# Variables: DOMAIN, ACME_EMAIL (opcional pero recomendado)
+
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode gzip zstd
+
+	# Medios: directo a API (auth vía cookie reelpath_token o Bearer)
+	handle /api/media/* {
+		uri replace /api/media /api
+		reverse_proxy api:4000
+	}
+
+	# Streams/thumbnails de vídeo (sin pasar por Next.js)
+	handle /api/videos/*/stream {
+		reverse_proxy api:4000
+	}
+	handle /api/videos/*/thumbnail {
+		reverse_proxy api:4000
+	}
+	handle /api/videos/*/clips/*/stream {
+		reverse_proxy api:4000
+	}
+	handle /api/videos/*/clips/*/thumbnail {
+		reverse_proxy api:4000
+	}
+
+	# API REST + OAuth callback de YouTube
+	handle /api/* {
+		reverse_proxy api:4000
+	}
+
+	@health path /health /health/extended /ready /metrics
+	handle @health {
+		reverse_proxy api:4000
+	}
+
+	# Dashboard Next.js
+	handle {
+		reverse_proxy frontend:3000
+	}
+}

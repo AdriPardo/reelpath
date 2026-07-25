@@ -1,0 +1,16 @@
+{
+  "name": "@autotube/video-renderer",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": { "build": "tsc", "dev": "tsc --watch" },
+  "dependencies": {
+    "@autotube/config": "*",
+    "@autotube/database": "*",
+    "@autotube/shared": "*",
+    "@autotube/template-engine": "*",
+    "sharp": "^0.34.3"
+  },
+  "devDependencies": { "typescript": "^5.7.3" }
+}

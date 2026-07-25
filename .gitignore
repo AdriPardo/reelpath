@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.next/
+.env
+.env.local
+.env.orig
+.env.*.local
+*.log
+.DS_Store
+storage/
+uploads/
+coverage/
+.turbo/
+
+# Local Netlify folder
+.netlify

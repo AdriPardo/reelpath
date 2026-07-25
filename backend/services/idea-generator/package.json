@@ -1,0 +1,17 @@
+{
+  "name": "@autotube/idea-generator",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": { "build": "tsc", "dev": "tsc --watch" },
+  "dependencies": {
+    "@autotube/config": "*",
+    "@autotube/content-scorer": "*",
+    "@autotube/database": "*",
+    "@autotube/llm": "*",
+    "@autotube/prompt-engine": "*",
+    "@autotube/shared": "*"
+  },
+  "devDependencies": { "typescript": "^5.7.3" }
+}

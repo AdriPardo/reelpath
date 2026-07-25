@@ -1,0 +1,17 @@
+{
+  "name": "@autotube/analytics",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": { "build": "tsc", "dev": "tsc --watch" },
+  "dependencies": {
+    "@autotube/config": "*",
+    "@autotube/database": "*",
+    "@autotube/prompt-engine": "*",
+    "@autotube/shared": "*",
+    "@autotube/youtube-publisher": "*",
+    "googleapis": "^144.0.0"
+  },
+  "devDependencies": { "typescript": "^5.7.3" }
+}

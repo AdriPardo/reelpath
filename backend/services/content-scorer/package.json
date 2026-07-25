@@ -1,0 +1,17 @@
+{
+  "name": "@autotube/content-scorer",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "@autotube/shared": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

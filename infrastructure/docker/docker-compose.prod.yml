@@ -1,0 +1,85 @@
+# Producción: usar junto con docker-compose.yml base
+#
+#   docker compose -f docker-compose.yml -f infrastructure/docker/docker-compose.prod.yml up -d
+#
+# Escalar workers (2 contenedores, 1 job concurrente cada uno):
+#   docker compose -f docker-compose.yml -f infrastructure/docker/docker-compose.prod.yml up -d --scale worker=2
+#
+# Requiere un archivo .env en la raíz (copia de .env.production.example).
+
+services:
+  postgres:
+    ports: !reset []
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-autotube}
+    restart: unless-stopped
+
+  redis:
+    ports: !reset []
+    restart: unless-stopped
+
+  api:
+    ports: !reset []
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://autotube:${POSTGRES_PASSWORD:-autotube}@postgres:5432/autotube
+      REDIS_URL: redis://redis:6379
+      API_PORT: 4000
+      FRONTEND_URL: https://${DOMAIN}
+      STORAGE_PATH: /app/storage
+      MOCK_EXTERNAL_APIS: ${MOCK_EXTERNAL_APIS:-false}
+      AUTH_REQUIRED: ${AUTH_REQUIRED:-true}
+      AUTH_SECRET: ${AUTH_SECRET}
+      YOUTUBE_OAUTH_REDIRECT_URI: https://${DOMAIN}/api/integrations/youtube/callback
+    restart: unless-stopped
+
+  worker:
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://autotube:${POSTGRES_PASSWORD:-autotube}@postgres:5432/autotube
+      REDIS_URL: redis://redis:6379
+      STORAGE_PATH: /app/storage
+      MOCK_EXTERNAL_APIS: ${MOCK_EXTERNAL_APIS:-false}
+      # Con --scale worker=2, mantener WORKER_CONCURRENCY=1 por contenedor
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-1}
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: ${WORKER_MEMORY_LIMIT:-6G}
+
+  frontend:
+    ports: !reset []
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.frontend
+      args:
+        NEXT_PUBLIC_API_URL: https://${DOMAIN}
+        NEXT_PUBLIC_AUTH_REQUIRED: ${NEXT_PUBLIC_AUTH_REQUIRED:-true}
+    environment:
+      NODE_ENV: production
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    volumes:
+      - ../caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - frontend
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
