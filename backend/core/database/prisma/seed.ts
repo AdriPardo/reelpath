@@ -1022,7 +1022,8 @@ async function main() {
     const adminUser = await prisma.user.upsert({
       where: { email: adminEmail },
       create: { email: adminEmail, passwordHash, name: 'Admin' },
-      update: { passwordHash, name: 'Admin' },
+      // Keep existing password on re-seed / API restart (boot-safe).
+      update: { name: 'Admin' },
     });
 
     await prisma.organizationMember.upsert({
@@ -1074,8 +1075,8 @@ async function main() {
       passwordHash,
       name: 'Admin',
     },
+    // Keep existing password on re-seed / API restart (boot-safe).
     update: {
-      passwordHash,
       name: 'Admin',
     },
   });

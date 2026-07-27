@@ -388,3 +388,23 @@ Antes de abrir registro público o cobrar clientes, verifica:
 | `infrastructure/scripts/deploy-prod.sh` | Script de despliegue producción |
 | `.env.production.example` | Plantilla de variables para producción |
 | `.env.example` | Referencia completa de variables (desarrollo local) |
+
+## Atlas / Traefik (`docker-compose.atlas.yml`)
+
+En el host compartido de Atlas, el entrypoint de la API ejecuta:
+
+1. `prisma migrate deploy`
+2. `SEED_DEMO=false npm run seed:ci` (crea el owner con `DEFAULT_ADMIN_EMAIL` / `DEFAULT_ADMIN_PASSWORD` si no existe; **no** resetea la contraseña en re-seeds)
+3. Arranque de la API
+
+Si el login falla con «Email o contraseña incorrectos» y la tabla `User` está vacía (imagen/command sin seed), recuperación one-shot:
+
+```bash
+docker exec -e DEFAULT_ADMIN_EMAIL=you@example.com \
+  -e DEFAULT_ADMIN_PASSWORD='temp-password' \
+  -e SEED_DEMO=false \
+  -e DATABASE_URL=postgresql://autotube:$POSTGRES_PASSWORD@db:5432/autotube \
+  reelpath-api-1 npm run seed:ci -w @autotube/database
+```
+
+Entra, cambia la contraseña en Ajustes y define un `DEFAULT_ADMIN_PASSWORD` fuerte en el `.env` del workspace antes del próximo recreate.
