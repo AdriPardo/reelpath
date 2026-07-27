@@ -25,8 +25,8 @@ FROM deps AS build
 COPY . .
 RUN npm run db:generate
 RUN npm run build -w @autotube/shared \
-  && npm run build -w @autotube/database \
   && npm run build -w @autotube/config \
+  && npm run build -w @autotube/database \
   && npm run build -w @autotube/prompt-engine \
   && npm run build -w @autotube/job-queue \
   && npm run build -w @autotube/llm \
