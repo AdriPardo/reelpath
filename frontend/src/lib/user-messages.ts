@@ -24,6 +24,15 @@ const API_ERROR_KEYS: Record<string, string> = {
   'Solo se pueden reintentar pipelines fallidos': 'api.errors.retryFailedOnly',
 };
 
+/** Códigos de PlanLimitError / API → clave i18n (cuando `error` viene truncado o es un locale). */
+const API_ERROR_CODES: Record<string, string> = {
+  TRIAL_EXPIRED: 'api.errors.trialExpired',
+  ORG_INACTIVE: 'api.errors.orgInactive',
+  ORG_NOT_FOUND: 'api.errors.orgNotFound',
+  PIPELINE_DAILY_LIMIT: 'api.errors.pipelineDailyLimit',
+  VIDEO_MONTHLY_LIMIT: 'api.errors.videoMonthlyLimit',
+};
+
 const YOUTUBE_SESSION_EXPIRED =
   /invalid_grant|refresh token is invalid|token has been expired|sesión con youtube ha caducado/i;
 
@@ -59,6 +68,10 @@ export function mapPipelineError(
   return error;
 }
 
+function looksLikeLocaleCode(value: string): boolean {
+  return value === 'es' || value === 'en' || /^[a-z]{2}(-[A-Z]{2})?$/.test(value);
+}
+
 /** Extrae un mensaje legible de respuestas de error (JSON o texto plano). */
 export function parseApiError(
   text: string,
@@ -70,18 +83,35 @@ export function parseApiError(
   if (!trimmed) return fb;
 
   try {
-    const body = JSON.parse(trimmed) as { error?: string; message?: string };
+    const body = JSON.parse(trimmed) as {
+      error?: string;
+      message?: string;
+      code?: string;
+      limit?: number;
+    };
+    const codeKey = body.code ? API_ERROR_CODES[body.code] : undefined;
     const raw = body.error ?? body.message;
+
+    // Preferir código de negocio si el mensaje es basura (p. ej. locale "es" por i18n invertido).
+    if (codeKey && (!raw || looksLikeLocaleCode(raw))) {
+      const params =
+        typeof body.limit === 'number' ? { limit: body.limit } : undefined;
+      return translate(locale, codeKey, params);
+    }
+
     if (raw) {
       const key = API_ERROR_KEYS[raw];
       return key ? translate(locale, key) : raw;
     }
+
+    if (codeKey) return translate(locale, codeKey);
   } catch {
     // no JSON
   }
 
   if (trimmed.startsWith('{') || trimmed.startsWith('[')) return fb;
   if (trimmed.length > 200) return fb;
+  if (looksLikeLocaleCode(trimmed)) return fb;
 
   const key = API_ERROR_KEYS[trimmed];
   return key ? translate(locale, key) : trimmed;

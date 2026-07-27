@@ -18,7 +18,7 @@ import {
   recoverAllStuckPipelines,
   recoverPipelineRun,
 } from '../lib/pipeline-recovery.js';
-import { assertOrgCanTriggerPipeline, PlanLimitError } from '../lib/plan-limits.js';
+import { assertOrgCanTriggerPipeline, PlanLimitError, planLimitErrorBody } from '../lib/plan-limits.js';
 import { localeFromRequest } from '../lib/request-locale.js';
 import { assertChannelInOrg } from '../lib/tenant.js';
 import { authMiddleware, orgChannelIds, orgScope } from '../middleware/auth.js';
@@ -151,7 +151,7 @@ pipelinesRouter.post('/trigger', pipelineTriggerRateLimiter, async (req, res) =>
     res.status(202).json({ pipelineRun: run, jobId: job.id, message: 'Pipeline encolado' });
   } catch (err) {
     if (err instanceof PlanLimitError) {
-      return res.status(err.statusCode).json({ error: err.message, code: err.code });
+      return res.status(err.statusCode).json(planLimitErrorBody(err));
     }
     console.error('[pipelines/trigger]', err);
     res.status(500).json({
