@@ -146,6 +146,13 @@ function validateProductionConfig(cfg: AppConfig): void {
   if (cfg.AUTH_REQUIRED !== true) {
     throw new Error('En producción se exige AUTH_REQUIRED=true');
   }
+
+  // Atlas shared-host / demo: allow mock + deferred YouTube/BYOK until secrets are set.
+  const atlasHosted = process.env.ATLAS_HOSTED === 'true';
+  if (atlasHosted) {
+    return;
+  }
+
   if (cfg.MOCK_EXTERNAL_APIS !== false) {
     throw new Error('En producción se exige MOCK_EXTERNAL_APIS=false');
   }

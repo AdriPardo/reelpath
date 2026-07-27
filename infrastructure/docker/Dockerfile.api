@@ -24,4 +24,4 @@ COPY --from=build /app/packages ./packages
 COPY --from=build /app/backend ./backend
 RUN mkdir -p /app/storage
 EXPOSE 4000
-CMD ["sh", "-c", "npm run migrate:deploy -w @autotube/database && npm run start -w backend-api"]
+CMD ["sh", "-c", "npm run migrate:deploy:ci -w @autotube/database && npm run start -w backend-api"]
