@@ -9,7 +9,7 @@ import { generateYouTubeThumbnail } from '@autotube/video-renderer';
 import { streamVideoFile } from '../lib/video-file.js';
 import { deletePipelineRunCompletely, deleteVideoLocalFilesOnly } from '../lib/pipeline-cleanup.js';
 import { resolveChannelAutoPublishAt } from '../lib/publication-plan.js';
-import { assertOrgCanPublish, PlanLimitError } from '../lib/plan-limits.js';
+import { assertOrgCanPublish, PlanLimitError, planLimitErrorBody } from '../lib/plan-limits.js';
 import { queueVideoYouTubePublish, retryVideoYouTubePublish } from '../lib/video-publish.js';
 import {
   deleteSceneAssets,
@@ -57,7 +57,7 @@ async function respondRetryYouTubePublish(
     res.json({ ...video, ...result });
   } catch (err) {
     if (err instanceof PlanLimitError) {
-      res.status(err.statusCode).json({ error: err.message, code: err.code });
+      res.status(err.statusCode).json(planLimitErrorBody(err));
       return;
     }
     const message = err instanceof Error ? err.message : 'No se pudo reintentar la publicación';
@@ -81,6 +81,10 @@ const updateVideoSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().max(5000).optional(),
   tags: z.array(z.string().min(1).max(50)).max(30).optional(),
+});
+
+const rescheduleVideoSchema = z.object({
+  scheduledPublishAt: z.string().min(1),
 });
 
 const ARCHIVED_REVIEW_STATUSES = ['cancelled', 'rejected'] as const;
@@ -338,23 +342,30 @@ videosRouter.post('/:id/approve', async (req, res) => {
       await assertOrgCanPublish(orgId);
     } catch (err) {
       if (err instanceof PlanLimitError) {
-        return res.status(err.statusCode).json({ error: err.message, code: err.code });
+        return res.status(err.statusCode).json(planLimitErrorBody(err));
       }
       throw err;
     }
   }
 
-  const explicitSchedule = parseScheduledPublishAt(body.data.scheduledPublishAt);
-  if (body.data.scheduledPublishAt && !explicitSchedule) {
+  const fromBody = parseScheduledPublishAt(body.data.scheduledPublishAt);
+  if (body.data.scheduledPublishAt && !fromBody) {
     return res.status(400).json({ error: 'La fecha debe ser al menos 1 minuto en el futuro' });
   }
+
+  const fromPersisted =
+    !fromBody &&
+    existing.scheduledPublishAt &&
+    existing.scheduledPublishAt.getTime() > Date.now() + 60_000
+      ? existing.scheduledPublishAt
+      : null;
 
   const channel = await prisma.channel.findUnique({ where: { id: existing.channelId } });
   const config = parseChannelConfig(channel?.config);
   const scheduledPublishAt = await resolveChannelAutoPublishAt(
     existing.channelId,
     config,
-    explicitSchedule,
+    fromBody ?? fromPersisted,
     existing.id,
   );
 
@@ -411,6 +422,59 @@ videosRouter.patch('/:id', async (req, res) => {
     data: body,
   });
   res.json(video);
+});
+
+videosRouter.patch('/:id/schedule', async (req, res) => {
+  const access = await checkVideoAccess(req.params.id, orgScope(req));
+  if (access !== 'allowed') {
+    rejectVideoAccess(res, access);
+    return;
+  }
+
+  const body = rescheduleVideoSchema.safeParse(req.body ?? {});
+  if (!body.success) {
+    return res.status(400).json({ error: 'Fecha de programación inválida' });
+  }
+
+  const existing = await prisma.video.findUnique({ where: { id: req.params.id } });
+  if (!existing) return res.status(404).json({ error: 'Video not found' });
+  if (existing.reviewStatus === 'published') {
+    return res.status(400).json({ error: 'No se puede reprogramar un vídeo ya publicado' });
+  }
+  if (existing.reviewStatus === 'rejected' || existing.reviewStatus === 'cancelled') {
+    return res.status(400).json({ error: 'No se puede reprogramar un vídeo archivado' });
+  }
+
+  const scheduledPublishAt = parseScheduledPublishAt(body.data.scheduledPublishAt);
+  if (!scheduledPublishAt) {
+    return res.status(400).json({ error: 'La fecha debe ser al menos 1 minuto en el futuro' });
+  }
+
+  // Ya en cola de YouTube con schedule: reencolar de forma segura.
+  if (existing.reviewStatus === 'scheduled') {
+    try {
+      const orgId = orgScope(req);
+      if (orgId) await assertOrgCanPublish(orgId);
+      const result = await queueVideoYouTubePublish(existing, scheduledPublishAt);
+      const video = await prisma.video.findUniqueOrThrow({ where: { id: existing.id } });
+      return res.json({ ...video, ...result });
+    } catch (err) {
+      if (err instanceof PlanLimitError) {
+        return res.status(err.statusCode).json(planLimitErrorBody(err));
+      }
+      throw err;
+    }
+  }
+
+  // pending / approved: solo persiste en DB (no publica a YouTube).
+  const video = await prisma.video.update({
+    where: { id: existing.id },
+    data: { scheduledPublishAt },
+  });
+  res.json({
+    ...video,
+    message: 'Fecha de publicación actualizada',
+  });
 });
 
 videosRouter.post('/:id/regenerate-thumbnail', async (req, res) => {

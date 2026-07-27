@@ -514,9 +514,9 @@
       "removeMember": "Eliminar miembro"
     },
     "apikeys": {
-      "title": "API de IA (BYOK)",
-      "saveKey": "Guardar clave",
-      "keySaved": "Clave guardada"
+      "title": "IA y generación",
+      "saveKey": "Guardar ajustes",
+      "keySaved": "Ajustes guardados"
     },
     "plan": {
       "current": "Plan actual",

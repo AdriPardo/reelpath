@@ -17,7 +17,9 @@ import type {
 import {
   buildLanczosScaleCrop,
   getMotionFilterParams,
+  isFfmpegFilmGrainEnabled,
   mapTransitionToFfmpeg,
+  runFfmpeg,
   VIDEO_RESOLUTION_LONG,
   VIDEO_RESOLUTION_SHORT,
 } from '@autotube/shared';
@@ -211,7 +213,7 @@ async function execFfmpegVideoScene(
     '-t', String(duration),
     '-y', outPath,
   ];
-  await execFileAsync('ffmpeg', args);
+  await runFfmpeg(args);
 }
 
 async function execFfmpegScene(
@@ -230,7 +232,7 @@ async function execFfmpegScene(
     '-t', String(duration),
     '-y', outPath,
   ];
-  await execFileAsync('ffmpeg', args);
+  await runFfmpeg(args);
 }
 
 function applyVisualOverlays(baseFilter: string, template: VideoTemplate): string {
@@ -238,7 +240,8 @@ function applyVisualOverlays(baseFilter: string, template: VideoTemplate): strin
   if (template.vignette) {
     filter = `${filter},vignette=angle=PI/4:mode=forward`;
   }
-  if (template.filmGrain) {
+  // noise/filmGrain es muy caro en CPU; off salvo FFMPEG_ENABLE_FILM_GRAIN=true
+  if (template.filmGrain && isFfmpegFilmGrainEnabled()) {
     filter = `${filter},noise=alls=6:allf=t+u`;
   }
   return filter;
@@ -331,7 +334,7 @@ async function concatClipsWithCuts(
   const content = renderedClips.map((c) => `file '${c.path.replace(/'/g, "'\\''")}'`).join('\n');
   await fs.writeFile(listPath, content);
 
-  await execFileAsync('ffmpeg', [
+  await runFfmpeg([
     '-f', 'concat', '-safe', '0', '-i', listPath,
     '-c', 'copy',
     '-movflags', '+faststart', '-y', outputPath,
@@ -380,7 +383,7 @@ async function concatClipsWithTransitions(
 
   filterParts.push(`${currentVideo}format=yuv420p[vout]`);
 
-  await execFileAsync('ffmpeg', [
+  await runFfmpeg([
     ...args,
     '-filter_complex', filterParts.join(';'),
     '-map', '[vout]',
@@ -416,12 +419,13 @@ async function generateThumbnail(
 }
 
 async function createFallbackVideo(outputPath: string, durationSec: number): Promise<void> {
-  await execFileAsync('ffmpeg', [
+  await runFfmpeg([
     '-f', 'lavfi',
     '-i', `color=c=0x1a1a2e:s=1080x1920:d=${durationSec}`,
     '-f', 'lavfi',
     '-i', `anullsrc=r=44100:cl=mono:d=${durationSec}`,
-    '-c:v', 'libx264', '-c:a', 'aac', '-pix_fmt', 'yuv420p',
+    ...ffmpegH264EncodeArgs(),
+    '-pix_fmt', 'yuv420p',
     '-movflags', '+faststart',
     '-y', outputPath,
   ]);
@@ -456,9 +460,19 @@ export async function renderVideo(params: {
   const persistAsVideo = params.persistAsVideo !== false;
   const template = await templateRegistry.getTemplate(params.templateId);
   const retentionMode = params.retentionMode ?? false;
+  const forceCut =
+    process.env.FFMPEG_FORCE_CUT_TRANSITIONS === 'true' ||
+    (process.env.FFMPEG_FORCE_CUT_TRANSITIONS !== 'false' &&
+      process.env.NODE_ENV === 'production');
   let renderTemplate: VideoTemplate = {
     ...template,
-    transitions: template.transitions === 'cut' ? 'fade' : template.transitions,
+    // En prod (o FFMPEG_FORCE_CUT_TRANSITIONS=true): cortes = concat -c copy (casi 0 CPU).
+    // En dev: xfade salvo plantilla cut.
+    transitions: forceCut
+      ? 'cut'
+      : template.transitions === 'cut'
+        ? 'fade'
+        : template.transitions,
   };
 
   if (params.aspectRatio === '9:16') {

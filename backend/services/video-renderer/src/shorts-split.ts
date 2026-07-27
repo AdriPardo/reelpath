@@ -1,15 +1,12 @@
-import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { promisify } from 'node:util';
 import { getStoragePath, loadConfig } from '@autotube/config';
 import { prisma } from '@autotube/database';
+import { runFfmpeg } from '@autotube/shared';
 import { applyClipOverlay } from './clip-overlay.js';
 import { burnSubtitlesIntoClip, loadPipelineSrt, subClipPath } from './clip-subtitles.js';
 import { assertValidVideoFile, buildLanczosScaleCrop, ffmpegH264EncodeArgs, getVideoDuration } from './ffmpeg-utils.js';
 import { generateVerticalClipThumbnail } from './thumbnail-generator.js';
-
-const execFileAsync = promisify(execFile);
 
 const SPLIT_LOCK_STALE_MS = 2 * 60 * 60 * 1000;
 
@@ -130,7 +127,7 @@ async function extractShortPart(params: {
   const vf = buildLanczosScaleCrop(1080, 1920);
 
   try {
-    await execFileAsync('ffmpeg', [
+    await runFfmpeg([
       '-ss', String(params.startSec),
       '-i', params.inputPath,
       '-t', String(params.durationSec),
@@ -317,7 +314,7 @@ async function createSingleShortClip(
 
   const sourceDuration = await getVideoDuration(video.filePath);
 
-  await execFileAsync('ffmpeg', [
+  await runFfmpeg([
     '-i', video.filePath,
     '-vf', vf,
     ...ffmpegH264EncodeArgs(),

@@ -23,7 +23,12 @@ import {
 } from '../lib/youtube-oauth.js';
 import { deleteChannelWithCleanup } from '../lib/channel-deletion.js';
 import { validateChannelCompliance } from '../lib/channel-compliance.js';
-import { assertOrgCanTriggerPipeline, PlanLimitError, resolveOrgPlanLimits } from '../lib/plan-limits.js';
+import {
+  assertOrgCanTriggerPipeline,
+  PlanLimitError,
+  planLimitErrorBody,
+  resolveOrgPlanLimits,
+} from '../lib/plan-limits.js';
 import { handleLongVideoUpload } from '../lib/upload-long.js';
 import { assertChannelInOrg } from '../lib/tenant.js';
 import { authMiddleware, orgScope } from '../middleware/auth.js';
@@ -260,6 +265,31 @@ channelsRouter.get('/:id/publication-plan', async (req, res) => {
   res.json(plan);
 });
 
+channelsRouter.post('/:id/publication-plan/apply', async (req, res) => {
+  const orgId = orgScope(req);
+  const channel = await prisma.channel.findUnique({ where: { id: req.params.id } });
+  if (!channel) return res.status(404).json({ error: 'Channel not found' });
+  if (orgId && channel.organizationId !== orgId) {
+    return res.status(404).json({ error: 'Channel not found' });
+  }
+
+  try {
+    const { applyChannelPublicationPlan, getChannelPublicationPlan } = await import(
+      '../lib/publication-plan.js'
+    );
+    const result = await applyChannelPublicationPlan(channel.id);
+    const plan = await getChannelPublicationPlan(channel.id);
+    res.json({ ...result, plan });
+  } catch (err) {
+    const statusCode =
+      err && typeof err === 'object' && 'statusCode' in err && typeof err.statusCode === 'number'
+        ? err.statusCode
+        : 500;
+    const message = err instanceof Error ? err.message : 'No se pudo aplicar el plan';
+    res.status(statusCode).json({ error: message });
+  }
+});
+
 channelsRouter.post('/:id/upload-long', upload.single('video'), async (req, res) => {
   const channelId = String(req.params.id);
   const orgId = orgScope(req);
@@ -298,7 +328,7 @@ channelsRouter.post('/:id/upload-long', upload.single('video'), async (req, res)
     res.status(202).json(result);
   } catch (err) {
     if (err instanceof PlanLimitError) {
-      return res.status(err.statusCode).json({ error: err.message, code: err.code });
+      return res.status(err.statusCode).json(planLimitErrorBody(err));
     }
     const statusCode =
       err && typeof err === 'object' && 'statusCode' in err && typeof err.statusCode === 'number'

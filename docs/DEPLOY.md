@@ -346,8 +346,9 @@ Antes de abrir registro público o cobrar clientes, verifica:
 - [ ] **Stripe webhook**: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, precios y portal — ver [BILLING.md](./BILLING.md)
 - [ ] **`MOCK_EXTERNAL_APIS=false`** en producción (TTS, imágenes y YouTube reales)
 - [ ] **`PEXELS_API_KEY`**: stock B-roll en modo `stock`/`mixed` por canal ([Pexels API](https://www.pexels.com/api/))
-- [ ] **`GENERATE_DALLE_IMAGES=true`** o planes de pago activos (imágenes IA, no placeholders)
-- [ ] **`OPENAI_API_KEY`** (y opcionalmente `ELEVENLABS_API_KEY`) configuradas
+- [ ] **`GENERATE_DALLE_IMAGES=true`** solo si quieres imágenes IA (coste); por defecto `false` + Pexels
+- [ ] **`DEEPSEEK_API_KEY`** (recomendado para guiones baratos) y/o **`OPENAI_API_KEY`**
+- [ ] **`TTS_PROVIDER=auto`** con Edge (gratis) o `elevenlabs` si pagas calidad de voz
 - [ ] Health check: `https://TU_DOMINIO/health`
 - [ ] Pipeline de prueba end-to-end con revisión y publicación
 
@@ -374,6 +375,7 @@ Antes de abrir registro público o cobrar clientes, verifica:
 ```
 
 - [ ] (Opcional) Escalar workers: `docker compose ... up -d --scale worker=2` con `WORKER_CONCURRENCY=1`
+- [ ] Revisar encoding VPS: `FFMPEG_PRESET=veryfast`, `FFMPEG_THREADS=2`, `FFMPEG_CONCURRENCY=1` (ver `.env.production.example`)
 - [ ] (Opcional) Stripe: productos, precios, webhook, portal de cliente y variables en `.env`
 
 ## Archivos de infraestructura

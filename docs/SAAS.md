@@ -120,8 +120,8 @@ Registrar en Google Cloud → URIs de redirección autorizados: la URI anterior 
 
 ## Roadmap
 
-- Rotación y cifrado de tokens en reposo
-- BYOK de OpenAI/ElevenLabs a nivel organización
+- Rotación de tokens en reposo
+- Límites de plan que acoten `maxScenesLong` / imágenes IA por tier
 
 ## Migración y seed
 
@@ -161,14 +161,53 @@ Al vender el servicio, no todo debe vivir en `.env`. Regla práctica:
 | `AUTH_SECRET`, `AUTH_REQUIRED` | **`.env` del servidor** | Seguridad de la plataforma |
 | `FRONTEND_URL`, `API_PORT` | **`.env` del servidor** | Despliegue |
 | YouTube OAuth (tokens) | **BD** (`IntegrationCredential`, por org o canal) | Cada cliente publica en su cuenta |
-| OpenAI / ElevenLabs API keys | **BD por organización** (BYOK) o `.env` si la plataforma paga | Facturación y aislamiento |
+| OpenAI / DeepSeek / ElevenLabs API keys | **BD por organización** (BYOK) o `.env` si la plataforma paga | Facturación y aislamiento |
+| Preferencias de generación (LLM, TTS, DALL·E, máx. escenas) | **BD** (`Organization.llmProvider`, `ttsProvider`, `generateAiImages`, `maxScenesLong`) | Cada cliente elige coste/calidad en Ajustes → IA y generación |
 | `Channel.config` (formato, review, Shorts YouTube…) | **BD** (`Channel.config` JSON) | Ya está; preferencias por canal |
-| Defaults globales (`DEFAULT_REVIEW_REQUIRED`, límites) | **`.env` o tabla `Organization.settings`** | Fallback de plataforma vs plan del cliente |
+| Defaults globales (`DEFAULT_REVIEW_REQUIRED`, límites) | **`.env` o campos de `Organization`** | Fallback de plataforma vs preferencia del cliente |
 | `MOCK_EXTERNAL_APIS` | **`.env`** | Solo desarrollo |
 
-**Hoy (fase 2):** la UI y API gestionan integraciones por canal en BD; workers siguen usando `.env` como fallback hasta Fase 3.
+**Hoy:** la UI en **Ajustes → IA y generación** gestiona proveedores y BYOK por organización; el worker aplica esos overrides al generar. `.env` sigue siendo el fallback de plataforma.
 
-**Objetivo al vender:** el operador de Reelpath solo configura infra en `.env`; cada cliente conecta YouTube desde la UI y opcionalmente sus propias API keys de IA.
+**Objetivo al vender:** el operador de Reelpath solo configura infra en `.env`; cada cliente elige LLM/TTS/imágenes y opcionalmente sus propias API keys desde la UI.
+
+## Coste por vídeo (APIs)
+
+Objetivo típico con defaults cost-efficient: **€0.20–0.80 / vídeo largo** (vs ~€5 si ElevenLabs + DALL·E high en 20 escenas).
+
+| Concepto | Caro (~€5) | Cost-efficient |
+|----------|------------|----------------|
+| Chat LLM (ideas + guion) | gpt-4o / gpt-4o-mini | **DeepSeek** `deepseek-v4-flash` (~10–50× más barato que gpt-4o) |
+| TTS | ElevenLabs (~€1–3 / 8 min) | **Edge TTS** (gratis) |
+| Imágenes | gpt-image high × 20 escenas | **Off** + Pexels/stock; tope `MAX_AI_IMAGES_PER_VIDEO=4` |
+| Escenas | 20 | **6–8** (`PIPELINE_MAX_SCENES_LONG=8`) |
+| Shorts | `dedicated` (regenera TTS/IA) | **`split`** (reusa audio/vídeo del long) |
+| FFmpeg | medium + todos los cores | **`veryfast` + `FFMPEG_THREADS=2` + concurrency 1** |
+
+### Variables clave
+
+```bash
+LLM_PROVIDER=auto              # DeepSeek si hay DEEPSEEK_API_KEY
+DEEPSEEK_API_KEY=sk-...
+DEEPSEEK_MODEL=deepseek-v4-flash
+GENERATE_DALLE_IMAGES=false
+FORCE_AI_IMAGES_ON_PAID=false
+TTS_PROVIDER=auto              # Edge primero (gratis)
+PIPELINE_MAX_SCENES_LONG=8
+WORKER_CONCURRENCY=1
+FFMPEG_PRESET=veryfast
+FFMPEG_THREADS=2
+FFMPEG_CONCURRENCY=1
+FFMPEG_FORCE_CUT_TRANSITIONS=true
+PEXELS_API_KEY=...             # stock gratis
+MOCK_EXTERNAL_APIS=false       # producción
+```
+
+**Qué usa DeepSeek:** ideas, guion/outline/chunks, títulos, descripciones, prompts de escena, teasers.
+**Qué sigue en OpenAI (si está activo):** imágenes DALL·E/gpt-image, TTS OpenAI (solo fallback).
+**TTS:** Edge por defecto; ElevenLabs solo con `TTS_PROVIDER=elevenlabs`.
+
+Ahorro LLM estimado (guion long ~50–150k tokens totales entre llamadas): gpt-4o-mini ~$0.15–0.50 → DeepSeek flash ~$0.01–0.05.
 
 ## Páginas legales públicas
 

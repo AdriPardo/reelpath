@@ -16,7 +16,6 @@ import type { AuthSession } from '@/context/AuthContext';
 import { checkApiHealth, type Channel, type PipelineRun, type Video } from '@/lib/api';
 import { serverApi } from '@/lib/api-server';
 import { formatDateTime } from '@/lib/format-publish-date';
-import { PLATFORM } from '@/lib/site-brand';
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -135,17 +134,37 @@ export default async function HomePage({ params }: Props) {
         />
       ) : (
         <>
-          <div className="stat-grid">
-            <Link href="/pipelines" className="stat stat-clickable">
-              <div className="stat-body">
-                <div className="stat-value">{activePipelines.length}</div>
-                <div className="stat-label">{t('activePipelines')}</div>
+          {pendingVideos.length > 0 && (
+            <aside className="dashboard-attention" aria-label={t('pendingReviewSection')}>
+              <div className="dashboard-attention-text">
+                <p className="dashboard-attention-title">
+                  {t('attentionTitle', { count: pendingVideos.length })}
+                </p>
+                <p className="dashboard-attention-desc">{t('attentionDesc')}</p>
               </div>
-            </Link>
-            <Link href="/review" className="stat stat-clickable">
+              <ButtonLink href="/review" variant="primary" size="sm">
+                {t('attentionCta')}
+              </ButtonLink>
+            </aside>
+          )}
+
+          <div className="stat-grid">
+            <Link
+              href="/review"
+              className={`stat stat-clickable${pendingVideos.length > 0 ? ' stat-attention' : ''}`}
+            >
               <div className="stat-body">
                 <div className="stat-value">{pendingVideos.length}</div>
                 <div className="stat-label">{t('pendingReview')}</div>
+              </div>
+            </Link>
+            <Link
+              href="/pipelines"
+              className={`stat stat-clickable${activePipelines.length > 0 ? ' stat-attention' : ''}`}
+            >
+              <div className="stat-body">
+                <div className="stat-value">{activePipelines.length}</div>
+                <div className="stat-label">{t('activePipelines')}</div>
               </div>
             </Link>
             <Link href="/videos?reviewStatus=scheduled" className="stat stat-clickable">
@@ -155,8 +174,6 @@ export default async function HomePage({ params }: Props) {
               </div>
             </Link>
           </div>
-
-          <DashboardOrgAnalytics />
 
           <section className="page-section">
             <div className="page-section-title">
@@ -252,6 +269,8 @@ export default async function HomePage({ params }: Props) {
               </ul>
             </section>
           )}
+
+          <DashboardOrgAnalytics />
         </>
       )}
     </div>

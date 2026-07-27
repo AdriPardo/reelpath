@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { ChannelConfig } from '@autotube/shared';
+import { getOrgPipelineOverrides } from './org-runtime.js';
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -7,7 +8,8 @@ const envSchema = z.object({
   REDIS_URL: z.string().default('redis://localhost:6379'),
   SENTRY_DSN: z.string().optional(),
   SENTRY_ENVIRONMENT: z.string().optional(),
-  // TTS provider priority (TTS_PROVIDER=auto): ElevenLabs → Edge (free) → OpenAI → mock
+  // TTS provider priority (TTS_PROVIDER=auto, cost-efficient): Edge (free) → ElevenLabs → OpenAI → mock
+  // Set TTS_PROVIDER=elevenlabs for premium voice (paid). Starter/default: prefer free Edge.
   TTS_PROVIDER: z.enum(['auto', 'elevenlabs', 'edge', 'openai', 'mock']).default('auto'),
   TTS_ENABLE_EDGE: z
     .string()
@@ -27,24 +29,48 @@ const envSchema = z.object({
   EDGE_TTS_VOLUME: z.string().default('+0%'),
   EDGE_TTS_PITCH: z.string().default('+0Hz'),
   OPENAI_API_KEY: z.string().optional(),
+  /**
+   * LLM for ideas/scripts/titles (OpenAI-compatible).
+   * auto = DeepSeek if DEEPSEEK_API_KEY set, else OpenAI. Images/TTS never use DeepSeek.
+   */
+  LLM_PROVIDER: z.enum(['auto', 'deepseek', 'openai']).default('auto'),
+  DEEPSEEK_API_KEY: z.string().optional(),
+  DEEPSEEK_BASE_URL: z.string().default('https://api.deepseek.com'),
+  /** Prefer deepseek-v4-flash (cheap). Legacy: deepseek-chat (deprecated 2026-07-24). */
+  DEEPSEEK_MODEL: z.string().default('deepseek-v4-flash'),
+  /** Script/ideas LLM when LLM_PROVIDER=openai (alias: OPENAI_MODEL_SCRIPT). */
   OPENAI_MODEL: z.string().default('gpt-4o-mini'),
+  OPENAI_MODEL_SCRIPT: z.string().optional(),
   OPENAI_MODEL_DEV: z.string().default('gpt-4o-mini'),
   SCRIPT_DEV_MODE: z
     .string()
     .transform((v) => v === 'true')
     .default('false'),
   OPENAI_TTS_VOICE: z.string().default('nova'),
-  OPENAI_TTS_MODEL: z.string().default('tts-1-hd'),
+  /** tts-1 is ~2× cheaper than tts-1-hd; quality is enough for narration fallback. */
+  OPENAI_TTS_MODEL: z.string().default('tts-1'),
   OPENAI_TTS_SPEED: z.coerce.number().min(0.25).max(4).default(1),
   OPENAI_IMAGE_MODEL: z.string().default('gpt-image-1'),
+  /** gpt-image-* quality: low | medium | high | auto. medium ≈ 3–5× cheaper than high. */
+  OPENAI_IMAGE_QUALITY: z.enum(['low', 'medium', 'high', 'auto']).default('medium'),
   GENERATE_DALLE_IMAGES: z
     .string()
     .transform((v) => v === 'true')
     .default('false'),
+  /** If true, paid org plans force AI scene images even when GENERATE_DALLE_IMAGES=false. Default off (cost). */
+  FORCE_AI_IMAGES_ON_PAID: z
+    .string()
+    .transform((v) => v === 'true')
+    .default('false'),
+  /** Cap AI scene images per media job (0 = unlimited). Applies when AI images are enabled. */
+  MAX_AI_IMAGES_PER_VIDEO: z.coerce.number().int().min(0).max(100).default(4),
+  /** YouTube thumbnails are SVG overlays (0 AI cost). Kept for docs/UI; generation always uses 1 variant. */
+  THUMBNAIL_VARIANTS: z.coerce.number().int().min(1).max(3).default(1),
   PIPELINE_MAX_SCENES: z.coerce.number().optional(),
-  PIPELINE_MIN_SCENES_LONG: z.coerce.number().default(12),
+  PIPELINE_MIN_SCENES_LONG: z.coerce.number().default(6),
   PIPELINE_MAX_SCENES_SHORT: z.coerce.number().default(3),
-  PIPELINE_MAX_SCENES_LONG: z.coerce.number().default(20),
+  /** Fewer scenes → fewer TTS/image/FFmpeg encodes. Duration still driven by targetDuration*Sec. */
+  PIPELINE_MAX_SCENES_LONG: z.coerce.number().default(8),
   OPENAI_MAX_TOKENS: z.coerce.number().default(1000),
   OPENAI_MAX_TOKENS_LONG: z.coerce.number().default(8000),
   API_PORT: z.coerce.number().default(4000),
@@ -127,8 +153,10 @@ export function loadConfig(): AppConfig {
     !!parsed.data.OPENAI_API_KEY ||
     parsed.data.TTS_ENABLE_EDGE;
 
+  const hasLlmKey = !!(parsed.data.OPENAI_API_KEY || parsed.data.DEEPSEEK_API_KEY);
+
   const useMocks =
-    parsed.data.MOCK_EXTERNAL_APIS || (!parsed.data.OPENAI_API_KEY && !hasRealTts);
+    parsed.data.MOCK_EXTERNAL_APIS || (!hasLlmKey && !hasRealTts);
 
   if (parsed.data.AUTH_REQUIRED && !parsed.data.AUTH_SECRET) {
     throw new Error('AUTH_SECRET is required when AUTH_REQUIRED=true');
@@ -236,11 +264,17 @@ export function getMaxScenes(
   options?: { retentionMode?: boolean },
 ): number {
   const config = loadConfig();
+  const org = getOrgPipelineOverrides();
   const retention = options?.retentionMode ?? false;
   let max: number;
   if (config.PIPELINE_MAX_SCENES != null) max = config.PIPELINE_MAX_SCENES;
-  else if (format === 'long') max = config.PIPELINE_MAX_SCENES_LONG;
-  else max = retention ? 5 : config.PIPELINE_MAX_SCENES_SHORT;
+  else if (format === 'long') {
+    const orgMax = org?.maxScenesLong;
+    max =
+      typeof orgMax === 'number' && Number.isFinite(orgMax) && orgMax > 0
+        ? orgMax
+        : config.PIPELINE_MAX_SCENES_LONG;
+  } else max = retention ? 5 : config.PIPELINE_MAX_SCENES_SHORT;
   if (format === 'long') {
     max = Math.max(max, getMinScenes('long', options));
   }
@@ -258,12 +292,152 @@ export function isScriptDevMode(): boolean {
   return config.SCRIPT_DEV_MODE || config.NODE_ENV === 'development';
 }
 
-export function getOpenAiModel(): string {
+export type LlmProviderName = 'deepseek' | 'openai';
+
+function effectiveLlmProviderPreference(options?: {
+  orgOpenAiApiKey?: string | null;
+}): 'auto' | 'deepseek' | 'openai' {
+  const org = getOrgPipelineOverrides();
+  const orgPref = org?.llmProvider;
+  if (orgPref === 'deepseek' || orgPref === 'openai' || orgPref === 'auto') {
+    return orgPref;
+  }
+  return loadConfig().LLM_PROVIDER;
+}
+
+function effectiveDeepseekApiKey(): string | undefined {
+  const org = getOrgPipelineOverrides();
+  return org?.deepseekApiKey?.trim() || loadConfig().DEEPSEEK_API_KEY?.trim() || undefined;
+}
+
+function effectiveOpenAiApiKey(options?: { orgOpenAiApiKey?: string | null }): string | undefined {
+  const org = getOrgPipelineOverrides();
+  return (
+    options?.orgOpenAiApiKey?.trim() ||
+    org?.openAiApiKey?.trim() ||
+    loadConfig().OPENAI_API_KEY?.trim() ||
+    undefined
+  );
+}
+
+/**
+ * Resolve chat LLM provider for ideas/scripts.
+ * Org preference (UI) wins over .env; org BYOK keys enable that provider.
+ * With preference=auto, org BYOK OpenAI alone forces openai (client pays).
+ */
+export function resolveLlmProvider(options?: {
+  orgOpenAiApiKey?: string | null;
+}): LlmProviderName {
+  const preference = effectiveLlmProviderPreference(options);
+  const hasDeepseek = !!effectiveDeepseekApiKey();
+  const hasOpenAi = !!effectiveOpenAiApiKey(options);
+  const orgByokOpenAi = !!(
+    options?.orgOpenAiApiKey?.trim() || getOrgPipelineOverrides()?.openAiApiKey?.trim()
+  );
+
+  if (preference === 'deepseek') {
+    if (hasDeepseek) return 'deepseek';
+    return hasOpenAi ? 'openai' : 'deepseek';
+  }
+  if (preference === 'openai') {
+    return 'openai';
+  }
+
+  // auto: prefer DeepSeek for cost; org BYOK OpenAI wins when set
+  if (orgByokOpenAi) return 'openai';
+  if (hasDeepseek) return 'deepseek';
+  return 'openai';
+}
+
+/** Model id for the active chat LLM (DeepSeek or OpenAI). */
+export function getLlmModel(options?: { orgOpenAiApiKey?: string | null }): string {
   const config = loadConfig();
+  const provider = resolveLlmProvider(options);
+  if (provider === 'deepseek') {
+    return config.DEEPSEEK_MODEL.trim() || 'deepseek-v4-flash';
+  }
   if (isScriptDevMode() && config.OPENAI_MODEL_DEV) {
     return config.OPENAI_MODEL_DEV;
   }
-  return config.OPENAI_MODEL;
+  return config.OPENAI_MODEL_SCRIPT?.trim() || config.OPENAI_MODEL;
+}
+
+/** @deprecated Prefer getLlmModel — kept for call sites that mean “script model”. */
+export function getOpenAiModel(): string {
+  return getLlmModel();
+}
+
+export function resolveLlmConnection(options?: {
+  orgOpenAiApiKey?: string | null;
+}): { provider: LlmProviderName; apiKey: string; baseURL?: string; model: string } | null {
+  const config = loadConfig();
+  const provider = resolveLlmProvider(options);
+  const model = getLlmModel(options);
+
+  if (provider === 'deepseek') {
+    const apiKey = effectiveDeepseekApiKey();
+    if (!apiKey) return null;
+    return {
+      provider,
+      apiKey,
+      baseURL: config.DEEPSEEK_BASE_URL.replace(/\/$/, ''),
+      model,
+    };
+  }
+
+  const apiKey = effectiveOpenAiApiKey(options);
+  if (!apiKey) return null;
+  return { provider, apiKey, model };
+}
+
+/**
+ * Config with org pipeline overrides applied (keys, TTS/LLM provider, DALL·E flag, scenes).
+ * Use in TTS/media paths so BYOK and UI prefs take effect without rewriting every call site.
+ */
+export function loadEffectiveConfig(): AppConfig {
+  const base = loadConfig();
+  const org = getOrgPipelineOverrides();
+  if (!org) return base;
+
+  const llmProvider =
+    org.llmProvider === 'deepseek' || org.llmProvider === 'openai' || org.llmProvider === 'auto'
+      ? org.llmProvider
+      : base.LLM_PROVIDER;
+
+  const ttsProvider =
+    org.ttsProvider === 'edge' ||
+    org.ttsProvider === 'elevenlabs' ||
+    org.ttsProvider === 'openai' ||
+    org.ttsProvider === 'auto'
+      ? org.ttsProvider
+      : base.TTS_PROVIDER;
+
+  return {
+    ...base,
+    LLM_PROVIDER: llmProvider,
+    TTS_PROVIDER: ttsProvider,
+    GENERATE_DALLE_IMAGES:
+      org.generateAiImages != null ? org.generateAiImages : base.GENERATE_DALLE_IMAGES,
+    PIPELINE_MAX_SCENES_LONG:
+      typeof org.maxScenesLong === 'number' && org.maxScenesLong > 0
+        ? org.maxScenesLong
+        : base.PIPELINE_MAX_SCENES_LONG,
+    OPENAI_API_KEY: org.openAiApiKey?.trim() || base.OPENAI_API_KEY,
+    DEEPSEEK_API_KEY: org.deepseekApiKey?.trim() || base.DEEPSEEK_API_KEY,
+    ELEVENLABS_API_KEY: org.elevenLabsApiKey?.trim() || base.ELEVENLABS_API_KEY,
+  };
+}
+
+/** Whether scene images may use paid AI (DALL·E / gpt-image), ignoring per-video caps. */
+export function isAiSceneImagesEnabled(orgPlan?: string | null): boolean {
+  const org = getOrgPipelineOverrides();
+  if (org?.generateAiImages != null) {
+    return org.generateAiImages;
+  }
+  const config = loadConfig();
+  if (config.GENERATE_DALLE_IMAGES) return true;
+  if (!config.FORCE_AI_IMAGES_ON_PAID) return false;
+  return ['starter', 'pro', 'unlimited'].includes(orgPlan ?? '');
 }
 
 export function getMinScenes(
@@ -308,6 +482,14 @@ export {
   isCredentialEncryptionEnabled,
   isEncryptedCredentialData,
 } from './credential-crypto.js';
+export {
+  clearOrgPipelineOverrides,
+  getOrgPipelineOverrides,
+  setOrgPipelineOverrides,
+  type OrgLlmProvider,
+  type OrgPipelineOverrides,
+  type OrgTtsProvider,
+} from './org-runtime.js';
 export {
   buildOrgInviteEmail,
   buildPaymentFailedEmail,

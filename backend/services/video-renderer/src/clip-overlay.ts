@@ -1,11 +1,8 @@
-import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { promisify } from 'node:util';
 import sharp from 'sharp';
+import { runFfmpeg } from '@autotube/shared';
 import { FFMPEG_STRIP_METADATA_ARGS, ffmpegH264EncodeArgs } from './ffmpeg-utils.js';
-
-const execFileAsync = promisify(execFile);
 
 const WIDTH = 1080;
 const HEIGHT = 1920;
@@ -107,7 +104,7 @@ export async function applyClipOverlay(params: {
   const { svg } = buildThumbnailBadgeSvg(partLabel, videoTitle);
   await sharp(Buffer.from(svg)).png().toFile(badgePng);
 
-  await execFileAsync('ffmpeg', [
+  await runFfmpeg([
     '-i', inputPath,
     '-i', badgePng,
     '-filter_complex', `[0:v][1:v]overlay=0:${BADGE_Y}[vout]`,

@@ -1,12 +1,9 @@
-import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { promisify } from 'node:util';
 import sharp from 'sharp';
+import { runFfmpeg } from '@autotube/shared';
 import { assertValidVideoFile, ffmpegH264EncodeArgs } from './ffmpeg-utils.js';
 import { sliceSrtCues, parseSrt, type SrtCue } from './srt-utils.js';
-
-const execFileAsync = promisify(execFile);
 
 const WIDTH = 1080;
 const VIDEO_H = 1920;
@@ -144,7 +141,7 @@ export async function burnSubtitlesIntoClip(params: {
 
   const filter = filterParts.join(';');
 
-  await execFileAsync('ffmpeg', [
+  await runFfmpeg([
     ...args,
     '-filter_complex', filter,
     '-map', '[vout]',

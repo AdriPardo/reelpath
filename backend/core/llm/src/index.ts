@@ -1,15 +1,32 @@
 import OpenAI from 'openai';
-import { getOpenAiModel, loadConfig } from '@autotube/config';
+import {
+  getLlmModel,
+  loadConfig,
+  resolveLlmConnection,
+  type LlmProviderName,
+} from '@autotube/config';
 
 export interface LlmClient {
   completeJson<T>(prompt: string, system?: string, options?: { maxTokens?: number }): Promise<T>;
 }
 
-class OpenAiClient implements LlmClient {
+class OpenAiCompatibleClient implements LlmClient {
   private client: OpenAI;
+  private provider: LlmProviderName;
+  private model: string;
 
-  constructor(apiKey: string) {
-    this.client = new OpenAI({ apiKey });
+  constructor(params: {
+    apiKey: string;
+    baseURL?: string;
+    provider: LlmProviderName;
+    model: string;
+  }) {
+    this.client = new OpenAI({
+      apiKey: params.apiKey,
+      ...(params.baseURL ? { baseURL: params.baseURL } : {}),
+    });
+    this.provider = params.provider;
+    this.model = params.model;
   }
 
   async completeJson<T>(
@@ -18,9 +35,9 @@ class OpenAiClient implements LlmClient {
     options?: { maxTokens?: number },
   ): Promise<T> {
     const config = loadConfig();
-    const model = getOpenAiModel();
+    const isDeepseekV4 = this.provider === 'deepseek' && /v4|flash|pro/i.test(this.model);
     const response = await this.client.chat.completions.create({
-      model,
+      model: this.model,
       max_tokens: options?.maxTokens ?? config.OPENAI_MAX_TOKENS,
       messages: [
         { role: 'system', content: system },
@@ -28,11 +45,13 @@ class OpenAiClient implements LlmClient {
       ],
       response_format: { type: 'json_object' },
       temperature: 0.7,
-    });
+      // DeepSeek V4: disable thinking for cheaper/faster JSON
+      ...(isDeepseekV4 ? { thinking: { type: 'disabled' } } : {}),
+    } as OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming);
 
     if (response.usage) {
       console.log(
-        `[llm] ${model} — ${response.usage.total_tokens} tokens (in:${response.usage.prompt_tokens} out:${response.usage.completion_tokens})`,
+        `[llm] provider=${this.provider} model=${this.model} — ${response.usage.total_tokens} tokens (in:${response.usage.prompt_tokens} out:${response.usage.completion_tokens})`,
       );
     }
 
@@ -320,13 +339,22 @@ export function clearOrgOpenAiApiKey(): void {
 export function getLlmClient(): LlmClient {
   if (!client) {
     const config = loadConfig();
-    const apiKey = orgApiKeyOverride ?? config.OPENAI_API_KEY;
-    client =
-      config.useMocks && !orgApiKeyOverride
-        ? new MockLlmClient()
-        : apiKey
-          ? new OpenAiClient(apiKey)
-          : new MockLlmClient();
+    if (config.useMocks && !orgApiKeyOverride) {
+      client = new MockLlmClient();
+    } else {
+      const connection = resolveLlmConnection({ orgOpenAiApiKey: orgApiKeyOverride });
+      if (connection) {
+        console.info(`[llm] provider=${connection.provider} model=${connection.model}`);
+        client = new OpenAiCompatibleClient({
+          apiKey: connection.apiKey,
+          baseURL: connection.baseURL,
+          provider: connection.provider,
+          model: connection.model,
+        });
+      } else {
+        client = new MockLlmClient();
+      }
+    }
   }
   return client;
 }
@@ -334,7 +362,16 @@ export function getLlmClient(): LlmClient {
 export function isLlmMockMode(): boolean {
   const config = loadConfig();
   if (orgApiKeyOverride) return false;
-  return config.useMocks || !config.OPENAI_API_KEY;
+  if (config.useMocks) return true;
+  return !resolveLlmConnection({ orgOpenAiApiKey: orgApiKeyOverride });
+}
+
+/** Label for logs: MOCK or `deepseek:model` / `openai:model`. */
+export function getActiveLlmLabel(): string {
+  if (isLlmMockMode()) return 'MOCK (sin coste API)';
+  const connection = resolveLlmConnection({ orgOpenAiApiKey: orgApiKeyOverride });
+  if (!connection) return 'MOCK (sin coste API)';
+  return `${connection.provider}:${connection.model || getLlmModel({ orgOpenAiApiKey: orgApiKeyOverride })}`;
 }
 
 export * from './json-normalize.js';

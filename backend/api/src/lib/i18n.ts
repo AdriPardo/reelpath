@@ -44,14 +44,29 @@ function interpolate(template: string, params?: Record<string, string | number>)
   return template.replace(/\{(\w+)\}/g, (_, name: string) => String(params[name] ?? `{${name}}`));
 }
 
-/** Traduce claves de error/mensaje user-facing del API. */
+/**
+ * Traduce claves de error/mensaje user-facing del API.
+ * Firma: t(locale, key, params?) — nunca t(key, locale).
+ */
 export function t(
   locale: ApiLocale | string,
   key: string,
   params?: Record<string, string | number>,
 ): string {
-  const loc = (locale === 'en' ? 'en' : 'es') as ApiLocale;
-  const raw = resolveKey(catalogs[loc], key) ?? resolveKey(catalogs.es, key);
-  if (!raw) return key;
+  // Defensa: llamadas con args invertidos (t(key, 'es')) devolvían "es" como mensaje.
+  let locArg = locale;
+  let msgKey = key;
+  if (
+    typeof locale === 'string' &&
+    locale.includes('.') &&
+    (key === 'es' || key === 'en')
+  ) {
+    locArg = key;
+    msgKey = locale;
+  }
+
+  const loc = (locArg === 'en' ? 'en' : 'es') as ApiLocale;
+  const raw = resolveKey(catalogs[loc], msgKey) ?? resolveKey(catalogs.es, msgKey);
+  if (!raw) return msgKey;
   return interpolate(raw, params);
 }

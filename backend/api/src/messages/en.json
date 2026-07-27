@@ -514,9 +514,9 @@
       "removeMember": "Remove member"
     },
     "apikeys": {
-      "title": "AI API (BYOK)",
-      "saveKey": "Save key",
-      "keySaved": "Key saved"
+      "title": "AI & generation",
+      "saveKey": "Save settings",
+      "keySaved": "Settings saved"
     },
     "plan": {
       "current": "Current plan",

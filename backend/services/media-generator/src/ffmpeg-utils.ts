@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { runFfmpeg } from '@autotube/shared';
 
 const execFileAsync = promisify(execFile);
 
@@ -27,7 +28,7 @@ export function escapeFfmpegPath(filePath: string): string {
 
 /** Normalize TTS loudness and encode high-quality mono MP3 for Shorts. */
 export async function postProcessTtsAudio(inputPath: string, outPath: string): Promise<void> {
-  await execFileAsync('ffmpeg', [
+  await runFfmpeg([
     '-i',
     inputPath,
     '-af',

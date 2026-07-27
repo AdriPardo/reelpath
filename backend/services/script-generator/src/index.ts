@@ -1,6 +1,6 @@
 import { prisma } from '@autotube/database';
-import { getMaxScenes, getMinScenes, getOpenAiModel, isScriptDevMode, loadConfig } from '@autotube/config';
-import { extractScenes, extractScriptResponse, getLlmClient } from '@autotube/llm';
+import { getMaxScenes, getMinScenes, isScriptDevMode, loadConfig } from '@autotube/config';
+import { extractScenes, extractScriptResponse, getActiveLlmLabel, getLlmClient } from '@autotube/llm';
 import { promptEngine } from '@autotube/prompt-engine';
 import type { ChannelConfig, ScriptDTO, ScriptScene, ScriptVariant, VideoFormat } from '@autotube/shared';
 import {
@@ -71,8 +71,7 @@ function buildLongPromptExtras(config: ChannelConfig, format: VideoFormat): stri
 }
 
 function logScriptGenerationStart(config: ChannelConfig): void {
-  const cfg = loadConfig();
-  const apiLabel = cfg.useMocks ? 'MOCK — sin coste API' : `OpenAI (${getOpenAiModel()})`;
+  const apiLabel = getActiveLlmLabel();
   const mode = resolveScriptGenerationMode(config);
   console.info(
     `[script] generate_script — ${apiLabel}, modo ${mode}` +

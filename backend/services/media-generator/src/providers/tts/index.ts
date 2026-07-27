@@ -10,7 +10,7 @@ const providers: Record<Exclude<TtsProviderName, 'mock'>, TtsProvider> = {
   openai: openAiProvider,
 };
 
-/** Provider chain for auto mode: ElevenLabs → Edge (free) → OpenAI. */
+/** Provider chain for auto mode (cost-efficient): Edge (free) → ElevenLabs → OpenAI. */
 export function getTtsFallbackChain(config: AppConfig): TtsProvider[] {
   if (config.TTS_PROVIDER !== 'auto') {
     if (config.TTS_PROVIDER === 'mock') return [];
@@ -18,8 +18,8 @@ export function getTtsFallbackChain(config: AppConfig): TtsProvider[] {
   }
 
   const chain: TtsProvider[] = [];
-  if (config.ELEVENLABS_API_KEY) chain.push(elevenLabsProvider);
   if (config.TTS_ENABLE_EDGE) chain.push(edgeProvider);
+  if (config.ELEVENLABS_API_KEY) chain.push(elevenLabsProvider);
   if (config.OPENAI_API_KEY) chain.push(openAiProvider);
   return chain;
 }

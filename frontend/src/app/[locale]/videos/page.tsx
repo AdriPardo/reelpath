@@ -70,7 +70,7 @@ export default async function VideosPage({ params, searchParams }: Props) {
   const filterLabel = filter && FILTER_KEYS[filter] ? t(FILTER_KEYS[filter]) : filter;
 
   return (
-    <>
+    <div className="page-content">
       <PageHeader title={t('title')} subtitle={t('subtitle')} />
 
       <div className="videos-toolbar">
@@ -88,7 +88,7 @@ export default async function VideosPage({ params, searchParams }: Props) {
 
       {loadError ? (
         <EmptyState
-          icon="⚠️"
+          variant="error"
           title={t('loadError')}
           description={loadError}
           action={
@@ -99,7 +99,7 @@ export default async function VideosPage({ params, searchParams }: Props) {
         />
       ) : videos.length === 0 ? (
         <EmptyState
-          icon="🎬"
+          variant="videos"
           title={
             search
               ? t('noResults', { query: search })
@@ -134,6 +134,6 @@ export default async function VideosPage({ params, searchParams }: Props) {
           />
         </>
       )}
-    </>
+    </div>
   );
 }

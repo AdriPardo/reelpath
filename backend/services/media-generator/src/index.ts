@@ -1,13 +1,12 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { getStoragePath } from '@autotube/config';
+import { getStoragePath, isAiSceneImagesEnabled, loadEffectiveConfig } from '@autotube/config';
 import { prisma } from '@autotube/database';
 import type { ChannelConfig, MediaAssetDTO, ScriptVariant } from '@autotube/shared';
 import {
   buildSyncedSrtFromScenes,
   computeVisualOriginSummary,
   inferMotionPreset,
-  isPaidPlan,
   RETENTION_PHRASE_MAX_LEN,
   resolveSceneMotionIntensity,
   sceneWantsStock,
@@ -34,7 +33,7 @@ export async function generateMedia(params: {
   retentionMode?: boolean;
   videoMotionIntensity?: 'subtle' | 'normal' | 'dynamic';
   visualSourceMode?: ChannelConfig['visualSourceMode'];
-  /** Plan de la organización — activa imágenes IA en planes de pago. */
+  /** Plan de la organización — solo fuerza IA si FORCE_AI_IMAGES_ON_PAID=true. */
   orgPlan?: string | null;
   /** Subfolder under pipelines/<id>/ (e.g. "short"). */
   subdir?: string;
@@ -45,18 +44,32 @@ export async function generateMedia(params: {
   const retentionMode = params.retentionMode ?? false;
   const persist = params.persist !== false;
   const visualSourceMode = params.visualSourceMode ?? 'mixed';
-  const forceAiImages = isPaidPlan(params.orgPlan);
+  const cfg = loadEffectiveConfig();
+  const aiImagesBase = isAiSceneImagesEnabled(params.orgPlan);
+  const maxAiImages = cfg.MAX_AI_IMAGES_PER_VIDEO;
+  let aiImagesUsed = 0;
+  const forceAiImages = cfg.FORCE_AI_IMAGES_ON_PAID && aiImagesBase && !cfg.GENERATE_DALLE_IMAGES;
   const phraseMaxLen = retentionMode ? RETENTION_PHRASE_MAX_LEN : 42;
   const baseDir = params.subdir
     ? getStoragePath('pipelines', params.pipelineRunId, params.subdir)
     : getStoragePath('pipelines', params.pipelineRunId);
   await ensureDir(baseDir);
 
+  if (aiImagesBase) {
+    console.info(
+      `[media-generator] imágenes IA activas` +
+        (maxAiImages > 0 ? ` (tope ${maxAiImages}/vídeo)` : ' (sin tope)') +
+        (cfg.GENERATE_DALLE_IMAGES ? ' vía GENERATE_DALLE_IMAGES' : ' vía FORCE_AI_IMAGES_ON_PAID'),
+    );
+  }
+
   const assets: MediaAssetDTO[] = [];
   const timedScenes: Array<{ narration: string; durationSec: number }> = [];
   let previousPreset: MotionPreset | undefined;
 
   for (const scene of params.script.scenes) {
+    // Escenas en serie a propósito: TTS + normalización stock + FFmpeg no se paralelizan
+    // (evita picos CPU/RAM en VPS). Subir paralelismo requeriría cola + FFMPEG_CONCURRENCY.
     const durationHint =
       Number(scene.durationSec) ||
       timedScenes[timedScenes.length - 1]?.durationSec ||
@@ -105,6 +118,9 @@ export async function generateMedia(params: {
     let visualPath = imagePath;
     let visualOrigin: VisualOrigin = 'placeholder';
 
+    const allowAiImages =
+      aiImagesBase && (maxAiImages <= 0 || aiImagesUsed < maxAiImages);
+
     if (!visualExists) {
       const visual = await resolveSceneVisual({
         visualPrompt: scene.visualPrompt,
@@ -115,16 +131,20 @@ export async function generateMedia(params: {
         aspectRatio,
         preferredSource: wantsStock ? 'stock' : 'image',
         forceAiImages,
+        allowAiImages,
       });
       visualAssetType = visual.assetType;
       visualPath = visual.path;
       visualOrigin = visual.visualOrigin;
-      if (visualOrigin === 'stock') {
+      if (visualOrigin === 'ai') {
+        aiImagesUsed += 1;
+        console.info(
+          `[media-generator] scene=${scene.index} imagen IA (${aiImagesUsed}${maxAiImages > 0 ? `/${maxAiImages}` : ''})`,
+        );
+      } else if (visualOrigin === 'stock') {
         console.info(
           `[media-generator] scene=${scene.index} stock ${visual.assetType} (${visual.path})`,
         );
-      } else if (visualOrigin === 'ai') {
-        console.info(`[media-generator] scene=${scene.index} imagen IA`);
       } else {
         console.info(`[media-generator] scene=${scene.index} placeholder procedural`);
       }
@@ -199,7 +219,7 @@ export async function generateMedia(params: {
     console.info(
       `[media-generator] resumen visuales run=${params.pipelineRunId}: ` +
         `stock=${summary.stock} ia=${summary.ai} placeholder=${summary.placeholder} ` +
-        `(modo=${visualSourceMode}${forceAiImages ? ', plan pago' : ''})`,
+        `(modo=${visualSourceMode}${aiImagesBase ? ', IA on' : ', IA off'})`,
     );
   }
 

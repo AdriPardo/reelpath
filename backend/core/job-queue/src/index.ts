@@ -130,7 +130,9 @@ function getWorkerConcurrency(): number {
     const n = parseInt(raw, 10);
     if (Number.isFinite(n) && n >= 1) return n;
   }
-  return process.env.NODE_ENV === 'production' ? 1 : 2;
+  // Default 1: un pipeline a la vez. En VPS 4–8 vCPU, FFmpeg ya satura CPU;
+  // subir solo si hay cores de sobra y FFMPEG_THREADS bajo.
+  return 1;
 }
 
 export function createPipelineWorker(

@@ -1,10 +1,9 @@
 import type { Job } from 'bullmq';
 import { existsSync } from 'node:fs';
-import { parseChannelConfig } from '@autotube/config';
-import { resolveOrgOpenAiApiKey } from '@autotube/database';
-import { clearOrgOpenAiApiKey, setOrgOpenAiApiKey } from '@autotube/llm';
+import { clearOrgPipelineOverrides, parseChannelConfig, setOrgPipelineOverrides } from '@autotube/config';
+import { loadOrgPipelineOverrides, prisma } from '@autotube/database';
+import { clearOrgOpenAiApiKey, resetLlmClient } from '@autotube/llm';
 import { scoreVideoQuality } from '@autotube/content-scorer';
-import { prisma } from '@autotube/database';
 import { generateIdeas, ensureSelectedIdea } from '@autotube/idea-generator';
 import { enqueuePipelineStep } from '@autotube/job-queue';
 import { generateMedia } from '@autotube/media-generator';
@@ -138,13 +137,16 @@ export async function processPipelineJob(job: Job<PipelineJobPayload>): Promise<
     return;
   }
 
-  const orgApiKey = await resolveOrgOpenAiApiKey(run.channel.organizationId);
-  setOrgOpenAiApiKey(orgApiKey ?? undefined);
+  const overrides = await loadOrgPipelineOverrides(run.channel.organizationId);
+  setOrgPipelineOverrides(overrides);
+  resetLlmClient();
 
   try {
     await runPipelineStep(job, run, { pipelineRunId, channelId, step, youtubeOnly, splitOnly });
   } finally {
+    clearOrgPipelineOverrides();
     clearOrgOpenAiApiKey();
+    resetLlmClient();
   }
 }
 
@@ -203,11 +205,12 @@ async function runPipelineStep(
         const idea = await prisma.videoIdea.findFirstOrThrow({
           where: { pipelineRunId, isSelected: true },
         });
-        const { loadConfig, getOpenAiModel, isScriptDevMode } = await import('@autotube/config');
+        const { loadConfig, isScriptDevMode } = await import('@autotube/config');
+        const { getActiveLlmLabel } = await import('@autotube/llm');
         const cfg = loadConfig();
         const scriptMode = cfg.useMocks
           ? 'MOCK (sin coste API)'
-          : `OpenAI ${getOpenAiModel()}`;
+          : getActiveLlmLabel();
         console.info(
           `[worker] generate_script — ${scriptMode}` +
             (isScriptDevMode() ? ', dev económico' : '') +

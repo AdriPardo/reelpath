@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react';
 
-type EmptyVariant = 'default' | 'channels' | 'review' | 'pipeline' | 'error';
+type EmptyVariant = 'default' | 'channels' | 'review' | 'pipeline' | 'videos' | 'error';
 
 function EmptyIcon({ variant }: { variant: EmptyVariant }) {
   if (variant === 'error') {
     return (
-      <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" aria-hidden="true">
         <circle cx="12" cy="12" r="9" />
         <path d="M12 8v5M12 16h.01" />
       </svg>
@@ -13,7 +13,7 @@ function EmptyIcon({ variant }: { variant: EmptyVariant }) {
   }
   if (variant === 'channels') {
     return (
-      <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <rect x="3" y="4" width="7" height="7" rx="1.5" />
         <rect x="14" y="4" width="7" height="7" rx="1.5" />
         <rect x="3" y="13" width="7" height="7" rx="1.5" />
@@ -23,7 +23,7 @@ function EmptyIcon({ variant }: { variant: EmptyVariant }) {
   }
   if (variant === 'review') {
     return (
-      <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M9 12l2 2 4-4" />
         <rect x="3" y="3" width="18" height="18" rx="3" />
       </svg>
@@ -31,14 +31,22 @@ function EmptyIcon({ variant }: { variant: EmptyVariant }) {
   }
   if (variant === 'pipeline') {
     return (
-      <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <circle cx="12" cy="12" r="9" />
         <path d="M10 8.5v7l6-3.5-6-3.5z" fill="currentColor" stroke="none" />
       </svg>
     );
   }
+  if (variant === 'videos') {
+    return (
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <rect x="2" y="5" width="15" height="14" rx="2" />
+        <path d="M17 9.5l5-3v11l-5-3" />
+      </svg>
+    );
+  }
   return (
-    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" aria-hidden="true">
       <rect x="3" y="7" width="18" height="13" rx="2" />
       <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
     </svg>

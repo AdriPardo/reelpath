@@ -5,6 +5,7 @@ import { PublicationPlanPanel } from '@/components/PublicationPlanPanel';
 import { ChannelDeleteButton } from '@/components/ChannelDeleteButton';
 import { ChannelGeneralForm } from '@/components/ChannelGeneralForm';
 import { ChannelIntegrationsPanel } from '@/components/ChannelIntegrationsPanel';
+import { ChannelPlannerSettings } from '@/components/ChannelPlannerSettings';
 import { ChannelSettingsForm } from '@/components/ChannelSettingsForm';
 import { TriggerPipelineButton } from '@/components/TriggerPipelineButton';
 import { UploadLongVideoButton } from '@/components/UploadLongVideoButton';
@@ -170,12 +171,6 @@ export function ChannelDetailTabs({
                 shortsMode: config.shortsMode as 'split' | 'dedicated' | 'mixed' | undefined,
                 shortsPerVideo: config.shortsPerVideo as number | undefined,
                 shortsPublishIntervalDays: config.shortsPublishIntervalDays as number | undefined,
-                publishPlannerEnabled: config.publishPlannerEnabled as boolean | undefined,
-                timezone: config.timezone as string | undefined,
-                maxLongsPerWeek: config.maxLongsPerWeek as number | undefined,
-                preferredPublishHour: config.preferredPublishHour as number | undefined,
-                preferredPublishDays: config.preferredPublishDays as number[] | undefined,
-                minDaysBetweenLongs: config.minDaysBetweenLongs as number | undefined,
                 language: config.language as string | undefined,
               }}
             />
@@ -183,13 +178,34 @@ export function ChannelDetailTabs({
         )}
 
         {current === 'planificacion' && (
-          <>
-            <div className="section-title-row" style={{ marginBottom: '1rem' }}>
+          <div className="planner-tab">
+            <div className="section-title-row planner-tab-title">
               <h3 style={{ margin: 0 }}>{t('calendarSection')}</h3>
               <InfoTooltip content={t('tabs.calendarTooltip')} />
             </div>
-            <PublicationPlanPanel channelId={channel.id} />
-          </>
+            <PublicationPlanPanel
+              channelId={channel.id}
+              plannerEnabledFromConfig={config.publishPlannerEnabled === true}
+              timezoneFromConfig={
+                typeof config.timezone === 'string' ? config.timezone : undefined
+              }
+            />
+            <ChannelPlannerSettings
+              channelId={channel.id}
+              defaultOpen={config.publishPlannerEnabled !== true}
+              initialConfig={{
+                publishPlannerEnabled: config.publishPlannerEnabled as boolean | undefined,
+                timezone: config.timezone as string | undefined,
+                maxLongsPerWeek: config.maxLongsPerWeek as number | undefined,
+                preferredPublishHour: config.preferredPublishHour as number | undefined,
+                preferredPublishDays: config.preferredPublishDays as number[] | undefined,
+                minDaysBetweenLongs: config.minDaysBetweenLongs as number | undefined,
+                shortPreferredSlots: config.shortPreferredSlots as
+                  | Array<{ hour: number; minute: number }>
+                  | undefined,
+              }}
+            />
+          </div>
         )}
 
         {current === 'analiticas' && (

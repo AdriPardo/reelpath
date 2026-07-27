@@ -15,8 +15,19 @@ if (process.env.NODE_ENV !== 'production') {
 export { PrismaClient };
 export * from '@prisma/client';
 export {
+  deleteOrgDeepseekApiKey,
+  deleteOrgElevenLabsApiKey,
   deleteOrgOpenAiApiKey,
+  getOrgPipelineSettings,
+  hasOrgDeepseekApiKey,
+  hasOrgElevenLabsApiKey,
   hasOrgOpenAiApiKey,
+  loadOrgPipelineOverrides,
+  resolveOrgDeepseekApiKey,
+  resolveOrgElevenLabsApiKey,
   resolveOrgOpenAiApiKey,
+  upsertOrgDeepseekApiKey,
+  upsertOrgElevenLabsApiKey,
   upsertOrgOpenAiApiKey,
-} from './org-openai.js';
+  type OrgPipelineSettings,
+} from './org-settings.js';

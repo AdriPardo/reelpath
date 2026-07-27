@@ -161,8 +161,7 @@ export function Nav() {
         <button
           type="button"
           className="sidebar-backdrop sidebar-backdrop-open"
-          aria-hidden={false}
-          tabIndex={0}
+          aria-label={t('closeMenu')}
           onClick={() => setOpen(false)}
         />
       )}
@@ -204,7 +203,10 @@ export function Nav() {
                 <Icon className="sidebar-link-icon" />
                 <span className="sidebar-link-label">{t(labelKey)}</span>
                 {badge !== null && (
-                  <span className="sidebar-link-badge" aria-label={tc('pendingCount', { count: badge })}>
+                  <span
+                    className="sidebar-link-badge sidebar-link-badge-attention"
+                    aria-label={tc('pendingCount', { count: badge })}
+                  >
                     {badge}
                   </span>
                 )}

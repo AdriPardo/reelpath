@@ -35,6 +35,7 @@ const PIPELINE_KEYS: Record<string, string> = {
 
 function badgeVariant(status: string, kind: BadgeKind): 'neutral' | 'success' | 'warning' {
   if (kind === 'review') {
+    if (status === 'pending') return 'warning';
     if (status === 'published') return 'success';
     if (status === 'scheduled') return 'neutral';
     if (status === 'cancelled') return 'warning';
@@ -57,7 +58,7 @@ function badgeVariant(status: string, kind: BadgeKind): 'neutral' | 'success' | 
   ) {
     return 'neutral';
   }
-  if (status === 'pending_review') return 'neutral';
+  if (status === 'pending_review') return 'warning';
   if (status === 'published' || status === 'approved') return 'success';
   return 'neutral';
 }

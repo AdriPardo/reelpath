@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { usePathname, useRouter } from '@/i18n/navigation';
 import { useAuth } from '@/context/AuthContext';
 import type { StorageStats } from '@/lib/api';
 import type { PlanDefinition } from '@/lib/plan-limits';
@@ -40,8 +41,10 @@ function profileInitial(name: string | null | undefined, email: string): string 
 
 function SettingsTabs({ plans }: { plans: PlanDefinition[] }) {
   const t = useTranslations('settings');
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const tabParam = searchParams.get('tab')?.toLowerCase() ?? '';
+  const tabParam = searchParams?.get('tab')?.toLowerCase() ?? '';
   const initial = TAB_ALIASES[tabParam] ?? 'account';
   const [activeSection, setActiveSection] = useState<SectionId>(initial);
 
@@ -49,6 +52,13 @@ function SettingsTabs({ plans }: { plans: PlanDefinition[] }) {
     const next = TAB_ALIASES[tabParam];
     if (next) setActiveSection(next);
   }, [tabParam]);
+
+  function selectSection(id: SectionId) {
+    setActiveSection(id);
+    const params = new URLSearchParams(searchParams?.toString() ?? '');
+    params.set('tab', id);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }
 
   return (
     <>
@@ -64,7 +74,7 @@ function SettingsTabs({ plans }: { plans: PlanDefinition[] }) {
                 data-testid={`settings-tab-${id}`}
                 aria-selected={activeSection === id}
                 className={`settings-nav-item${activeSection === id ? ' settings-nav-item-active' : ''}`}
-                onClick={() => setActiveSection(id)}
+                onClick={() => selectSection(id)}
               >
                 {label}
               </button>
@@ -83,7 +93,7 @@ function SettingsTabs({ plans }: { plans: PlanDefinition[] }) {
                   className={`settings-nav-item${activeSection === id ? ' settings-nav-item-active' : ''}`}
                   aria-selected={activeSection === id}
                   aria-current={activeSection === id ? 'page' : undefined}
-                  onClick={() => setActiveSection(id)}
+                  onClick={() => selectSection(id)}
                 >
                   {label}
                 </button>

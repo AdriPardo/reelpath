@@ -21,8 +21,9 @@ export function resolveTtsProvider(config: AppConfig): TtsProviderName {
     return explicit;
   }
 
-  if (config.ELEVENLABS_API_KEY) return 'elevenlabs';
+  // Cost-efficient default: free Edge first (even if ElevenLabs key is set).
   if (config.TTS_ENABLE_EDGE) return 'edge';
+  if (config.ELEVENLABS_API_KEY) return 'elevenlabs';
   if (config.OPENAI_API_KEY) return 'openai';
   return 'mock';
 }

@@ -1,20 +1,17 @@
-import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { loadConfig } from '@autotube/config';
+import { loadEffectiveConfig } from '@autotube/config';
 import {
   buildLanczosScaleCrop,
+  runFfmpeg,
   VIDEO_RESOLUTION_LONG,
   VIDEO_RESOLUTION_SHORT,
 } from '@autotube/shared';
-import { promisify } from 'node:util';
 import type { VisualOrigin } from '@autotube/shared';
 import { createSceneVisualPng } from '../png-utils.js';
 import { preprocessForTts } from '../tts-preprocess.js';
 import { getTtsFallbackChain, resolveTtsProvider } from './tts/index.js';
 import OpenAI from 'openai';
-
-const execFileAsync = promisify(execFile);
 
 type ImageSize =
   | '1024x1024'
@@ -97,7 +94,7 @@ async function upscaleImageToTarget(
   // ffmpeg needs a known image extension to pick the muxer (.tmp alone fails).
   const tmpPath = `${filePath}.upscaled.tmp.png`;
   try {
-    await execFileAsync('ffmpeg', [
+    await runFfmpeg([
       '-i', filePath,
       '-vf', buildLanczosScaleCrop(width, height),
       '-y', tmpPath,
@@ -113,7 +110,7 @@ async function upscaleImageToTarget(
 async function stripImageMetadata(filePath: string): Promise<void> {
   const tmpPath = `${filePath}.meta.tmp.png`;
   try {
-    await execFileAsync('ffmpeg', [
+    await runFfmpeg([
       '-i', filePath,
       '-map_metadata', '-1',
       '-y', tmpPath,
@@ -129,7 +126,7 @@ export async function generateSpeech(
   outPath: string,
   options?: { language?: string; retentionMode?: boolean },
 ): Promise<{ mock: boolean; provider: string }> {
-  const config = loadConfig();
+  const config = loadEffectiveConfig();
   const language = options?.language ?? 'es';
   const ttsInput = preprocessForTts(text, language);
 
@@ -183,24 +180,40 @@ export async function generateSceneImage(params: {
   outPath: string;
   sceneIndex: number;
   aspectRatio?: '9:16' | '16:9';
-  /** Plan de pago: fuerza imágenes IA aunque GENERATE_DALLE_IMAGES=false. */
+  /**
+   * Force AI images when GENERATE_DALLE_IMAGES=false (e.g. FORCE_AI_IMAGES_ON_PAID).
+   * Ignored when allowAiImages=false (per-video cap).
+   */
   forceAiImages?: boolean;
+  /** When false, skip AI even if GENERATE_DALLE_IMAGES=true (e.g. MAX_AI_IMAGES_PER_VIDEO). */
+  allowAiImages?: boolean;
 }): Promise<{ mock: boolean; provider?: string; visualOrigin: VisualOrigin }> {
-  const config = loadConfig();
+  const config = loadEffectiveConfig();
   const aspectRatio = params.aspectRatio ?? '16:9';
   const isVertical = aspectRatio === '9:16';
   const { width, height } = isVertical ? VIDEO_RESOLUTION_SHORT : VIDEO_RESOLUTION_LONG;
 
+  const allowAi = params.allowAiImages !== false;
   const useAiImages =
+    allowAi &&
     !config.useMocks &&
     !!config.OPENAI_API_KEY &&
-    (config.GENERATE_DALLE_IMAGES || params.forceAiImages);
+    (config.GENERATE_DALLE_IMAGES || !!params.forceAiImages);
 
   if (!useAiImages) {
-    if (config.OPENAI_API_KEY && !config.useMocks && !config.GENERATE_DALLE_IMAGES && !params.forceAiImages) {
+    if (
+      config.OPENAI_API_KEY &&
+      !config.useMocks &&
+      !config.GENERATE_DALLE_IMAGES &&
+      !params.forceAiImages
+    ) {
       console.info(
-        '[media] GENERATE_DALLE_IMAGES=false — imágenes procedurales. ' +
-          'Pon GENERATE_DALLE_IMAGES=true o usa un plan de pago para imágenes IA.',
+        '[media] GENERATE_DALLE_IMAGES=false — imágenes procedurales/stock. ' +
+          'Pon GENERATE_DALLE_IMAGES=true (y opcionalmente FORCE_AI_IMAGES_ON_PAID) para imágenes IA.',
+      );
+    } else if (!allowAi) {
+      console.info(
+        `[media] scene=${params.sceneIndex} tope MAX_AI_IMAGES_PER_VIDEO — procedural/stock`,
       );
     } else {
       console.info('[media] Imágenes procedurales (sin API key o mocks activos)');
@@ -217,11 +230,14 @@ export async function generateSceneImage(params: {
     aspectRatio,
   );
   let lastError: unknown;
+  const imageQuality = config.OPENAI_IMAGE_QUALITY;
 
   for (const model of imageModelsToTry(config.OPENAI_IMAGE_MODEL)) {
     try {
       const size = imageSizeForModel(model, aspectRatio);
-      console.info(`[media/image] scene=${params.sceneIndex} model=${model} size=${size}`);
+      console.info(
+        `[media/image] scene=${params.sceneIndex} model=${model} size=${size} quality=${imageQuality}`,
+      );
       if (isGenericVisualPrompt(params.visualPrompt)) {
         console.info(`[media/image] scene=${params.sceneIndex} generic visualPrompt — using narration context`);
       }
@@ -230,7 +246,7 @@ export async function generateSceneImage(params: {
         model,
         prompt,
         size,
-        quality: model.startsWith('gpt-image') ? 'high' : 'standard',
+        quality: model.startsWith('gpt-image') ? imageQuality : 'standard',
         n: 1,
       });
 
@@ -269,7 +285,7 @@ function estimateDuration(text: string): number {
 }
 
 async function generateSilentAudio(outPath: string, durationSec: number): Promise<void> {
-  await execFileAsync('ffmpeg', [
+  await runFfmpeg([
     '-f',
     'lavfi',
     '-i',

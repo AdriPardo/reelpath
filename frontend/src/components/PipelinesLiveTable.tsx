@@ -156,7 +156,8 @@ export function PipelinesLiveTable({ initialPipelines }: PipelinesLiveTableProps
 
       {filtered.length === 0 ? (
         <EmptyState
-          icon="▶"
+          variant="pipeline"
+          compact
           title={t('emptyCategory')}
           description={t('emptyCategoryDesc')}
         />

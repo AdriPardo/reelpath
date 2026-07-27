@@ -41,7 +41,7 @@ export default async function PipelinesPage({ params, searchParams }: Props) {
   }
 
   return (
-    <>
+    <div className="page-content">
       <PageHeader
         title={t('title')}
         subtitle={t('subtitle')}
@@ -54,7 +54,7 @@ export default async function PipelinesPage({ params, searchParams }: Props) {
 
       {loadError ? (
         <EmptyState
-          icon="⚠️"
+          variant="error"
           title={t('loadError')}
           description={loadError}
           action={
@@ -65,7 +65,7 @@ export default async function PipelinesPage({ params, searchParams }: Props) {
         />
       ) : pipelines.length === 0 ? (
         <EmptyState
-          icon="▶"
+          variant="pipeline"
           title={t('emptyTitle')}
           description={t('emptyDesc')}
           action={
@@ -80,6 +80,6 @@ export default async function PipelinesPage({ params, searchParams }: Props) {
           <Pagination page={page} totalPages={totalPages} basePath="/pipelines" />
         </>
       )}
-    </>
+    </div>
   );
 }

@@ -32,6 +32,14 @@ model Organization {
   subscriptionRenewsAt DateTime?
   trialEndsAt          DateTime?
   isActive             Boolean   @default(true)
+  /** Chat LLM: auto | deepseek | openai — override de plataforma (.env). */
+  llmProvider          String    @default("auto")
+  /** TTS: auto | edge | elevenlabs | openai — override de plataforma (.env). */
+  ttsProvider          String    @default("auto")
+  /** Imágenes de escena con DALL·E / gpt-image (coste OpenAI). */
+  generateAiImages     Boolean   @default(false)
+  /** Tope de escenas en vídeos largos; null = default de plataforma. */
+  maxScenesLong        Int?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 

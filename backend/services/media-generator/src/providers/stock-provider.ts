@@ -1,13 +1,15 @@
-import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { promisify } from 'node:util';
 import { loadConfig } from '@autotube/config';
-import { buildLanczosScaleCrop, VIDEO_RESOLUTION_LONG, VIDEO_RESOLUTION_SHORT } from '@autotube/shared';
+import {
+  buildLanczosScaleCrop,
+  ffmpegH264EncodeArgs,
+  runFfmpeg,
+  VIDEO_RESOLUTION_LONG,
+  VIDEO_RESOLUTION_SHORT,
+} from '@autotube/shared';
 import type { VisualOrigin } from '@autotube/shared';
 import { generateSceneImage } from './media-providers.js';
-
-const execFileAsync = promisify(execFile);
 
 export type SceneVisualSource = 'image' | 'stock';
 export type SceneAssetType = 'image' | 'video';
@@ -21,6 +23,7 @@ export interface ResolveSceneVisualParams {
   aspectRatio: '9:16' | '16:9';
   preferredSource?: SceneVisualSource;
   forceAiImages?: boolean;
+  allowAiImages?: boolean;
 }
 
 function stockSearchQuery(visualPrompt: string, narration: string): string {
@@ -145,18 +148,13 @@ async function normalizeVideoClip(
   const scaleCrop = buildLanczosScaleCrop(width, height);
 
   await fs.mkdir(path.dirname(outPath), { recursive: true });
-  await execFileAsync('ffmpeg', [
+  await runFfmpeg([
     '-i',
     inputPath,
     '-an',
     '-vf',
     `${scaleCrop},fps=30`,
-    '-c:v',
-    'libx264',
-    '-preset',
-    'medium',
-    '-crf',
-    '20',
+    ...ffmpegH264EncodeArgs({ videoOnly: true }),
     '-pix_fmt',
     'yuv420p',
     '-movflags',
@@ -235,6 +233,7 @@ export async function resolveSceneVisual(params: ResolveSceneVisualParams): Prom
     sceneIndex: params.sceneIndex,
     aspectRatio: params.aspectRatio,
     forceAiImages: params.forceAiImages,
+    allowAiImages: params.allowAiImages,
   });
 
   return {

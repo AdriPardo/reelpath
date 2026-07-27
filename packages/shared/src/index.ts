@@ -4,6 +4,7 @@ export * from './scheduling.js';
 export * from './retention.js';
 export * from './video-motion.js';
 export * from './video-encoding.js';
+export * from './ffmpeg-runner.js';
 export * from './ass-subtitles.js';
 export * from './duration.js';
 export * from './shorts.js';

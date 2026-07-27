@@ -29,13 +29,28 @@ export default async function ReviewPage({ params }: Props) {
     loadError = parseApiError(err instanceof Error ? err.message : String(err));
   }
 
+  const subtitle =
+    !loadError && videos.length > 0
+      ? t('subtitleWithCount', { count: videos.length })
+      : t('subtitle');
+
   return (
-    <>
-      <PageHeader title={t('title')} subtitle={t('subtitle')} />
+    <div className="page-content">
+      <PageHeader
+        title={t('title')}
+        subtitle={subtitle}
+        actions={
+          videos.length > 0 ? (
+            <ButtonLink href="/channels" variant="secondary" size="sm">
+              {tc('generateVideo')}
+            </ButtonLink>
+          ) : undefined
+        }
+      />
 
       {loadError ? (
         <EmptyState
-          icon="⚠️"
+          variant="error"
           title={t('loadError')}
           description={loadError}
           action={
@@ -45,7 +60,16 @@ export default async function ReviewPage({ params }: Props) {
           }
         />
       ) : videos.length === 0 ? (
-        <EmptyState icon="✅" title={t('emptyTitle')} description={t('emptyDesc')} />
+        <EmptyState
+          variant="review"
+          title={t('emptyTitle')}
+          description={t('emptyDesc')}
+          action={
+            <ButtonLink href="/channels" variant="primary">
+              {tc('generateVideo')}
+            </ButtonLink>
+          }
+        />
       ) : (
         <div className="review-queue">
           {videos.map((v) => (
@@ -53,6 +77,6 @@ export default async function ReviewPage({ params }: Props) {
           ))}
         </div>
       )}
-    </>
+    </div>
   );
 }

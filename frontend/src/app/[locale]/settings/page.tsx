@@ -40,9 +40,9 @@ export default async function SettingsPage({ params, searchParams }: Props) {
   }
 
   return (
-    <>
+    <div className="page-content">
       <PageHeader title={t('title')} subtitle={t('subtitle')} />
       <SettingsLayout plans={plans} showDev={showDev} storage={storage} />
-    </>
+    </div>
   );
 }

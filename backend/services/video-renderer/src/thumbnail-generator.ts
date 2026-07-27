@@ -1,10 +1,7 @@
-import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { promisify } from 'node:util';
 import sharp from 'sharp';
-
-const execFileAsync = promisify(execFile);
+import { runFfmpeg } from '@autotube/shared';
 
 function escapeXml(text: string): string {
   return text
@@ -244,7 +241,7 @@ function buildVerticalOverlaySvg(params: {
 }
 
 async function extractFrame(videoPath: string, outPath: string, atSec = 0.5): Promise<void> {
-  await execFileAsync('ffmpeg', [
+  await runFfmpeg([
     '-ss', String(atSec),
     '-i', videoPath,
     '-frames:v', '1',

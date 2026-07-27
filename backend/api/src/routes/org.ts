@@ -7,9 +7,13 @@ import {
   sendEmail,
 } from '@autotube/config';
 import {
+  deleteOrgDeepseekApiKey,
+  deleteOrgElevenLabsApiKey,
   deleteOrgOpenAiApiKey,
-  hasOrgOpenAiApiKey,
+  getOrgPipelineSettings,
   prisma,
+  upsertOrgDeepseekApiKey,
+  upsertOrgElevenLabsApiKey,
   upsertOrgOpenAiApiKey,
 } from '@autotube/database';
 import type { MemberRole } from '../lib/auth.js';
@@ -25,9 +29,21 @@ const inviteSchema = z.object({
   role: z.enum(['admin', 'member']).default('member'),
 });
 
-const openAiKeySchema = z.object({
-  openaiApiKey: z.string().min(10).nullable(),
-});
+const optionalApiKey = z.union([z.string().min(10), z.null()]).optional();
+
+const orgSettingsPatchSchema = z
+  .object({
+    llmProvider: z.enum(['auto', 'deepseek', 'openai']).optional(),
+    ttsProvider: z.enum(['auto', 'edge', 'elevenlabs', 'openai']).optional(),
+    generateAiImages: z.boolean().optional(),
+    maxScenesLong: z.union([z.number().int().min(4).max(40), z.null()]).optional(),
+    openaiApiKey: optionalApiKey,
+    deepseekApiKey: optionalApiKey,
+    elevenLabsApiKey: optionalApiKey,
+  })
+  .refine((body) => Object.keys(body).length > 0, {
+    message: 'No hay campos para actualizar',
+  });
 
 const purgeSchema = z.object({
   confirmation: z.string().min(3),
@@ -245,21 +261,66 @@ orgRouter.get('/settings', async (req, res) => {
     return res.status(400).json({ error: 'Organización no definida' });
   }
 
-  const hasOpenaiKey = await hasOrgOpenAiApiKey(orgId);
-  res.json({ hasOpenaiKey });
+  const settings = await getOrgPipelineSettings(orgId);
+  if (!settings) {
+    return res.status(404).json({ error: 'Organización no encontrada' });
+  }
+
+  const platform = loadConfig();
+  res.json({
+    ...settings,
+    /** Compat con UI antigua que solo miraba OpenAI BYOK. */
+    hasOpenaiKey: settings.hasOpenaiKey,
+    platformDefaults: {
+      llmProvider: platform.LLM_PROVIDER,
+      ttsProvider: platform.TTS_PROVIDER,
+      generateAiImages: platform.GENERATE_DALLE_IMAGES,
+      maxScenesLong: platform.PIPELINE_MAX_SCENES_LONG,
+    },
+  });
 });
 
 orgRouter.patch('/settings', requireAdmin, async (req, res) => {
   const orgId = orgScope(req)!;
-  const body = openAiKeySchema.parse(req.body);
+  const body = orgSettingsPatchSchema.parse(req.body);
 
-  if (body.openaiApiKey === null) {
-    await deleteOrgOpenAiApiKey(orgId);
-    return res.json({ hasOpenaiKey: false, message: 'Clave OpenAI eliminada' });
+  const data: {
+    llmProvider?: string;
+    ttsProvider?: string;
+    generateAiImages?: boolean;
+    maxScenesLong?: number | null;
+  } = {};
+
+  if (body.llmProvider !== undefined) data.llmProvider = body.llmProvider;
+  if (body.ttsProvider !== undefined) data.ttsProvider = body.ttsProvider;
+  if (body.generateAiImages !== undefined) data.generateAiImages = body.generateAiImages;
+  if (body.maxScenesLong !== undefined) data.maxScenesLong = body.maxScenesLong;
+
+  if (Object.keys(data).length > 0) {
+    await prisma.organization.update({
+      where: { id: orgId },
+      data,
+    });
   }
 
-  await upsertOrgOpenAiApiKey(orgId, body.openaiApiKey);
-  res.json({ hasOpenaiKey: true, message: 'Clave OpenAI guardada de forma segura' });
+  if (body.openaiApiKey !== undefined) {
+    if (body.openaiApiKey === null) await deleteOrgOpenAiApiKey(orgId);
+    else await upsertOrgOpenAiApiKey(orgId, body.openaiApiKey);
+  }
+  if (body.deepseekApiKey !== undefined) {
+    if (body.deepseekApiKey === null) await deleteOrgDeepseekApiKey(orgId);
+    else await upsertOrgDeepseekApiKey(orgId, body.deepseekApiKey);
+  }
+  if (body.elevenLabsApiKey !== undefined) {
+    if (body.elevenLabsApiKey === null) await deleteOrgElevenLabsApiKey(orgId);
+    else await upsertOrgElevenLabsApiKey(orgId, body.elevenLabsApiKey);
+  }
+
+  const settings = await getOrgPipelineSettings(orgId);
+  res.json({
+    ...settings,
+    message: 'Ajustes de generación guardados',
+  });
 });
 
 orgRouter.delete('/invites/:id', requireAdmin, async (req, res) => {
