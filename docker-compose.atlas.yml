@@ -69,7 +69,18 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=atlas-public"
-      - "traefik.http.routers.reelpath-api.rule=Host(`${DOMAIN:-reelpath.atlasops.dev}`) && (PathPrefix(`/api`) || Path(`/health`) || Path(`/health/extended`) || Path(`/ready`) || Path(`/metrics`))"
+      # /api/media/* is a cookie-auth alias (browser <img>/<video>); strip to /api/* like Caddy.
+      # Must outrank PathPrefix(`/api`) or Express returns HTML 404 (no /api/media mount).
+      - "traefik.http.middlewares.reelpath-media-strip.replacepathregex.regex=^/api/media/(.*)"
+      - "traefik.http.middlewares.reelpath-media-strip.replacepathregex.replacement=/api/$$1"
+      - "traefik.http.routers.reelpath-media.rule=Host(`${DOMAIN:-reelpath.atlasops.dev}`) && PathPrefix(`/api/media`)"
+      - "traefik.http.routers.reelpath-media.entrypoints=websecure"
+      - "traefik.http.routers.reelpath-media.tls=true"
+      - "traefik.http.routers.reelpath-media.tls.certresolver=cloudflare"
+      - "traefik.http.routers.reelpath-media.priority=200"
+      - "traefik.http.routers.reelpath-media.middlewares=reelpath-media-strip"
+      - "traefik.http.routers.reelpath-media.service=reelpath-api"
+      - "traefik.http.routers.reelpath-api.rule=Host(`${DOMAIN:-reelpath.atlasops.dev}`) && ((PathPrefix(`/api`) && !PathPrefix(`/api/media`)) || Path(`/health`) || Path(`/health/extended`) || Path(`/ready`) || Path(`/metrics`))"
       - "traefik.http.routers.reelpath-api.entrypoints=websecure"
       - "traefik.http.routers.reelpath-api.tls=true"
       - "traefik.http.routers.reelpath-api.tls.certresolver=cloudflare"
