@@ -5,40 +5,15 @@ RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
 FROM base AS deps
 COPY package.json package-lock.json* ./
 COPY packages/shared/package.json ./packages/shared/
-COPY backend/core/database/package.json ./backend/core/database/
-COPY backend/core/config-system/package.json ./backend/core/config-system/
-COPY backend/core/prompt-engine/package.json ./backend/core/prompt-engine/
-COPY backend/core/job-queue/package.json ./backend/core/job-queue/
-COPY backend/core/llm/package.json ./backend/core/llm/
-COPY backend/core/template-engine/package.json ./backend/core/template-engine/
-COPY backend/services/content-scorer/package.json ./backend/services/content-scorer/
-COPY backend/services/idea-generator/package.json ./backend/services/idea-generator/
-COPY backend/services/script-generator/package.json ./backend/services/script-generator/
-COPY backend/services/media-generator/package.json ./backend/services/media-generator/
-COPY backend/services/video-renderer/package.json ./backend/services/video-renderer/
-COPY backend/services/youtube-publisher/package.json ./backend/services/youtube-publisher/
-COPY backend/services/analytics/package.json ./backend/services/analytics/
+COPY backend ./backend
 COPY worker/package.json ./worker/
-RUN npm install --workspace=worker --include-workspace-root
+COPY frontend/package.json ./frontend/
+RUN npm ci
 
 FROM deps AS build
 COPY . .
 RUN npm run db:generate
-RUN npm run build -w @autotube/shared \
-  && npm run build -w @autotube/config \
-  && npm run build -w @autotube/database \
-  && npm run build -w @autotube/prompt-engine \
-  && npm run build -w @autotube/job-queue \
-  && npm run build -w @autotube/llm \
-  && npm run build -w @autotube/template-engine \
-  && npm run build -w @autotube/content-scorer \
-  && npm run build -w @autotube/idea-generator \
-  && npm run build -w @autotube/script-generator \
-  && npm run build -w @autotube/media-generator \
-  && npm run build -w @autotube/video-renderer \
-  && npm run build -w @autotube/youtube-publisher \
-  && npm run build -w @autotube/analytics \
-  && npm run build -w worker
+RUN npm run build:core && npm run build -w worker
 
 FROM base AS runner
 WORKDIR /app
