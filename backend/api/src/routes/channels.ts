@@ -23,7 +23,12 @@ import {
 } from '../lib/youtube-oauth.js';
 import { deleteChannelWithCleanup } from '../lib/channel-deletion.js';
 import { validateChannelCompliance } from '../lib/channel-compliance.js';
-import { assertOrgCanTriggerPipeline, PlanLimitError, resolveOrgPlanLimits } from '../lib/plan-limits.js';
+import {
+  assertOrgCanTriggerPipeline,
+  PlanLimitError,
+  planLimitErrorBody,
+  resolveOrgPlanLimits,
+} from '../lib/plan-limits.js';
 import { handleLongVideoUpload } from '../lib/upload-long.js';
 import { assertChannelInOrg } from '../lib/tenant.js';
 import { authMiddleware, orgScope } from '../middleware/auth.js';
@@ -298,7 +303,7 @@ channelsRouter.post('/:id/upload-long', upload.single('video'), async (req, res)
     res.status(202).json(result);
   } catch (err) {
     if (err instanceof PlanLimitError) {
-      return res.status(err.statusCode).json({ error: err.message, code: err.code });
+      return res.status(err.statusCode).json(planLimitErrorBody(err));
     }
     const statusCode =
       err && typeof err === 'object' && 'statusCode' in err && typeof err.statusCode === 'number'

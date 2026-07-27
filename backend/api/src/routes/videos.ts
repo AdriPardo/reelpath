@@ -9,7 +9,7 @@ import { generateYouTubeThumbnail } from '@autotube/video-renderer';
 import { streamVideoFile } from '../lib/video-file.js';
 import { deletePipelineRunCompletely, deleteVideoLocalFilesOnly } from '../lib/pipeline-cleanup.js';
 import { resolveChannelAutoPublishAt } from '../lib/publication-plan.js';
-import { assertOrgCanPublish, PlanLimitError } from '../lib/plan-limits.js';
+import { assertOrgCanPublish, PlanLimitError, planLimitErrorBody } from '../lib/plan-limits.js';
 import { queueVideoYouTubePublish, retryVideoYouTubePublish } from '../lib/video-publish.js';
 import {
   deleteSceneAssets,
@@ -57,7 +57,7 @@ async function respondRetryYouTubePublish(
     res.json({ ...video, ...result });
   } catch (err) {
     if (err instanceof PlanLimitError) {
-      res.status(err.statusCode).json({ error: err.message, code: err.code });
+      res.status(err.statusCode).json(planLimitErrorBody(err));
       return;
     }
     const message = err instanceof Error ? err.message : 'No se pudo reintentar la publicación';
@@ -338,7 +338,7 @@ videosRouter.post('/:id/approve', async (req, res) => {
       await assertOrgCanPublish(orgId);
     } catch (err) {
       if (err instanceof PlanLimitError) {
-        return res.status(err.statusCode).json({ error: err.message, code: err.code });
+        return res.status(err.statusCode).json(planLimitErrorBody(err));
       }
       throw err;
     }

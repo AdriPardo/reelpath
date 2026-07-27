@@ -12,13 +12,29 @@ export interface PlanLimits {
 export class PlanLimitError extends Error {
   readonly statusCode: number;
   readonly code: string;
+  readonly details?: Record<string, string | number>;
 
-  constructor(message: string, statusCode: number, code: string) {
+  constructor(
+    message: string,
+    statusCode: number,
+    code: string,
+    details?: Record<string, string | number>,
+  ) {
     super(message);
     this.name = 'PlanLimitError';
     this.statusCode = statusCode;
     this.code = code;
+    this.details = details;
   }
+}
+
+/** Payload JSON estándar para respuestas PlanLimitError. */
+export function planLimitErrorBody(err: PlanLimitError): Record<string, string | number> {
+  return {
+    error: err.message,
+    code: err.code,
+    ...(err.details ?? {}),
+  };
 }
 
 function coerceLimits(value: unknown): PlanLimits {
@@ -107,7 +123,7 @@ function assertTrialActive(
   locale: ApiLocale = 'es',
 ): void {
   if (!isTrialExpired(plan, trialEndsAt)) return;
-  throw new PlanLimitError(t('api.errors.trialExpired', locale), 402, 'TRIAL_EXPIRED');
+  throw new PlanLimitError(t(locale, 'api.errors.trialExpired'), 402, 'TRIAL_EXPIRED');
 }
 
 /**
@@ -119,10 +135,10 @@ export async function assertOrgCanTriggerPipeline(
 ): Promise<void> {
   const org = await loadOrgBilling(orgId);
   if (!org) {
-    throw new PlanLimitError(t('api.errors.orgNotFound', locale), 404, 'ORG_NOT_FOUND');
+    throw new PlanLimitError(t(locale, 'api.errors.orgNotFound'), 404, 'ORG_NOT_FOUND');
   }
   if (!org.isActive) {
-    throw new PlanLimitError(t('api.errors.orgInactive', locale), 403, 'ORG_INACTIVE');
+    throw new PlanLimitError(t(locale, 'api.errors.orgInactive'), 403, 'ORG_INACTIVE');
   }
 
   const limits = await resolveOrgPlanLimits(orgId);
@@ -134,9 +150,10 @@ export async function assertOrgCanTriggerPipeline(
     const today = await countOrgPipelinesToday(orgId);
     if (today >= limits.maxPipelinesPerDay) {
       throw new PlanLimitError(
-        t('api.errors.pipelineDailyLimit', locale, { limit: limits.maxPipelinesPerDay }),
+        t(locale, 'api.errors.pipelineDailyLimit', { limit: limits.maxPipelinesPerDay }),
         403,
         'PIPELINE_DAILY_LIMIT',
+        { limit: limits.maxPipelinesPerDay },
       );
     }
   }
@@ -145,9 +162,10 @@ export async function assertOrgCanTriggerPipeline(
     const monthCount = await countOrgVideosThisMonth(orgId);
     if (monthCount >= limits.maxVideosPerMonth) {
       throw new PlanLimitError(
-        t('api.errors.videoMonthlyLimit', locale, { limit: limits.maxVideosPerMonth }),
+        t(locale, 'api.errors.videoMonthlyLimit', { limit: limits.maxVideosPerMonth }),
         403,
         'VIDEO_MONTHLY_LIMIT',
+        { limit: limits.maxVideosPerMonth },
       );
     }
   }
@@ -162,10 +180,10 @@ export async function assertOrgCanPublish(
 ): Promise<void> {
   const org = await loadOrgBilling(orgId);
   if (!org) {
-    throw new PlanLimitError(t('api.errors.orgNotFound', locale), 404, 'ORG_NOT_FOUND');
+    throw new PlanLimitError(t(locale, 'api.errors.orgNotFound'), 404, 'ORG_NOT_FOUND');
   }
   if (!org.isActive) {
-    throw new PlanLimitError(t('api.errors.orgInactive', locale), 403, 'ORG_INACTIVE');
+    throw new PlanLimitError(t(locale, 'api.errors.orgInactive'), 403, 'ORG_INACTIVE');
   }
 
   const limits = await resolveOrgPlanLimits(orgId);
