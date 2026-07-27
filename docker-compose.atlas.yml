@@ -9,7 +9,7 @@
 name: reelpath
 
 services:
-  postgres:
+  db:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: autotube
@@ -26,7 +26,7 @@ services:
     networks:
       - internal
 
-  redis:
+  cache:
     image: redis:7-alpine
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -44,8 +44,8 @@ services:
     command: ["sh", "-c", "npm run migrate:deploy:ci -w @autotube/database && npm run start -w backend-api"]
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://autotube:${POSTGRES_PASSWORD:-autotube}@postgres:5432/autotube
-      REDIS_URL: redis://redis:6379
+      DATABASE_URL: postgresql://autotube:${POSTGRES_PASSWORD:-autotube}@db:5432/autotube
+      REDIS_URL: redis://cache:6379
       API_PORT: 4000
       FRONTEND_URL: https://${DOMAIN:-reelpath.atlasops.dev}
       STORAGE_PATH: /app/storage
@@ -58,9 +58,9 @@ services:
     volumes:
       - storage_data:/app/storage
     depends_on:
-      postgres:
+      db:
         condition: service_healthy
-      redis:
+      cache:
         condition: service_healthy
     restart: unless-stopped
     networks:
@@ -82,8 +82,8 @@ services:
       dockerfile: infrastructure/docker/Dockerfile.worker
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://autotube:${POSTGRES_PASSWORD:-autotube}@postgres:5432/autotube
-      REDIS_URL: redis://redis:6379
+      DATABASE_URL: postgresql://autotube:${POSTGRES_PASSWORD:-autotube}@db:5432/autotube
+      REDIS_URL: redis://cache:6379
       STORAGE_PATH: /app/storage
       MOCK_EXTERNAL_APIS: ${MOCK_EXTERNAL_APIS:-true}
       WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-1}
@@ -93,9 +93,9 @@ services:
     volumes:
       - storage_data:/app/storage
     depends_on:
-      postgres:
+      db:
         condition: service_healthy
-      redis:
+      cache:
         condition: service_healthy
     restart: unless-stopped
     networks:
