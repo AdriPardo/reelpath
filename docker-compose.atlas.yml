@@ -1,0 +1,131 @@
+# Shared Atlas / Traefik host (atlasops.dev). No host ports; no Caddy (edge is Traefik+Tunnel).
+# Deploy: docker compose -f docker-compose.atlas.yml up -d --build
+#
+# Required env (write .env next to this file, or export):
+#   DOMAIN=reelpath.atlasops.dev
+#   AUTH_SECRET=<random 32+ chars>
+#   POSTGRES_PASSWORD=<secure>
+
+name: reelpath
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: autotube
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-autotube}
+      POSTGRES_DB: autotube
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U autotube"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - internal
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - internal
+
+  api:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.api
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://autotube:${POSTGRES_PASSWORD:-autotube}@postgres:5432/autotube
+      REDIS_URL: redis://redis:6379
+      API_PORT: 4000
+      FRONTEND_URL: https://${DOMAIN:-reelpath.atlasops.dev}
+      STORAGE_PATH: /app/storage
+      MOCK_EXTERNAL_APIS: ${MOCK_EXTERNAL_APIS:-true}
+      AUTH_REQUIRED: ${AUTH_REQUIRED:-true}
+      AUTH_SECRET: ${AUTH_SECRET:-change-me-reelpath-dev-secret-32chars}
+      NEXT_PUBLIC_AUTH_REQUIRED: ${NEXT_PUBLIC_AUTH_REQUIRED:-true}
+      YOUTUBE_OAUTH_REDIRECT_URI: https://${DOMAIN:-reelpath.atlasops.dev}/api/integrations/youtube/callback
+    volumes:
+      - storage_data:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - internal
+      - atlas-public
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=atlas-public"
+      - "traefik.http.routers.reelpath-api.rule=Host(`${DOMAIN:-reelpath.atlasops.dev}`) && (PathPrefix(`/api`) || Path(`/health`) || Path(`/health/extended`) || Path(`/ready`) || Path(`/metrics`))"
+      - "traefik.http.routers.reelpath-api.entrypoints=websecure"
+      - "traefik.http.routers.reelpath-api.tls=true"
+      - "traefik.http.routers.reelpath-api.tls.certresolver=cloudflare"
+      - "traefik.http.routers.reelpath-api.priority=100"
+      - "traefik.http.services.reelpath-api.loadbalancer.server.port=4000"
+
+  worker:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.worker
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://autotube:${POSTGRES_PASSWORD:-autotube}@postgres:5432/autotube
+      REDIS_URL: redis://redis:6379
+      STORAGE_PATH: /app/storage
+      MOCK_EXTERNAL_APIS: ${MOCK_EXTERNAL_APIS:-true}
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-1}
+    volumes:
+      - storage_data:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - internal
+
+  frontend:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.frontend
+      args:
+        NEXT_PUBLIC_API_URL: https://${DOMAIN:-reelpath.atlasops.dev}
+        NEXT_PUBLIC_AUTH_REQUIRED: ${NEXT_PUBLIC_AUTH_REQUIRED:-true}
+    environment:
+      NODE_ENV: production
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - internal
+      - atlas-public
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=atlas-public"
+      - "traefik.http.routers.reelpath.rule=Host(`${DOMAIN:-reelpath.atlasops.dev}`)"
+      - "traefik.http.routers.reelpath.entrypoints=websecure"
+      - "traefik.http.routers.reelpath.tls=true"
+      - "traefik.http.routers.reelpath.tls.certresolver=cloudflare"
+      - "traefik.http.routers.reelpath.priority=1"
+      - "traefik.http.services.reelpath.loadbalancer.server.port=3000"
+
+volumes:
+  postgres_data:
+  storage_data:
+
+networks:
+  internal:
+  atlas-public:
+    external: true
