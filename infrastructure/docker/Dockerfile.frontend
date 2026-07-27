@@ -16,13 +16,16 @@ RUN npm run build -w @autotube/shared
 WORKDIR /app/frontend
 RUN npx next build
 
+# next.config currently disables output:standalone — run via next start.
 FROM node:20-alpine AS runner
-WORKDIR /app/frontend
+WORKDIR /app
 ENV NODE_ENV=production
-COPY --from=build /app/frontend/.next/standalone ./
-COPY --from=build /app/frontend/.next/static ./.next/static
-COPY --from=build /app/frontend/public ./public
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/package.json ./
+COPY --from=build /app/packages ./packages
+COPY --from=build /app/frontend ./frontend
+WORKDIR /app/frontend
 EXPOSE 3000
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
-CMD ["node", "frontend/server.js"]
+CMD ["npx", "next", "start", "-H", "0.0.0.0", "-p", "3000"]
