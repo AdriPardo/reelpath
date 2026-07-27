@@ -136,13 +136,10 @@ export function validateLongScript(
   const minWords = getMinScriptWords(config);
   const minDurationSec = getTargetDurationMinSec(config);
   const estimatedFromWords = estimateDurationSecFromWords(totalWords);
-  const estimatedFromSceneDuration = scenes.reduce((sum, s) => sum + s.durationSec, 0);
-  if (
-    totalWords < minWords ||
-    estimatedFromWords < minDurationSec ||
-    estimatedFromSceneDuration < minDurationSec
-  ) {
-    const actualMin = formatDurationMinutes(Math.min(estimatedFromWords, estimatedFromSceneDuration));
+  // Primary gate is spoken words. LLM-provided durationSec is often under-estimated
+  // and previously rejected valid scripts (e.g. 7.9 min metadata vs 8.0+ min of words).
+  if (totalWords < minWords || estimatedFromWords < minDurationSec) {
+    const actualMin = formatDurationMinutes(estimatedFromWords);
     const requiredMin = formatDurationMinutes(minDurationSec);
     return `El guion debe superar ${requiredMin} minutos (actual: ${actualMin} min, ${totalWords} palabras)`;
   }

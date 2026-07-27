@@ -94,7 +94,8 @@ async function upscaleImageToTarget(
   width: number,
   height: number,
 ): Promise<void> {
-  const tmpPath = `${filePath}.upscaled.tmp`;
+  // ffmpeg needs a known image extension to pick the muxer (.tmp alone fails).
+  const tmpPath = `${filePath}.upscaled.tmp.png`;
   try {
     await execFileAsync('ffmpeg', [
       '-i', filePath,
@@ -110,7 +111,7 @@ async function upscaleImageToTarget(
 
 /** Remove EXIF/C2PA container metadata from provider-generated images. */
 async function stripImageMetadata(filePath: string): Promise<void> {
-  const tmpPath = `${filePath}.meta.tmp`;
+  const tmpPath = `${filePath}.meta.tmp.png`;
   try {
     await execFileAsync('ffmpeg', [
       '-i', filePath,
