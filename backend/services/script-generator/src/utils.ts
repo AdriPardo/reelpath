@@ -9,28 +9,41 @@ export function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
+function durationSecFromNarration(narration: string, fallback?: number): number {
+  const fromWords = countWords(narration) * 0.45;
+  if (fallback == null || !Number.isFinite(fallback) || fallback <= 0) {
+    return fromWords;
+  }
+  // Never keep an LLM duration shorter than the spoken-word estimate.
+  return Math.max(fallback, fromWords);
+}
+
 export function normalizeScenes(scenes: ScriptScene[]): ScriptScene[] {
   return scenes.map((s, i) => ({
     index: i,
     narration: s.narration,
     visualPrompt: s.visualPrompt,
-    durationSec: s.durationSec ?? countWords(s.narration) * 0.45,
+    durationSec: durationSecFromNarration(s.narration, s.durationSec),
     preferredVisualSource: s.preferredVisualSource,
     transitionPreset: s.transitionPreset,
   }));
 }
 
 export function parseRawScenes(scenesRaw: Array<Record<string, unknown>>): ScriptScene[] {
-  return scenesRaw.map((s, i) => ({
-    index: i,
-    narration: String(s.narration ?? s.text ?? ''),
-    visualPrompt: String(s.visualPrompt ?? s.visual ?? ''),
-    durationSec: Number(s.durationSec ?? s.duration ?? 30),
-    preferredVisualSource:
-      s.preferredVisualSource === 'stock' || s.preferredVisualSource === 'image'
-        ? s.preferredVisualSource
-        : undefined,
-  }));
+  return scenesRaw.map((s, i) => {
+    const narration = String(s.narration ?? s.text ?? '');
+    const rawDuration = Number(s.durationSec ?? s.duration ?? 0);
+    return {
+      index: i,
+      narration,
+      visualPrompt: String(s.visualPrompt ?? s.visual ?? ''),
+      durationSec: durationSecFromNarration(narration, rawDuration),
+      preferredVisualSource:
+        s.preferredVisualSource === 'stock' || s.preferredVisualSource === 'image'
+          ? s.preferredVisualSource
+          : undefined,
+    };
+  });
 }
 
 export function resolveScriptGenerationMode(
