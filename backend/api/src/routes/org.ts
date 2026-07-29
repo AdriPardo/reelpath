@@ -284,6 +284,8 @@ orgRouter.get('/settings', async (req, res) => {
       ttsProvider: PRODUCT_DEFAULTS.ttsProvider,
       generateAiImages: PRODUCT_DEFAULTS.generateAiImages,
       maxScenesLong: PRODUCT_DEFAULTS.maxScenesLong,
+      minScenesLong: PRODUCT_DEFAULTS.minScenesLong,
+      maxScenesShort: PRODUCT_DEFAULTS.maxScenesShort,
       maxAiImagesPerVideo: PRODUCT_DEFAULTS.maxAiImagesPerVideo,
       openaiImageQuality: PRODUCT_DEFAULTS.openaiImageQuality,
       edgeTtsVoice: PRODUCT_DEFAULTS.edgeTtsVoice,

@@ -6554,6 +6554,14 @@ th { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; }
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  max-width: 40rem;
+}
+
+.channel-settings-form .field-effective-hint {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+  color: var(--muted);
 }
 
 .video-edit-textarea {
@@ -6786,6 +6794,7 @@ th { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; }
 .channel-settings-form {
   margin-top: var(--space-2);
   gap: 1rem;
+  max-width: 40rem;
 }
 
 .settings-fieldset {
@@ -6813,7 +6822,7 @@ th { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; }
 .channel-settings-form .topic-input,
 .channel-settings-form .modal-field select {
   width: 100%;
-  max-width: none;
+  max-width: 28rem;
   min-height: 2.75rem;
   padding: 0.72rem 0.9rem;
   border-radius: 12px;

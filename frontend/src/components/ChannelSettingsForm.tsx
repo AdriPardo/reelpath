@@ -19,16 +19,36 @@ import { InfoTooltip } from '@/components/ui/InfoTooltip';
 type FormConfig = Partial<ChannelConfig>;
 type OrgTtsProvider = 'auto' | 'edge' | 'elevenlabs' | 'openai';
 
-type OrgVoiceDefaults = {
+type OrgPipelineDefaults = {
   ttsProvider: OrgTtsProvider;
+  generateAiImages: boolean;
+  maxScenesLong: number | null;
+  maxAiImagesPerVideo: number | null;
+  openaiImageQuality: 'low' | 'medium' | 'high' | 'auto' | null;
   edgeTtsVoice: string | null;
   elevenLabsVoiceId: string | null;
   openaiTtsVoice: string | null;
   platformDefaults?: {
+    generateAiImages?: boolean;
+    maxScenesLong?: number;
+    minScenesLong?: number;
+    maxScenesShort?: number;
+    maxAiImagesPerVideo?: number;
+    openaiImageQuality?: string;
     edgeTtsVoice?: string;
     elevenLabsVoiceId?: string;
     openaiTtsVoice?: string;
   };
+};
+
+/** Defaults de código (canal → org → estos). */
+const APP_DEFAULTS = {
+  maxScenesLong: 8,
+  minScenesLong: 6,
+  maxScenesShort: 3,
+  maxAiImagesPerVideo: 4,
+  openaiImageQuality: 'medium' as const,
+  generateAiImages: false,
 };
 
 function voicesForProvider(provider: OrgTtsProvider): TtsVoiceOption[] {
@@ -61,13 +81,17 @@ export function ChannelSettingsForm({
     (initialConfig.forbiddenTopics ?? []).join(', '),
   );
   const [loading, setLoading] = useState(false);
-  const [orgTts, setOrgTts] = useState<OrgVoiceDefaults | null>(null);
+  const [orgTts, setOrgTts] = useState<OrgPipelineDefaults | null>(null);
 
   useEffect(() => {
-    api<OrgVoiceDefaults>('/api/org/settings')
+    api<OrgPipelineDefaults>('/api/org/settings')
       .then((data) =>
         setOrgTts({
           ttsProvider: data.ttsProvider,
+          generateAiImages: data.generateAiImages,
+          maxScenesLong: data.maxScenesLong,
+          maxAiImagesPerVideo: data.maxAiImagesPerVideo,
+          openaiImageQuality: data.openaiImageQuality,
           edgeTtsVoice: data.edgeTtsVoice,
           elevenLabsVoiceId: data.elevenLabsVoiceId,
           openaiTtsVoice: data.openaiTtsVoice,
@@ -76,6 +100,27 @@ export function ChannelSettingsForm({
       )
       .catch(() => {});
   }, []);
+
+  const effectiveMaxScenesLong =
+    orgTts?.maxScenesLong ??
+    orgTts?.platformDefaults?.maxScenesLong ??
+    APP_DEFAULTS.maxScenesLong;
+  const effectiveMinScenesLong =
+    orgTts?.platformDefaults?.minScenesLong ?? APP_DEFAULTS.minScenesLong;
+  const effectiveMaxScenesShort =
+    orgTts?.platformDefaults?.maxScenesShort ?? APP_DEFAULTS.maxScenesShort;
+  const effectiveMaxAiImages =
+    orgTts?.maxAiImagesPerVideo ??
+    orgTts?.platformDefaults?.maxAiImagesPerVideo ??
+    APP_DEFAULTS.maxAiImagesPerVideo;
+  const effectiveImageQuality =
+    orgTts?.openaiImageQuality ??
+    orgTts?.platformDefaults?.openaiImageQuality ??
+    APP_DEFAULTS.openaiImageQuality;
+  const effectiveGenerateAiImages =
+    orgTts?.generateAiImages ??
+    orgTts?.platformDefaults?.generateAiImages ??
+    APP_DEFAULTS.generateAiImages;
 
   const orgProvider: OrgTtsProvider = orgTts?.ttsProvider ?? 'auto';
   const effectiveProvider: OrgTtsProvider =
@@ -321,12 +366,17 @@ export function ChannelSettingsForm({
                 min={4}
                 max={40}
                 value={config.maxScenesLong ?? ''}
-                placeholder={t('maxScenesLongInherit')}
+                placeholder={t('inheritEffective', { value: String(effectiveMaxScenesLong) })}
                 onChange={(e) => {
                   const v = e.target.value.trim();
                   setField('maxScenesLong', v === '' ? null : Number(v));
                 }}
               />
+              {config.maxScenesLong == null ? (
+                <span className="field-effective-hint">
+                  {t('effectiveValue', { value: String(effectiveMaxScenesLong) })}
+                </span>
+              ) : null}
             </label>
             <label className="modal-field">
               <span className="field-label-row">
@@ -339,12 +389,17 @@ export function ChannelSettingsForm({
                 min={2}
                 max={40}
                 value={config.minScenesLong ?? ''}
-                placeholder={t('minScenesLongInherit')}
+                placeholder={t('inheritEffective', { value: String(effectiveMinScenesLong) })}
                 onChange={(e) => {
                   const v = e.target.value.trim();
                   setField('minScenesLong', v === '' ? null : Number(v));
                 }}
               />
+              {config.minScenesLong == null ? (
+                <span className="field-effective-hint">
+                  {t('effectiveValue', { value: String(effectiveMinScenesLong) })}
+                </span>
+              ) : null}
             </label>
           </>
         )}
@@ -359,12 +414,17 @@ export function ChannelSettingsForm({
             min={1}
             max={12}
             value={config.maxScenesShort ?? ''}
-            placeholder={t('maxScenesShortInherit')}
+            placeholder={t('inheritEffective', { value: String(effectiveMaxScenesShort) })}
             onChange={(e) => {
               const v = e.target.value.trim();
               setField('maxScenesShort', v === '' ? null : Number(v));
             }}
           />
+          {config.maxScenesShort == null ? (
+            <span className="field-effective-hint">
+              {t('effectiveValue', { value: String(effectiveMaxScenesShort) })}
+            </span>
+          ) : null}
         </label>
         <label className="modal-field">
           <span className="field-label-row">
@@ -386,7 +446,13 @@ export function ChannelSettingsForm({
               else setField('generateAiImages', v === 'on');
             }}
           >
-            <option value="inherit">{t('generateAiImagesInherit')}</option>
+            <option value="inherit">
+              {t('generateAiImagesInheritEffective', {
+                value: effectiveGenerateAiImages
+                  ? t('generateAiImagesOn')
+                  : t('generateAiImagesOff'),
+              })}
+            </option>
             <option value="on">{t('generateAiImagesOn')}</option>
             <option value="off">{t('generateAiImagesOff')}</option>
           </select>
@@ -402,12 +468,17 @@ export function ChannelSettingsForm({
             min={0}
             max={100}
             value={config.maxAiImagesPerVideo ?? ''}
-            placeholder={t('maxAiImagesInherit')}
+            placeholder={t('inheritEffective', { value: String(effectiveMaxAiImages) })}
             onChange={(e) => {
               const v = e.target.value.trim();
               setField('maxAiImagesPerVideo', v === '' ? null : Number(v));
             }}
           />
+          {config.maxAiImagesPerVideo == null ? (
+            <span className="field-effective-hint">
+              {t('effectiveValue', { value: String(effectiveMaxAiImages) })}
+            </span>
+          ) : null}
         </label>
         <label className="modal-field">
           <span className="field-label-row">
@@ -425,7 +496,9 @@ export function ChannelSettingsForm({
               );
             }}
           >
-            <option value="">{t('imageQualityInherit')}</option>
+            <option value="">
+              {t('imageQualityInheritEffective', { value: String(effectiveImageQuality) })}
+            </option>
             <option value="low">{t('imageQualityLow')}</option>
             <option value="medium">{t('imageQualityMedium')}</option>
             <option value="high">{t('imageQualityHigh')}</option>
