@@ -148,7 +148,8 @@ export function Nav() {
   }, [open]);
 
   if (AUTH_PATHS.includes(path) || LEGAL_PATHS.includes(path)) return null;
-  if (path === '/' && !loading && !session) return null;
+  // Landing pública: sin sidebar (tampoco durante loading de sesión).
+  if (path === '/' && !session) return null;
 
   function isActive(href: string) {
     if (href === '/') return path === '/';

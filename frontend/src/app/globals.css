@@ -1796,15 +1796,44 @@ h3 { font-size: var(--text-lg); font-weight: 600; letter-spacing: -0.01em; line-
 
 /* ── Marketing home (logged-out) ──────────────────────────── */
 
+/* Sin sidebar en landing: no reservar el hueco de 220px en pantallas grandes. */
+@media (min-width: 901px) {
+  .app-main:has(.home) {
+    margin-left: 0;
+  }
+}
+
+.container:has(.home) {
+  width: 100%;
+  max-width: none;
+  padding-left: clamp(1.25rem, 5vw, 4.5rem);
+  padding-right: clamp(1.25rem, 5vw, 4.5rem);
+  padding-top: clamp(0.5rem, 1.5vw, 1.25rem);
+  padding-bottom: clamp(2rem, 4vw, 3.5rem);
+}
+
 .home {
-  max-width: 960px;
+  width: 100%;
+  max-width: min(1120px, 100%);
   margin: 0 auto;
+}
+
+@media (min-width: 1400px) {
+  .home {
+    max-width: min(1320px, 100%);
+  }
+}
+
+@media (min-width: 1800px) {
+  .home {
+    max-width: min(1480px, 100%);
+  }
 }
 
 .home-hero {
   position: relative;
   text-align: left;
-  padding: clamp(2.5rem, 7vw, 5rem) var(--space-3) clamp(2rem, 5vw, 3.5rem);
+  padding: clamp(2.5rem, 7vw, 5.5rem) 0 clamp(2rem, 5vw, 3.75rem);
   border-bottom: 1px solid var(--border);
   overflow: hidden;
   isolation: isolate;
@@ -1813,8 +1842,8 @@ h3 { font-size: var(--text-lg); font-weight: 600; letter-spacing: -0.01em; line-
 .home-hero-glow {
   display: block;
   position: absolute;
-  inset: -20% -10% auto;
-  height: min(28rem, 70vw);
+  inset: -25% -30% auto;
+  height: min(34rem, 55vw);
   background:
     radial-gradient(ellipse 55% 50% at 18% 40%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%),
     radial-gradient(ellipse 45% 55% at 78% 20%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 68%);
@@ -1848,12 +1877,12 @@ h3 { font-size: var(--text-lg); font-weight: 600; letter-spacing: -0.01em; line-
 }
 
 .home-title {
-  font-size: clamp(2.25rem, 5.5vw, 3.5rem);
+  font-size: clamp(2.25rem, 4.2vw, 4rem);
   font-weight: 600;
   font-style: normal;
   letter-spacing: -0.04em;
   line-height: 1.05;
-  max-width: 18ch;
+  max-width: min(22ch, 100%);
   margin: 0 0 1.25rem;
 }
 
@@ -1864,9 +1893,9 @@ h3 { font-size: var(--text-lg); font-weight: 600; letter-spacing: -0.01em; line-
 
 .home-tagline {
   color: var(--muted);
-  font-size: clamp(1rem, 2.2vw, 1.15rem);
+  font-size: clamp(1rem, 1.6vw, 1.25rem);
   line-height: 1.6;
-  max-width: 42ch;
+  max-width: min(48ch, 100%);
   margin: 0 0 2rem;
 }
 
