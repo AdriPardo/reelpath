@@ -62,6 +62,7 @@ async function buildTeaserClip(params: {
     retentionMode: true,
     videoMotionIntensity: config.videoMotionIntensity,
     visualSourceMode: config.visualSourceMode,
+    channelGenerateAiImages: config.generateAiImages,
     subdir,
     persist: false,
   });

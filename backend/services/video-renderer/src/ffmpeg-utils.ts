@@ -80,7 +80,6 @@ export {
   getFfmpegThreads,
   getFfmpegConcurrency,
   isFfmpegFilmGrainEnabled,
-  runFfmpeg,
   FFMPEG_AUDIO_BITRATE,
   FFMPEG_VIDEO_BUFSIZE,
   FFMPEG_VIDEO_CRF,
@@ -89,6 +88,7 @@ export {
   VIDEO_RESOLUTION_LONG,
   VIDEO_RESOLUTION_SHORT,
 } from '@autotube/shared';
+export { runFfmpeg } from '@autotube/shared/ffmpeg-runner';
 
 /** ffmpeg args to strip container/metadata tags from rendered output. */
 export const FFMPEG_STRIP_METADATA_ARGS = [

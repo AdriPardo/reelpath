@@ -9,7 +9,7 @@ import { BrandMark } from '@/components/BrandMark';
 import { ChannelSwitcher } from '@/components/ChannelSwitcher';
 import { NotificationBell } from '@/components/NotificationBell';
 import { useAuth } from '@/context/AuthContext';
-import { api } from '@/lib/api';
+import { api, listTotal, type PaginatedResponse } from '@/lib/api';
 import { isAuthRequired } from '@/lib/auth';
 import { stripLocalePrefix } from '@/lib/public-paths';
 import { organizationDisplayName } from '@/lib/site-brand';
@@ -124,9 +124,9 @@ export function Nav() {
       return;
     }
     let cancelled = false;
-    api<unknown[]>('/api/videos?reviewStatus=pending')
+    api<PaginatedResponse<unknown>>('/api/videos?reviewStatus=pending&page=1&limit=1')
       .then((data) => {
-        if (!cancelled) setPendingCount(data.length);
+        if (!cancelled) setPendingCount(listTotal(data));
       })
       .catch(() => {});
     return () => {

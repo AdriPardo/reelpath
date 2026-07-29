@@ -9,15 +9,38 @@ import { useAuth } from '@/context/AuthContext';
 
 export interface AppNotification {
   id: string;
-  kind: 'review_pending' | 'pipeline_failed' | 'youtube_token_expired';
+  kind: 'review_pending' | 'pipeline_failed' | 'pipeline_completed' | 'youtube_token_expired';
   title: string;
   message: string;
   href: string;
   createdAt: string;
   severity: 'info' | 'warning' | 'error';
+  persistent?: boolean;
 }
 
 type FetchStatus = 'loading' | 'ready' | 'error';
+
+const DISMISS_KEY = 'autotube:notif-dismissed';
+
+function readDismissed(): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const raw = sessionStorage.getItem(DISMISS_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw) as string[];
+    return new Set(Array.isArray(parsed) ? parsed : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function writeDismissed(ids: Set<string>) {
+  try {
+    sessionStorage.setItem(DISMISS_KEY, JSON.stringify([...ids]));
+  } catch {
+    // silencioso
+  }
+}
 
 export function NotificationBell() {
   const t = useTranslations('components.notifications');
@@ -38,11 +61,12 @@ export function NotificationBell() {
 
     let cancelled = false;
     setStatus('loading');
+    const dismissed = readDismissed();
 
     api<AppNotification[]>('/api/notifications')
       .then((data) => {
         if (!cancelled) {
-          setItems(data);
+          setItems(data.filter((n) => !dismissed.has(n.id)));
           setStatus('ready');
         }
       })
@@ -75,6 +99,41 @@ export function NotificationBell() {
 
   const count = status === 'ready' ? items.length : 0;
 
+  async function dismissOne(item: AppNotification) {
+    setItems((prev) => prev.filter((n) => n.id !== item.id));
+    if (item.persistent) {
+      try {
+        await api(`/api/notifications/${item.id}/read`, { method: 'PATCH' });
+      } catch {
+        // silencioso
+      }
+    } else {
+      const dismissed = readDismissed();
+      dismissed.add(item.id);
+      writeDismissed(dismissed);
+      try {
+        await api(`/api/notifications/${encodeURIComponent(item.id)}/read`, { method: 'PATCH' });
+      } catch {
+        // silencioso
+      }
+    }
+  }
+
+  async function dismissAll() {
+    const current = items;
+    setItems([]);
+    try {
+      await api('/api/notifications/read-all', { method: 'PATCH' });
+    } catch {
+      // silencioso
+    }
+    const dismissed = readDismissed();
+    for (const item of current) {
+      if (!item.persistent) dismissed.add(item.id);
+    }
+    writeDismissed(dismissed);
+  }
+
   return (
     <div className={`notification-bell${open ? ' notification-bell-open' : ''}`} ref={panelRef}>
       <button
@@ -95,6 +154,11 @@ export function NotificationBell() {
         <div className="notification-bell-panel" role="dialog" aria-label={t('title')}>
           <div className="notification-bell-panel-header">
             <strong>{t('title')}</strong>
+            {items.length > 0 && (
+              <button type="button" className="notification-bell-mark-all" onClick={() => void dismissAll()}>
+                {t('markAllRead')}
+              </button>
+            )}
           </div>
 
           {status === 'loading' && (
@@ -118,7 +182,10 @@ export function NotificationBell() {
                   <Link
                     href={item.href}
                     className={`notification-bell-item notification-bell-item-${item.severity}`}
-                    onClick={() => setOpen(false)}
+                    onClick={() => {
+                      setOpen(false);
+                      void dismissOne(item);
+                    }}
                   >
                     <span className="notification-bell-item-title">{item.title}</span>
                     <span className="notification-bell-item-message">{item.message}</span>

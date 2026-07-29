@@ -677,7 +677,8 @@
       "title": "Notificaciones",
       "count": "{count} notificaciones",
       "loadError": "No se pudieron cargar las notificaciones.",
-      "empty": "Sin notificaciones"
+      "empty": "Sin notificaciones",
+      "markAllRead": "Marcar todas"
     }
   },
   "emails": {

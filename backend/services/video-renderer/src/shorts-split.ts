@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { getStoragePath, loadConfig } from '@autotube/config';
 import { prisma } from '@autotube/database';
-import { runFfmpeg } from '@autotube/shared';
+import { runFfmpeg } from '@autotube/shared/ffmpeg-runner';
 import { applyClipOverlay } from './clip-overlay.js';
 import { burnSubtitlesIntoClip, loadPipelineSrt, subClipPath } from './clip-subtitles.js';
 import { assertValidVideoFile, buildLanczosScaleCrop, ffmpegH264EncodeArgs, getVideoDuration } from './ffmpeg-utils.js';

@@ -73,12 +73,11 @@ async function getStoredNotifications(
 }
 
 async function getComputedNotifications(orgId: string): Promise<AppNotification[]> {
-  const channelIds = (
-    await prisma.channel.findMany({
-      where: { organizationId: orgId },
-      select: { id: true, name: true },
-    })
-  ).map((c) => c.id);
+  const channels = await prisma.channel.findMany({
+    where: { organizationId: orgId },
+    select: { id: true, name: true },
+  });
+  const channelIds = channels.map((c) => c.id);
 
   if (channelIds.length === 0) return [];
 
@@ -105,20 +104,18 @@ async function getComputedNotifications(orgId: string): Promise<AppNotification[
     });
   }
 
-  const { getChannelIntegrations } = await import('./channel-integrations.js');
+  const { getIntegrationsSummaryForChannels } = await import('./channel-integrations.js');
+  const summaries = await getIntegrationsSummaryForChannels(channelIds);
+  const channelNameById = new Map(channels.map((c) => [c.id, c.name]));
+
   for (const channelId of channelIds) {
-    const integrations = await getChannelIntegrations(channelId);
-    const yt = integrations.youtube;
-    if (yt.connected && !yt.tokenOk) {
-      const channel = await prisma.channel.findUnique({
-        where: { id: channelId },
-        select: { name: true },
-      });
+    const yt = summaries[channelId]?.youtube;
+    if (yt?.connected && !yt.tokenOk) {
       notifications.push({
         id: `youtube_token:${channelId}`,
         kind: 'youtube_token_expired',
         title: 'Reconectar YouTube',
-        message: `El token de «${channel?.name ?? 'canal'}» ha expirado o es inválido.`,
+        message: `El token de «${channelNameById.get(channelId) ?? 'canal'}» ha expirado o es inválido.`,
         href: `/channels/${channelId}?tab=integraciones`,
         createdAt: now,
         severity: 'warning',
@@ -173,4 +170,19 @@ export async function markNotificationRead(
     data: { readAt: new Date() },
   });
   return true;
+}
+
+export async function markAllNotificationsRead(
+  orgId: string,
+  userId: string,
+): Promise<number> {
+  const result = await prisma.notification.updateMany({
+    where: {
+      organizationId: orgId,
+      readAt: null,
+      OR: [{ userId: null }, { userId }],
+    },
+    data: { readAt: new Date() },
+  });
+  return result.count;
 }

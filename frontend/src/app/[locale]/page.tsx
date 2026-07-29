@@ -11,9 +11,8 @@ import { ButtonLink } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import { isPipelineInProgress } from '@/lib/pipeline-status';
 import type { AuthSession } from '@/context/AuthContext';
-import { checkApiHealth, type Channel, type PipelineRun, type Video } from '@/lib/api';
+import { checkApiHealth, type Channel, type PaginatedResponse, type PipelineRun, type Video } from '@/lib/api';
 import { serverApi } from '@/lib/api-server';
 import { formatDateTime } from '@/lib/format-publish-date';
 
@@ -47,24 +46,36 @@ export default async function HomePage({ params }: Props) {
   let session: AuthSession | null = null;
   let channels: Channel[] = [];
   let pendingVideos: Video[] = [];
+  let pendingTotal = 0;
   let scheduledVideos: Video[] = [];
+  let scheduledTotal = 0;
   let pipelines: PipelineRun[] = [];
+  let activePipelinesTotal = 0;
 
   if (apiOnline) {
     try {
       const results = await Promise.allSettled([
         serverApi<AuthSession>('/api/auth/me'),
-        serverApi<Channel[]>('/api/channels'),
-        serverApi<Video[]>('/api/videos?reviewStatus=pending'),
-        serverApi<Video[]>('/api/videos?reviewStatus=scheduled'),
-        serverApi<PipelineRun[]>('/api/pipelines'),
+        serverApi<Channel[]>('/api/channels?light=1'),
+        serverApi<PaginatedResponse<Video>>('/api/videos?reviewStatus=pending&page=1&limit=10'),
+        serverApi<PaginatedResponse<Video>>('/api/videos?reviewStatus=scheduled&page=1&limit=10'),
+        serverApi<PaginatedResponse<PipelineRun>>('/api/pipelines?active=true&page=1&limit=20'),
       ]);
 
       if (results[0].status === 'fulfilled') session = results[0].value;
       if (results[1].status === 'fulfilled') channels = results[1].value;
-      if (results[2].status === 'fulfilled') pendingVideos = results[2].value;
-      if (results[3].status === 'fulfilled') scheduledVideos = results[3].value;
-      if (results[4].status === 'fulfilled') pipelines = results[4].value;
+      if (results[2].status === 'fulfilled') {
+        pendingVideos = results[2].value.items;
+        pendingTotal = results[2].value.total;
+      }
+      if (results[3].status === 'fulfilled') {
+        scheduledVideos = results[3].value.items;
+        scheduledTotal = results[3].value.total;
+      }
+      if (results[4].status === 'fulfilled') {
+        pipelines = results[4].value.items;
+        activePipelinesTotal = results[4].value.total;
+      }
     } catch {
       // fetch parcial fallido
     }
@@ -74,8 +85,14 @@ export default async function HomePage({ params }: Props) {
   const firstName = greetingName(session);
   const hasChannels = channels.length > 0;
   const hasIntegrations = channels.some(channelHasIntegration);
-  const hasGenerations = pipelines.length > 0;
-  const activePipelines = pipelines.filter((p) => isPipelineInProgress(p.status));
+  const hasGenerations =
+    channels.some(
+      (c) => Boolean(c.stats?.lastGenerationAt) || (c.stats?.activeGenerations ?? 0) > 0,
+    ) ||
+    pendingTotal > 0 ||
+    scheduledTotal > 0 ||
+    activePipelinesTotal > 0;
+  const activePipelines = pipelines;
   const pendingPreview = pendingVideos.slice(0, 3);
   const scheduledPreview = scheduledVideos.slice(0, 3);
   const firstChannelId = channels[0]?.id;
@@ -134,11 +151,11 @@ export default async function HomePage({ params }: Props) {
         />
       ) : (
         <>
-          {pendingVideos.length > 0 && (
+          {pendingTotal > 0 && (
             <aside className="dashboard-attention" aria-label={t('pendingReviewSection')}>
               <div className="dashboard-attention-text">
                 <p className="dashboard-attention-title">
-                  {t('attentionTitle', { count: pendingVideos.length })}
+                  {t('attentionTitle', { count: pendingTotal })}
                 </p>
                 <p className="dashboard-attention-desc">{t('attentionDesc')}</p>
               </div>
@@ -151,25 +168,25 @@ export default async function HomePage({ params }: Props) {
           <div className="stat-grid">
             <Link
               href="/review"
-              className={`stat stat-clickable${pendingVideos.length > 0 ? ' stat-attention' : ''}`}
+              className={`stat stat-clickable${pendingTotal > 0 ? ' stat-attention' : ''}`}
             >
               <div className="stat-body">
-                <div className="stat-value">{pendingVideos.length}</div>
+                <div className="stat-value">{pendingTotal}</div>
                 <div className="stat-label">{t('pendingReview')}</div>
               </div>
             </Link>
             <Link
               href="/pipelines"
-              className={`stat stat-clickable${activePipelines.length > 0 ? ' stat-attention' : ''}`}
+              className={`stat stat-clickable${activePipelinesTotal > 0 ? ' stat-attention' : ''}`}
             >
               <div className="stat-body">
-                <div className="stat-value">{activePipelines.length}</div>
+                <div className="stat-value">{activePipelinesTotal}</div>
                 <div className="stat-label">{t('activePipelines')}</div>
               </div>
             </Link>
             <Link href="/videos?reviewStatus=scheduled" className="stat stat-clickable">
               <div className="stat-body">
-                <div className="stat-value">{scheduledVideos.length}</div>
+                <div className="stat-value">{scheduledTotal}</div>
                 <div className="stat-label">{t('upcomingPublish')}</div>
               </div>
             </Link>
@@ -178,7 +195,7 @@ export default async function HomePage({ params }: Props) {
           <section className="page-section">
             <div className="page-section-title">
               <h2>{t('pendingReviewSection')}</h2>
-              {pendingVideos.length > 0 && (
+              {pendingTotal > 0 && (
                 <Link href="/review" className="btn btn-ghost btn-sm">
                   {tc('viewAll')}
                 </Link>
@@ -216,13 +233,13 @@ export default async function HomePage({ params }: Props) {
           <section className="page-section">
             <div className="page-section-title">
               <h2>{t('activePipelinesSection')}</h2>
-              {activePipelines.length > 0 && (
+              {activePipelinesTotal > 0 && (
                 <Link href="/pipelines" className="btn btn-ghost btn-sm">
                   {tc('viewAllFem')}
                 </Link>
               )}
             </div>
-            {activePipelines.length === 0 ? (
+            {activePipelinesTotal === 0 ? (
               <EmptyState
                 compact
                 variant="pipeline"

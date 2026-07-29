@@ -24,6 +24,7 @@ export async function fetchChannelScheduledLongDates(
       ...(excludeVideoId ? { id: { not: excludeVideoId } } : {}),
     },
     select: { scheduledPublishAt: true },
+    take: 500,
   });
   return videos
     .map((v) => v.scheduledPublishAt)
@@ -61,6 +62,7 @@ export async function getChannelPublicationPlan(channelId: string): Promise<Publ
       reviewStatus: { in: ['pending', 'approved', 'scheduled'] },
     },
     orderBy: { createdAt: 'asc' },
+    take: 200,
     select: {
       id: true,
       title: true,
@@ -128,6 +130,7 @@ export async function applyChannelPublicationPlan(channelId: string): Promise<{
       reviewStatus: { in: ['pending', 'approved', 'scheduled'] },
     },
     orderBy: { createdAt: 'asc' },
+    take: 200,
     select: {
       id: true,
       title: true,

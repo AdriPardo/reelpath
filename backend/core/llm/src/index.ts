@@ -336,6 +336,11 @@ export function clearOrgOpenAiApiKey(): void {
   client = null;
 }
 
+/** Drop cached LLM client so org/env overrides take effect on next getLlmClient(). */
+export function resetLlmClient(): void {
+  client = null;
+}
+
 export function getLlmClient(): LlmClient {
   if (!client) {
     const config = loadConfig();

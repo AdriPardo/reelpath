@@ -151,25 +151,30 @@ Reinicia API y frontend. Los usuarios deben iniciar sesión; las rutas de sistem
 
 Con `AUTH_REQUIRED=false`, el desarrollo local funciona **sin login**. Con `AUTH_REQUIRED=true` (como ahora para pruebas), hay que entrar en `/login`.
 
-## Configuración: `.env` vs base de datos
+## Configuración: canal > organización > `.env`
 
-Al vender el servicio, no todo debe vivir en `.env`. Regla práctica:
+Resolución de preferencias de **producto/coste**: **canal → organización → `.env` → default de código**.
+
+Infraestructura y capacidad de máquina (`WORKER_*`, `FFMPEG_*`, DB, auth, Stripe, OAuth app) **solo viven en `.env`** (operador Atlas/VPS).
 
 | Qué | Dónde | Motivo |
 |-----|--------|--------|
-| `DATABASE_URL`, `REDIS_URL`, `STORAGE_PATH` | **`.env` del servidor** | Infraestructura de la instancia Reelpath |
-| `AUTH_SECRET`, `AUTH_REQUIRED` | **`.env` del servidor** | Seguridad de la plataforma |
-| `FRONTEND_URL`, `API_PORT` | **`.env` del servidor** | Despliegue |
-| YouTube OAuth (tokens) | **BD** (`IntegrationCredential`, por org o canal) | Cada cliente publica en su cuenta |
-| OpenAI / DeepSeek / ElevenLabs API keys | **BD por organización** (BYOK) o `.env` si la plataforma paga | Facturación y aislamiento |
-| Preferencias de generación (LLM, TTS, DALL·E, máx. escenas) | **BD** (`Organization.llmProvider`, `ttsProvider`, `generateAiImages`, `maxScenesLong`) | Cada cliente elige coste/calidad en Ajustes → IA y generación |
-| `Channel.config` (formato, review, Shorts YouTube…) | **BD** (`Channel.config` JSON) | Ya está; preferencias por canal |
-| Defaults globales (`DEFAULT_REVIEW_REQUIRED`, límites) | **`.env` o campos de `Organization`** | Fallback de plataforma vs preferencia del cliente |
+| `DATABASE_URL`, `REDIS_URL`, `STORAGE_PATH`, S3/CDN | **`.env`** | Infra de la instancia |
+| `AUTH_SECRET`, `AUTH_REQUIRED`, `CREDENTIALS_ENCRYPTION_KEY` | **`.env`** | Seguridad de plataforma |
+| `WORKER_CONCURRENCY`, `FFMPEG_*` | **`.env`** | Capacidad CPU compartida (Atlas) |
+| YouTube OAuth app (`CLIENT_ID` / `SECRET`) | **`.env`** | App Google de Reelpath |
+| YouTube refresh token + `privacyStatus` | **BD** `IntegrationCredential` (por canal) | Cada canal publica en su cuenta |
+| LLM / TTS / BYOK / imágenes IA / tope escenas / calidad imagen / tope IA / **voces TTS** | **BD** `Organization` (+ UI Ajustes) | Coste/calidad del cliente |
+| Formato, tono, review, Shorts, planner, `visualSourceMode`, **voz TTS** | **BD** `Channel.config` | Preferencias por YouTube |
+| Overrides de canal: `maxScenesLong`, `generateAiImages`, voces TTS | **BD** `Channel.config` | Canal documental vs resumen; hereda org si vacío |
+| Defaults globales (`PIPELINE_MAX_SCENES_LONG`, `MAX_AI_IMAGES_PER_VIDEO`, …) | **`.env`** | Fallback de plataforma |
 | `MOCK_EXTERNAL_APIS` | **`.env`** | Solo desarrollo |
 
-**Hoy:** la UI en **Ajustes → IA y generación** gestiona proveedores y BYOK por organización; el worker aplica esos overrides al generar. `.env` sigue siendo el fallback de plataforma.
+**Hoy:** Ajustes → IA y generación gestiona org (proveedores, BYOK, tope escenas/imágenes, **voces TTS**). El canal puede sobreescribir escenas e imágenes IA. El worker aplica `channel > org > env`.
 
-**Objetivo al vender:** el operador de Reelpath solo configura infra en `.env`; cada cliente elige LLM/TTS/imágenes y opcionalmente sus propias API keys desde la UI.
+**Phase 2 (pendiente):** modelos LLM por organización y BYOK Pexels.
+
+**Objetivo al vender:** el operador solo configura infra en `.env`; cada cliente elige coste/calidad en UI.
 
 ## Coste por vídeo (APIs)
 

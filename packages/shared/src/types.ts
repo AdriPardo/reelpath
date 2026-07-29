@@ -113,6 +113,31 @@ export interface ChannelConfig {
   videoMotionIntensity?: VideoMotionIntensity;
   /** Fuente visual por defecto: imágenes IA, clips stock o mixto (default image). */
   visualSourceMode?: VisualSourceMode;
+  /**
+   * Tope de escenas en vídeos largos (override canal).
+   * undefined/null = heredar Organization.maxScenesLong → env PIPELINE_MAX_SCENES_LONG.
+   */
+  maxScenesLong?: number | null;
+  /**
+   * Imágenes IA de escena (override canal).
+   * undefined/null = heredar Organization.generateAiImages → env GENERATE_DALLE_IMAGES.
+   */
+  generateAiImages?: boolean | null;
+  /**
+   * Voz Edge TTS (override canal).
+   * undefined/null = heredar Organization.edgeTtsVoice → env EDGE_TTS_VOICE.
+   */
+  edgeTtsVoice?: string | null;
+  /**
+   * Voice ID ElevenLabs (override canal).
+   * undefined/null = heredar Organization.elevenLabsVoiceId → env ELEVENLABS_VOICE_ID.
+   */
+  elevenLabsVoiceId?: string | null;
+  /**
+   * Voz OpenAI TTS (override canal).
+   * undefined/null = heredar Organization.openaiTtsVoice → env OPENAI_TTS_VOICE.
+   */
+  openaiTtsVoice?: string | null;
 }
 
 export type VideoQualityCheckStatus = 'pass' | 'warn' | 'fail';

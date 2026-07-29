@@ -36,10 +36,20 @@ model Organization {
   llmProvider          String    @default("auto")
   /** TTS: auto | edge | elevenlabs | openai — override de plataforma (.env). */
   ttsProvider          String    @default("auto")
+  /** Voz Edge TTS; null = EDGE_TTS_VOICE del .env. */
+  edgeTtsVoice         String?
+  /** Voice ID ElevenLabs; null = ELEVENLABS_VOICE_ID del .env. */
+  elevenLabsVoiceId    String?
+  /** Voz OpenAI TTS; null = OPENAI_TTS_VOICE del .env. */
+  openaiTtsVoice       String?
   /** Imágenes de escena con DALL·E / gpt-image (coste OpenAI). */
   generateAiImages     Boolean   @default(false)
   /** Tope de escenas en vídeos largos; null = default de plataforma. */
   maxScenesLong        Int?
+  /** Tope de imágenes IA por vídeo; null = MAX_AI_IMAGES_PER_VIDEO del .env. */
+  maxAiImagesPerVideo  Int?
+  /** Calidad gpt-image: low|medium|high|auto; null = OPENAI_IMAGE_QUALITY del .env. */
+  openaiImageQuality   String?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
@@ -157,6 +167,7 @@ model Channel {
 
   @@unique([organizationId, slug])
   @@index([organizationId])
+  @@index([organizationId, isActive])
 }
 
 model PipelineRun {
@@ -179,6 +190,7 @@ model PipelineRun {
   @@index([channelId, status])
   @@index([createdAt])
   @@index([channelId, createdAt])
+  @@index([status, updatedAt])
 }
 
 model VideoIdea {
@@ -212,6 +224,8 @@ model Script {
   createdAt       DateTime @default(now())
 
   pipelineRun PipelineRun @relation(fields: [pipelineRunId], references: [id], onDelete: Cascade)
+
+  @@index([pipelineRunId])
 }
 
 model MediaAsset {
@@ -254,6 +268,11 @@ model Video {
   clips       VideoClip[]
 
   @@index([channelId, reviewStatus])
+  @@index([channelId, createdAt])
+  @@index([channelId, scheduledPublishAt])
+  @@index([pipelineRunId])
+  @@index([createdAt])
+  @@index([reviewStatus, createdAt])
 }
 
 model VideoClip {

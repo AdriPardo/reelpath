@@ -1,7 +1,13 @@
 'use client';
 
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import {
+  EDGE_TTS_VOICES,
+  ELEVENLABS_TTS_VOICES,
+  OPENAI_TTS_VOICES,
+  type TtsVoiceOption,
+} from '@autotube/shared';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
@@ -9,12 +15,18 @@ import { Button } from '@/components/ui/Button';
 
 type LlmProvider = 'auto' | 'deepseek' | 'openai';
 type TtsProvider = 'auto' | 'edge' | 'elevenlabs' | 'openai';
+type ImageQuality = 'low' | 'medium' | 'high' | 'auto';
 
 type OrgSettings = {
   llmProvider: LlmProvider;
   ttsProvider: TtsProvider;
   generateAiImages: boolean;
   maxScenesLong: number | null;
+  maxAiImagesPerVideo: number | null;
+  openaiImageQuality: ImageQuality | null;
+  edgeTtsVoice: string | null;
+  elevenLabsVoiceId: string | null;
+  openaiTtsVoice: string | null;
   hasOpenaiKey: boolean;
   hasDeepseekKey: boolean;
   hasElevenLabsKey: boolean;
@@ -23,11 +35,23 @@ type OrgSettings = {
     ttsProvider: string;
     generateAiImages: boolean;
     maxScenesLong: number;
+    maxAiImagesPerVideo: number;
+    openaiImageQuality: string;
+    edgeTtsVoice?: string;
+    elevenLabsVoiceId?: string;
+    openaiTtsVoice?: string;
   };
 };
 
 const LLM_OPTIONS: LlmProvider[] = ['auto', 'deepseek', 'openai'];
 const TTS_OPTIONS: TtsProvider[] = ['auto', 'edge', 'elevenlabs', 'openai'];
+const IMAGE_QUALITY_OPTIONS: ImageQuality[] = ['low', 'medium', 'high', 'auto'];
+
+function voicesForProvider(provider: TtsProvider): TtsVoiceOption[] {
+  if (provider === 'elevenlabs') return ELEVENLABS_TTS_VOICES;
+  if (provider === 'openai') return OPENAI_TTS_VOICES;
+  return EDGE_TTS_VOICES; // edge + auto
+}
 
 export function SettingsApiKeysPanel() {
   const t = useTranslations('settings.apikeys');
@@ -40,6 +64,9 @@ export function SettingsApiKeysPanel() {
   const deepseekId = useId();
   const elevenId = useId();
   const scenesId = useId();
+  const maxAiId = useId();
+  const qualityId = useId();
+  const voiceId = useId();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -49,22 +76,56 @@ export function SettingsApiKeysPanel() {
   const [ttsProvider, setTtsProvider] = useState<TtsProvider>('auto');
   const [generateAiImages, setGenerateAiImages] = useState(false);
   const [maxScenesLong, setMaxScenesLong] = useState('');
+  const [maxAiImagesPerVideo, setMaxAiImagesPerVideo] = useState('');
+  const [openaiImageQuality, setOpenaiImageQuality] = useState<'' | ImageQuality>('');
+  const [edgeTtsVoice, setEdgeTtsVoice] = useState('');
+  const [elevenLabsVoiceId, setElevenLabsVoiceId] = useState('');
+  const [openaiTtsVoice, setOpenaiTtsVoice] = useState('');
   const [openaiKey, setOpenaiKey] = useState('');
   const [deepseekKey, setDeepseekKey] = useState('');
   const [elevenLabsKey, setElevenLabsKey] = useState('');
 
   const isAdmin = session?.role === 'owner' || session?.role === 'admin';
 
+  const voiceOptions = useMemo(() => voicesForProvider(ttsProvider), [ttsProvider]);
+  const activeVoiceValue =
+    ttsProvider === 'elevenlabs'
+      ? elevenLabsVoiceId
+      : ttsProvider === 'openai'
+        ? openaiTtsVoice
+        : edgeTtsVoice;
+  const platformVoiceDefault =
+    ttsProvider === 'elevenlabs'
+      ? (settings?.platformDefaults?.elevenLabsVoiceId ?? '')
+      : ttsProvider === 'openai'
+        ? (settings?.platformDefaults?.openaiTtsVoice ?? 'nova')
+        : (settings?.platformDefaults?.edgeTtsVoice ?? 'es-ES-ElviraNeural');
+
+  function setActiveVoice(value: string) {
+    if (ttsProvider === 'elevenlabs') setElevenLabsVoiceId(value);
+    else if (ttsProvider === 'openai') setOpenaiTtsVoice(value);
+    else setEdgeTtsVoice(value);
+  }
+
+  function applySettings(data: OrgSettings) {
+    setSettings(data);
+    setLlmProvider(data.llmProvider);
+    setTtsProvider(data.ttsProvider);
+    setGenerateAiImages(data.generateAiImages);
+    setMaxScenesLong(data.maxScenesLong != null ? String(data.maxScenesLong) : '');
+    setMaxAiImagesPerVideo(
+      data.maxAiImagesPerVideo != null ? String(data.maxAiImagesPerVideo) : '',
+    );
+    setOpenaiImageQuality(data.openaiImageQuality ?? '');
+    setEdgeTtsVoice(data.edgeTtsVoice ?? '');
+    setElevenLabsVoiceId(data.elevenLabsVoiceId ?? '');
+    setOpenaiTtsVoice(data.openaiTtsVoice ?? '');
+  }
+
   useEffect(() => {
     if (!session) return;
     api<OrgSettings>('/api/org/settings')
-      .then((data) => {
-        setSettings(data);
-        setLlmProvider(data.llmProvider);
-        setTtsProvider(data.ttsProvider);
-        setGenerateAiImages(data.generateAiImages);
-        setMaxScenesLong(data.maxScenesLong != null ? String(data.maxScenesLong) : '');
-      })
+      .then((data) => applySettings(data))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [session]);
@@ -79,6 +140,12 @@ export function SettingsApiKeysPanel() {
         ttsProvider,
         generateAiImages,
         maxScenesLong: maxScenesLong.trim() === '' ? null : Number(maxScenesLong),
+        maxAiImagesPerVideo:
+          maxAiImagesPerVideo.trim() === '' ? null : Number(maxAiImagesPerVideo),
+        openaiImageQuality: openaiImageQuality === '' ? null : openaiImageQuality,
+        edgeTtsVoice: edgeTtsVoice.trim() === '' ? null : edgeTtsVoice.trim(),
+        elevenLabsVoiceId: elevenLabsVoiceId.trim() === '' ? null : elevenLabsVoiceId.trim(),
+        openaiTtsVoice: openaiTtsVoice.trim() === '' ? null : openaiTtsVoice.trim(),
       };
       if (openaiKey.trim()) body.openaiApiKey = openaiKey.trim();
       if (deepseekKey.trim()) body.deepseekApiKey = deepseekKey.trim();
@@ -88,11 +155,7 @@ export function SettingsApiKeysPanel() {
         method: 'PATCH',
         body: JSON.stringify(body),
       });
-      setSettings(result);
-      setLlmProvider(result.llmProvider);
-      setTtsProvider(result.ttsProvider);
-      setGenerateAiImages(result.generateAiImages);
-      setMaxScenesLong(result.maxScenesLong != null ? String(result.maxScenesLong) : '');
+      applySettings(result);
       setOpenaiKey('');
       setDeepseekKey('');
       setElevenLabsKey('');
@@ -131,7 +194,9 @@ export function SettingsApiKeysPanel() {
     return null;
   }
 
-  const platformScenes = settings?.platformDefaults?.maxScenesLong ?? 12;
+  const platformScenes = settings?.platformDefaults?.maxScenesLong ?? 8;
+  const platformMaxAi = settings?.platformDefaults?.maxAiImagesPerVideo ?? 4;
+  const platformQuality = settings?.platformDefaults?.openaiImageQuality ?? 'medium';
 
   return (
     <section className="settings-section">
@@ -185,6 +250,36 @@ export function SettingsApiKeysPanel() {
               </select>
             </div>
 
+            <label className="modal-field" htmlFor={voiceId}>
+              {ts('apikeysVoiceLabel')}
+              <select
+                id={voiceId}
+                className="topic-input"
+                value={activeVoiceValue}
+                onChange={(e) => setActiveVoice(e.target.value)}
+                aria-label={ts('apikeysVoiceLabel')}
+              >
+                <option value="">{ts('apikeysVoiceInherit', { default: platformVoiceDefault })}</option>
+                {voiceOptions.map((voice) => (
+                  <option key={voice.id} value={voice.id}>
+                    {voice.label}
+                    {voice.gender ? ` · ${voice.gender}` : ''}
+                  </option>
+                ))}
+                {activeVoiceValue &&
+                  !voiceOptions.some((v) => v.id === activeVoiceValue) && (
+                    <option value={activeVoiceValue}>
+                      {ts('apikeysVoiceCustom', { id: activeVoiceValue })}
+                    </option>
+                  )}
+              </select>
+              <span className="text-muted text-sm">
+                {ttsProvider === 'auto'
+                  ? ts('apikeysVoiceHintAuto')
+                  : ts('apikeysVoiceHint')}
+              </span>
+            </label>
+
             <div className="settings-divider" />
 
             <div className="settings-pref-row">
@@ -217,6 +312,41 @@ export function SettingsApiKeysPanel() {
                 placeholder={String(platformScenes)}
               />
               <span className="text-muted text-sm">{ts('apikeysScenesHint', { default: platformScenes })}</span>
+            </label>
+
+            <label className="modal-field" htmlFor={maxAiId}>
+              {ts('apikeysMaxAiLabel')}
+              <input
+                id={maxAiId}
+                type="number"
+                min={0}
+                max={100}
+                className="topic-input"
+                value={maxAiImagesPerVideo}
+                onChange={(e) => setMaxAiImagesPerVideo(e.target.value)}
+                placeholder={String(platformMaxAi)}
+              />
+              <span className="text-muted text-sm">
+                {ts('apikeysMaxAiHint', { default: platformMaxAi })}
+              </span>
+            </label>
+
+            <label className="modal-field" htmlFor={qualityId}>
+              {ts('apikeysQualityLabel')}
+              <select
+                id={qualityId}
+                className="topic-input"
+                value={openaiImageQuality}
+                onChange={(e) => setOpenaiImageQuality(e.target.value as '' | ImageQuality)}
+              >
+                <option value="">{ts('apikeysQualityInherit', { default: platformQuality })}</option>
+                {IMAGE_QUALITY_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {ts(`apikeysQuality_${opt}`)}
+                  </option>
+                ))}
+              </select>
+              <span className="text-muted text-sm">{ts('apikeysQualityHint')}</span>
             </label>
 
             <div className="settings-divider" />

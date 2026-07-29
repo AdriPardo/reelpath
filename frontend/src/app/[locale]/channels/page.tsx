@@ -5,7 +5,7 @@ import { CreateChannelForm } from '@/components/CreateChannelForm';
 import { ButtonLink } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { type Channel, type PipelineRun, type Video } from '@/lib/api';
+import { type Channel } from '@/lib/api';
 import { serverApi } from '@/lib/api-server';
 import { buildChannelStatsMap } from '@/lib/channel-stats';
 import { parseApiError } from '@/lib/user-messages';
@@ -24,27 +24,15 @@ export default async function ChannelsPage({ params }: Props) {
   const tc = await getTranslations({ locale, namespace: 'common' });
 
   let channels: Channel[] = [];
-  let pipelines: PipelineRun[] = [];
-  let pendingVideos: Video[] = [];
   let loadError: string | null = null;
 
   try {
-    const results = await Promise.allSettled([
-      serverApi<Channel[]>('/api/channels'),
-      serverApi<PipelineRun[]>('/api/pipelines'),
-      serverApi<Video[]>('/api/videos?reviewStatus=pending'),
-    ]);
-
-    if (results[0].status === 'fulfilled') channels = results[0].value;
-    else loadError = parseApiError(String(results[0].reason));
-
-    if (results[1].status === 'fulfilled') pipelines = results[1].value;
-    if (results[2].status === 'fulfilled') pendingVideos = results[2].value;
+    channels = await serverApi<Channel[]>('/api/channels?light=1');
   } catch (err) {
     loadError = parseApiError(err instanceof Error ? err.message : String(err));
   }
 
-  const statsByChannel = buildChannelStatsMap(channels, pipelines, pendingVideos);
+  const statsByChannel = buildChannelStatsMap(channels);
 
   return (
     <div className="page-content">

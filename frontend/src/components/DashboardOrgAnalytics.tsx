@@ -39,7 +39,7 @@ export function DashboardOrgAnalytics() {
   const [failed, setFailed] = useState(false);
 
   const syncAllChannels = useCallback(async () => {
-    const channels = await api<Channel[]>('/api/channels');
+    const channels = await api<Channel[]>('/api/channels?light=1');
     const syncable = channels.filter(isSyncableChannel);
     if (syncable.length === 0) return 0;
 
@@ -61,30 +61,24 @@ export function DashboardOrgAnalytics() {
   useEffect(() => {
     let cancelled = false;
 
-    async function autoSyncOnMount() {
+    async function loadSummary() {
       setLoading(true);
-      setSyncing(true);
       setFailed(false);
       try {
-        await syncAllChannels();
-        if (cancelled) return;
         const data = await fetchSummary();
         if (!cancelled) setSummary(data);
       } catch {
         if (!cancelled) setFailed(true);
       } finally {
-        if (!cancelled) {
-          setSyncing(false);
-          setLoading(false);
-        }
+        if (!cancelled) setLoading(false);
       }
     }
 
-    void autoSyncOnMount();
+    void loadSummary();
     return () => {
       cancelled = true;
     };
-  }, [syncAllChannels, fetchSummary]);
+  }, [fetchSummary]);
 
   async function handleRefresh() {
     setSyncing(true);

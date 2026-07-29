@@ -32,7 +32,17 @@ import {
 import { handleLongVideoUpload } from '../lib/upload-long.js';
 import { assertChannelInOrg } from '../lib/tenant.js';
 import { authMiddleware, orgScope } from '../middleware/auth.js';
+import { paginatedResponse, parsePagination } from '../lib/pagination.js';
 import multer from 'multer';
+
+/** Estados terminales / espera de review — el resto cuenta como generación activa. */
+const PIPELINE_IDLE_STATUSES = [
+  'completed',
+  'failed',
+  'rejected',
+  'pending_review',
+  'cancelled',
+] as const;
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -67,20 +77,82 @@ channelsRouter.use(authMiddleware);
 
 channelsRouter.get('/', async (req, res) => {
   const orgId = orgScope(req);
-  const channels = await prisma.channel.findMany({
-    where: orgId ? { organizationId: orgId } : undefined,
-    orderBy: { createdAt: 'desc' },
-  });
+  const pagination = parsePagination(req.query as Record<string, unknown>);
 
-  const summaries = await getIntegrationsSummaryForChannels(channels.map((c) => c.id));
-  res.json(
-    channels.map((ch) => ({
-      ...ch,
-      integrations: summaries[ch.id] ?? {
-        youtube: { connected: false, tokenOk: false, source: 'none' as const },
+  const where = orgId ? { organizationId: orgId } : undefined;
+
+  const [channels, total] = await Promise.all([
+    prisma.channel.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip: pagination.explicit ? pagination.skip : 0,
+      take: pagination.explicit ? pagination.limit : 200,
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        niche: true,
+        isActive: true,
+        youtubeId: true,
+        createdAt: true,
+        updatedAt: true,
+        organizationId: true,
       },
-    })),
-  );
+    }),
+    prisma.channel.count({ where }),
+  ]);
+
+  const channelIds = channels.map((c) => c.id);
+  const [summaries, pendingCounts, activeCounts, lastRuns] = await Promise.all([
+    getIntegrationsSummaryForChannels(channelIds),
+    channelIds.length === 0
+      ? Promise.resolve([] as { channelId: string; _count: { _all: number } }[])
+      : prisma.video.groupBy({
+          by: ['channelId'],
+          where: { channelId: { in: channelIds }, reviewStatus: 'pending' },
+          _count: { _all: true },
+        }),
+    channelIds.length === 0
+      ? Promise.resolve([] as { channelId: string; _count: { _all: number } }[])
+      : prisma.pipelineRun.groupBy({
+          by: ['channelId'],
+          where: {
+            channelId: { in: channelIds },
+            status: { notIn: [...PIPELINE_IDLE_STATUSES] },
+          },
+          _count: { _all: true },
+        }),
+    channelIds.length === 0
+      ? Promise.resolve([] as { channelId: string; createdAt: Date }[])
+      : prisma.pipelineRun.findMany({
+          where: { channelId: { in: channelIds } },
+          orderBy: { createdAt: 'desc' },
+          distinct: ['channelId'],
+          select: { channelId: true, createdAt: true },
+        }),
+  ]);
+
+  const pendingMap = new Map(pendingCounts.map((r) => [r.channelId, r._count._all]));
+  const activeMap = new Map(activeCounts.map((r) => [r.channelId, r._count._all]));
+  const lastRunMap = new Map(lastRuns.map((r) => [r.channelId, r.createdAt]));
+
+  const mapped = channels.map((ch) => ({
+    ...ch,
+    integrations: summaries[ch.id] ?? {
+      youtube: { connected: false, tokenOk: false, source: 'none' as const },
+    },
+    stats: {
+      pendingReview: pendingMap.get(ch.id) ?? 0,
+      activeGenerations: activeMap.get(ch.id) ?? 0,
+      lastGenerationAt: lastRunMap.get(ch.id)?.toISOString() ?? null,
+    },
+  }));
+
+  if (pagination.explicit) {
+    return res.json(paginatedResponse(mapped, total, pagination));
+  }
+
+  res.json(mapped);
 });
 
 channelsRouter.get('/:id/integrations/youtube/connect', async (req, res) => {
@@ -218,38 +290,46 @@ channelsRouter.get('/:id/videos', async (req, res) => {
   const { reviewStatus, q } = req.query;
   const search = typeof q === 'string' && q.trim() ? q.trim() : undefined;
   const showArchived = req.query.includeArchived === 'true';
+  const pagination = parsePagination(req.query as Record<string, unknown>);
 
-  const videos = await prisma.video.findMany({
-    where: {
-      channelId: channel.id,
-      ...(reviewStatus
-        ? { reviewStatus: String(reviewStatus) }
-        : showArchived
-          ? {}
-          : { reviewStatus: { notIn: ['cancelled', 'rejected'] } }),
-      ...(search
-        ? {
-            OR: [
-              { title: { contains: search, mode: 'insensitive' } },
-              { description: { contains: search, mode: 'insensitive' } },
-            ],
-          }
-        : {}),
-    },
-    orderBy: { createdAt: 'desc' },
-    include: {
-      pipelineRun: { select: { status: true, currentStep: true, error: true } },
-      _count: { select: { clips: { where: { platform: 'short_source' } } } },
-    },
-  });
+  const where = {
+    channelId: channel.id,
+    ...(reviewStatus
+      ? { reviewStatus: String(reviewStatus) }
+      : showArchived
+        ? {}
+        : { reviewStatus: { notIn: ['cancelled', 'rejected'] } }),
+    ...(search
+      ? {
+          OR: [
+            { title: { contains: search, mode: 'insensitive' as const } },
+            { description: { contains: search, mode: 'insensitive' as const } },
+          ],
+        }
+      : {}),
+  };
 
-  res.json(
-    videos.map(({ _count, ...v }) => ({
-      ...v,
-      channel: { id: channel.id, name: channel.name, slug: channel.slug },
-      clipCount: _count.clips,
-    })),
-  );
+  const [videos, total] = await Promise.all([
+    prisma.video.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip: pagination.skip,
+      take: pagination.limit,
+      include: {
+        pipelineRun: { select: { status: true, currentStep: true, error: true } },
+        _count: { select: { clips: { where: { platform: 'short_source' } } } },
+      },
+    }),
+    prisma.video.count({ where }),
+  ]);
+
+  const mapped = videos.map(({ _count, ...v }) => ({
+    ...v,
+    channel: { id: channel.id, name: channel.name, slug: channel.slug },
+    clipCount: _count.clips,
+  }));
+
+  return res.json(paginatedResponse(mapped, total, pagination));
 });
 
 channelsRouter.get('/:id/publication-plan', async (req, res) => {

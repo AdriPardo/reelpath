@@ -1,6 +1,6 @@
 import type { Job } from 'bullmq';
 import { existsSync } from 'node:fs';
-import { clearOrgPipelineOverrides, parseChannelConfig, setOrgPipelineOverrides } from '@autotube/config';
+import { clearOrgPipelineOverrides, mergeChannelVoiceOverrides, parseChannelConfig, setOrgPipelineOverrides } from '@autotube/config';
 import { loadOrgPipelineOverrides, prisma } from '@autotube/database';
 import { clearOrgOpenAiApiKey, resetLlmClient } from '@autotube/llm';
 import { scoreVideoQuality } from '@autotube/content-scorer';
@@ -138,7 +138,8 @@ export async function processPipelineJob(job: Job<PipelineJobPayload>): Promise<
   }
 
   const overrides = await loadOrgPipelineOverrides(run.channel.organizationId);
-  setOrgPipelineOverrides(overrides);
+  const channelConfig = parseChannelConfig(run.channel.config);
+  setOrgPipelineOverrides(mergeChannelVoiceOverrides(overrides, channelConfig));
   resetLlmClient();
 
   try {
@@ -246,6 +247,7 @@ async function runPipelineStep(
           videoMotionIntensity: config.videoMotionIntensity,
           visualSourceMode: config.visualSourceMode,
           orgPlan: org?.plan,
+          channelGenerateAiImages: config.generateAiImages,
         });
         await enqueuePipelineStep({ pipelineRunId, channelId }, 'render_video');
         break;

@@ -1,5 +1,9 @@
 import { Router } from 'express';
-import { getOrgNotifications, markNotificationRead } from '../lib/notifications.js';
+import {
+  getOrgNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+} from '../lib/notifications.js';
 import { authMiddleware, orgScope, requireAuth } from '../middleware/auth.js';
 
 export const notificationsRouter = Router();
@@ -21,6 +25,21 @@ notificationsRouter.get('/', async (req, res) => {
   }
 });
 
+notificationsRouter.patch('/read-all', async (req, res) => {
+  const orgId = orgScope(req);
+  if (!orgId) {
+    return res.status(400).json({ error: 'Organización no definida' });
+  }
+
+  try {
+    const updated = await markAllNotificationsRead(orgId, req.auth!.userId);
+    res.json({ message: 'Notificaciones marcadas como leídas', updated });
+  } catch (err) {
+    console.error('[notifications] PATCH /read-all failed:', err);
+    res.status(500).json({ error: 'No se pudieron marcar las notificaciones' });
+  }
+});
+
 notificationsRouter.patch('/:id/read', async (req, res) => {
   const orgId = orgScope(req);
   if (!orgId) {
@@ -30,7 +49,8 @@ notificationsRouter.patch('/:id/read', async (req, res) => {
   try {
     const ok = await markNotificationRead(req.params.id, orgId, req.auth!.userId);
     if (!ok) {
-      return res.status(404).json({ error: 'Notificación no encontrada' });
+      // IDs sintéticos (review_pending, youtube_token:…) no viven en DB.
+      return res.json({ message: 'Notificación descartada', synthetic: true });
     }
 
     res.json({ message: 'Notificación marcada como leída' });

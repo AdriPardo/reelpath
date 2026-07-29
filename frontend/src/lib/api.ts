@@ -73,6 +73,11 @@ export interface Channel {
   integrations?: {
     youtube: IntegrationSummary;
   };
+  stats?: {
+    pendingReview: number;
+    activeGenerations: number;
+    lastGenerationAt: string | null;
+  };
 }
 
 export interface IntegrationSummary {
@@ -193,6 +198,21 @@ export interface PaginatedResponse<T> {
   page: number;
   limit: number;
   totalPages: number;
+  counts?: {
+    all: number;
+    active: number;
+    done: number;
+    failed: number;
+  };
+}
+
+/** Extrae items tanto de envelope paginado como de array legacy. */
+export function listItems<T>(data: PaginatedResponse<T> | T[]): T[] {
+  return Array.isArray(data) ? data : data.items;
+}
+
+export function listTotal<T>(data: PaginatedResponse<T> | T[]): number {
+  return Array.isArray(data) ? data.length : data.total;
 }
 
 export interface PipelineRun {

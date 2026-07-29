@@ -30,6 +30,7 @@ const inviteSchema = z.object({
 });
 
 const optionalApiKey = z.union([z.string().min(10), z.null()]).optional();
+const optionalVoiceId = z.union([z.string().min(2).max(120), z.null()]).optional();
 
 const orgSettingsPatchSchema = z
   .object({
@@ -37,6 +38,13 @@ const orgSettingsPatchSchema = z
     ttsProvider: z.enum(['auto', 'edge', 'elevenlabs', 'openai']).optional(),
     generateAiImages: z.boolean().optional(),
     maxScenesLong: z.union([z.number().int().min(4).max(40), z.null()]).optional(),
+    maxAiImagesPerVideo: z.union([z.number().int().min(0).max(100), z.null()]).optional(),
+    openaiImageQuality: z
+      .union([z.enum(['low', 'medium', 'high', 'auto']), z.null()])
+      .optional(),
+    edgeTtsVoice: optionalVoiceId,
+    elevenLabsVoiceId: optionalVoiceId,
+    openaiTtsVoice: optionalVoiceId,
     openaiApiKey: optionalApiKey,
     deepseekApiKey: optionalApiKey,
     elevenLabsApiKey: optionalApiKey,
@@ -276,6 +284,11 @@ orgRouter.get('/settings', async (req, res) => {
       ttsProvider: platform.TTS_PROVIDER,
       generateAiImages: platform.GENERATE_DALLE_IMAGES,
       maxScenesLong: platform.PIPELINE_MAX_SCENES_LONG,
+      maxAiImagesPerVideo: platform.MAX_AI_IMAGES_PER_VIDEO,
+      openaiImageQuality: platform.OPENAI_IMAGE_QUALITY,
+      edgeTtsVoice: platform.EDGE_TTS_VOICE,
+      elevenLabsVoiceId: platform.ELEVENLABS_VOICE_ID,
+      openaiTtsVoice: platform.OPENAI_TTS_VOICE,
     },
   });
 });
@@ -289,12 +302,22 @@ orgRouter.patch('/settings', requireAdmin, async (req, res) => {
     ttsProvider?: string;
     generateAiImages?: boolean;
     maxScenesLong?: number | null;
+    maxAiImagesPerVideo?: number | null;
+    openaiImageQuality?: string | null;
+    edgeTtsVoice?: string | null;
+    elevenLabsVoiceId?: string | null;
+    openaiTtsVoice?: string | null;
   } = {};
 
   if (body.llmProvider !== undefined) data.llmProvider = body.llmProvider;
   if (body.ttsProvider !== undefined) data.ttsProvider = body.ttsProvider;
   if (body.generateAiImages !== undefined) data.generateAiImages = body.generateAiImages;
   if (body.maxScenesLong !== undefined) data.maxScenesLong = body.maxScenesLong;
+  if (body.maxAiImagesPerVideo !== undefined) data.maxAiImagesPerVideo = body.maxAiImagesPerVideo;
+  if (body.openaiImageQuality !== undefined) data.openaiImageQuality = body.openaiImageQuality;
+  if (body.edgeTtsVoice !== undefined) data.edgeTtsVoice = body.edgeTtsVoice;
+  if (body.elevenLabsVoiceId !== undefined) data.elevenLabsVoiceId = body.elevenLabsVoiceId;
+  if (body.openaiTtsVoice !== undefined) data.openaiTtsVoice = body.openaiTtsVoice;
 
   if (Object.keys(data).length > 0) {
     await prisma.organization.update({

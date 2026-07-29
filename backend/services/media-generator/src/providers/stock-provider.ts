@@ -4,10 +4,10 @@ import { loadConfig } from '@autotube/config';
 import {
   buildLanczosScaleCrop,
   ffmpegH264EncodeArgs,
-  runFfmpeg,
   VIDEO_RESOLUTION_LONG,
   VIDEO_RESOLUTION_SHORT,
 } from '@autotube/shared';
+import { runFfmpeg } from '@autotube/shared/ffmpeg-runner';
 import type { VisualOrigin } from '@autotube/shared';
 import { generateSceneImage } from './media-providers.js';
 

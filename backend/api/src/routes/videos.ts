@@ -165,11 +165,7 @@ videosRouter.get('/', async (req, res) => {
     })),
   );
 
-  if (pagination.explicit) {
-    return res.json(paginatedResponse(mapped, total, pagination));
-  }
-
-  res.json(mapped);
+  return res.json(paginatedResponse(mapped, total, pagination));
 });
 
 videosRouter.get('/:id/thumbnail', async (req, res) => {

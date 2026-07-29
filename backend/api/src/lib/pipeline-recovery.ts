@@ -188,7 +188,12 @@ export async function recoverPipelineRun(
 }
 
 export async function listStuckPipelines(staleMinutes = 10) {
+  const cutoff = new Date(Date.now() - staleMinutes * 60_000);
   const runs = await prisma.pipelineRun.findMany({
+    where: {
+      status: { notIn: [...TERMINAL_STATUSES] },
+      updatedAt: { lt: cutoff },
+    },
     orderBy: { updatedAt: 'asc' },
     take: 100,
     include: {
@@ -197,7 +202,7 @@ export async function listStuckPipelines(staleMinutes = 10) {
     },
   });
 
-  return runs.filter((r) => isPipelineStuck(r, staleMinutes)).map((r) => ({
+  return runs.map((r) => ({
     id: r.id,
     channelId: r.channelId,
     status: r.status,

@@ -170,8 +170,33 @@ export function ChannelDetailTabs({
                 videoFormat: config.videoFormat as 'shorts' | 'long' | undefined,
                 shortsMode: config.shortsMode as 'split' | 'dedicated' | 'mixed' | undefined,
                 shortsPerVideo: config.shortsPerVideo as number | undefined,
+                longShortsFromVideo: config.longShortsFromVideo as number | undefined,
                 shortsPublishIntervalDays: config.shortsPublishIntervalDays as number | undefined,
                 language: config.language as string | undefined,
+                ideasPerRun: config.ideasPerRun as number | undefined,
+                scriptGenerationMode: config.scriptGenerationMode as
+                  | 'chunked'
+                  | 'monolithic'
+                  | undefined,
+                targetDurationMinSec: config.targetDurationMinSec as number | undefined,
+                targetDurationMaxSec: config.targetDurationMaxSec as number | undefined,
+                visualSourceMode: config.visualSourceMode as
+                  | 'image'
+                  | 'stock'
+                  | 'mixed'
+                  | undefined,
+                videoMotionIntensity: config.videoMotionIntensity as
+                  | 'subtle'
+                  | 'normal'
+                  | 'dynamic'
+                  | undefined,
+                autoReview: config.autoReview as boolean | undefined,
+                autoApproveMinScore: config.autoApproveMinScore as number | undefined,
+                maxScenesLong: config.maxScenesLong as number | null | undefined,
+                generateAiImages: config.generateAiImages as boolean | null | undefined,
+                edgeTtsVoice: config.edgeTtsVoice as string | null | undefined,
+                elevenLabsVoiceId: config.elevenLabsVoiceId as string | null | undefined,
+                openaiTtsVoice: config.openaiTtsVoice as string | null | undefined,
               }}
             />
           </>

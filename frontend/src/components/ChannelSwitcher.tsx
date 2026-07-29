@@ -15,7 +15,7 @@ export function ChannelSwitcher({ onNavigate }: { onNavigate?: () => void }) {
 
   useEffect(() => {
     let cancelled = false;
-    api<Channel[]>('/api/channels')
+    api<Channel[]>('/api/channels?light=1')
       .then((data) => {
         if (!cancelled) setChannels(data);
       })

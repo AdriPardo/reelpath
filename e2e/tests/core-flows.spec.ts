@@ -85,11 +85,10 @@ test('canal -> generación (mock) -> revisión -> programar', async ({ page, req
     null;
 
   if (!video) {
-    const pendingVideos = await apiJson<Array<{ id: string; pipelineRunId: string; reviewStatus: string }>>(
-      request,
-      token,
-      '/api/videos?reviewStatus=pending',
-    );
+    const pendingRes = await apiJson<{
+      items: Array<{ id: string; pipelineRunId: string; reviewStatus: string }>;
+    }>(request, token, '/api/videos?reviewStatus=pending&page=1&limit=50');
+    const pendingVideos = pendingRes.items;
     video = pendingVideos.find((v) => v.pipelineRunId === pipelineId) ?? pendingVideos[0] ?? null;
   }
 
@@ -112,8 +111,12 @@ test('canal -> generación (mock) -> revisión -> programar', async ({ page, req
   await expect
     .poll(
       async () => {
-        const scheduled = await apiJson<Array<{ id: string }>>(request, token, '/api/videos?reviewStatus=scheduled');
-        return scheduled.some((v) => v.id === video!.id);
+        const scheduled = await apiJson<{ items: Array<{ id: string }> }>(
+          request,
+          token,
+          '/api/videos?reviewStatus=scheduled&page=1&limit=50',
+        );
+        return scheduled.items.some((v) => v.id === video!.id);
       },
       { timeout: 60_000, intervals: [1000, 2000, 5000] },
     )

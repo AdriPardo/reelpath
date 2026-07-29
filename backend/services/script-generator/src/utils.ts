@@ -2,7 +2,10 @@ import type { ChannelConfig, ScriptScene } from '@autotube/shared';
 import { loadConfig } from '@autotube/config';
 
 export function sceneOptions(config: ChannelConfig) {
-  return { retentionMode: config.retentionMode ?? false };
+  return {
+    retentionMode: config.retentionMode ?? false,
+    maxScenesLong: config.maxScenesLong,
+  };
 }
 
 export function countWords(text: string): number {

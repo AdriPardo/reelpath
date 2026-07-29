@@ -12,14 +12,24 @@ function pipelineChannelId(pipeline: PipelineRun): string | undefined {
   return pipeline.channel?.id;
 }
 
+/** Preferir `channel.stats` del API; fallback a listas paginadas si faltan. */
 export function buildChannelStatsMap(
   channels: Channel[],
-  pipelines: PipelineRun[],
-  pendingVideos: Video[],
+  pipelines: PipelineRun[] = [],
+  pendingVideos: Video[] = [],
 ): Record<string, ChannelCardStats> {
   const map: Record<string, ChannelCardStats> = {};
 
   for (const channel of channels) {
+    if (channel.stats) {
+      map[channel.id] = {
+        pendingReview: channel.stats.pendingReview,
+        activeGenerations: channel.stats.activeGenerations,
+        lastGenerationAt: channel.stats.lastGenerationAt,
+      };
+      continue;
+    }
+
     const channelPipelines = pipelines.filter((p) => pipelineChannelId(p) === channel.id);
     const sorted = [...channelPipelines].sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),

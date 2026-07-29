@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { runFfmpeg } from '@autotube/shared';
+import { runFfmpeg } from '@autotube/shared/ffmpeg-runner';
 
 const execFileAsync = promisify(execFile);
 

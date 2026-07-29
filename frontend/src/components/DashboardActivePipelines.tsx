@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { api, type PipelineRun } from '@/lib/api';
+import { api, listItems, type PaginatedResponse, type PipelineRun } from '@/lib/api';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { isPipelineInProgress } from '@/lib/pipeline-status';
 
@@ -30,8 +30,10 @@ export function DashboardActivePipelines({ initialPipelines }: DashboardActivePi
 
     const interval = setInterval(async () => {
       try {
-        const data = await api<PipelineRun[]>('/api/pipelines');
-        setPipelines(data);
+        const data = await api<PaginatedResponse<PipelineRun>>(
+          '/api/pipelines?active=true&page=1&limit=20',
+        );
+        setPipelines(listItems(data));
         router.refresh();
       } catch {
         // silencioso

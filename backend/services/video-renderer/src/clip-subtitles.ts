@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import sharp from 'sharp';
-import { runFfmpeg } from '@autotube/shared';
+import { runFfmpeg } from '@autotube/shared/ffmpeg-runner';
 import { assertValidVideoFile, ffmpegH264EncodeArgs } from './ffmpeg-utils.js';
 import { sliceSrtCues, parseSrt, type SrtCue } from './srt-utils.js';
 

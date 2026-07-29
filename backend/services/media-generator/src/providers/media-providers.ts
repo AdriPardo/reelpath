@@ -3,10 +3,10 @@ import path from 'node:path';
 import { loadEffectiveConfig } from '@autotube/config';
 import {
   buildLanczosScaleCrop,
-  runFfmpeg,
   VIDEO_RESOLUTION_LONG,
   VIDEO_RESOLUTION_SHORT,
 } from '@autotube/shared';
+import { runFfmpeg } from '@autotube/shared/ffmpeg-runner';
 import type { VisualOrigin } from '@autotube/shared';
 import { createSceneVisualPng } from '../png-utils.js';
 import { preprocessForTts } from '../tts-preprocess.js';

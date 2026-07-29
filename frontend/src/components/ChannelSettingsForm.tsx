@@ -1,16 +1,41 @@
 'use client';
 
-import { useId, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import type { ChannelConfig } from '@autotube/shared';
-import { resolveMixedShortsCounts } from '@autotube/shared';
+import {
+  EDGE_TTS_VOICES,
+  ELEVENLABS_TTS_VOICES,
+  OPENAI_TTS_VOICES,
+  resolveMixedShortsCounts,
+  type TtsVoiceOption,
+} from '@autotube/shared';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
 import { Button } from '@/components/ui/Button';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 
 type FormConfig = Partial<ChannelConfig>;
+type OrgTtsProvider = 'auto' | 'edge' | 'elevenlabs' | 'openai';
+
+type OrgVoiceDefaults = {
+  ttsProvider: OrgTtsProvider;
+  edgeTtsVoice: string | null;
+  elevenLabsVoiceId: string | null;
+  openaiTtsVoice: string | null;
+  platformDefaults?: {
+    edgeTtsVoice?: string;
+    elevenLabsVoiceId?: string;
+    openaiTtsVoice?: string;
+  };
+};
+
+function voicesForProvider(provider: OrgTtsProvider): TtsVoiceOption[] {
+  if (provider === 'elevenlabs') return ELEVENLABS_TTS_VOICES;
+  if (provider === 'openai') return OPENAI_TTS_VOICES;
+  return EDGE_TTS_VOICES;
+}
 
 export function ChannelSettingsForm({
   channelId,
@@ -30,11 +55,57 @@ export function ChannelSettingsForm({
   const forbiddenId = useId();
   const hintsId = useId();
   const disclaimerId = useId();
+  const voiceFieldId = useId();
   const [config, setConfig] = useState<FormConfig>(initialConfig);
   const [forbiddenInput, setForbiddenInput] = useState(
     (initialConfig.forbiddenTopics ?? []).join(', '),
   );
   const [loading, setLoading] = useState(false);
+  const [orgTts, setOrgTts] = useState<OrgVoiceDefaults | null>(null);
+
+  useEffect(() => {
+    api<OrgVoiceDefaults>('/api/org/settings')
+      .then((data) =>
+        setOrgTts({
+          ttsProvider: data.ttsProvider,
+          edgeTtsVoice: data.edgeTtsVoice,
+          elevenLabsVoiceId: data.elevenLabsVoiceId,
+          openaiTtsVoice: data.openaiTtsVoice,
+          platformDefaults: data.platformDefaults,
+        }),
+      )
+      .catch(() => {});
+  }, []);
+
+  const orgProvider: OrgTtsProvider = orgTts?.ttsProvider ?? 'auto';
+  const voiceOptions = useMemo(() => voicesForProvider(orgProvider), [orgProvider]);
+  const activeChannelVoice =
+    orgProvider === 'elevenlabs'
+      ? (config.elevenLabsVoiceId ?? '')
+      : orgProvider === 'openai'
+        ? (config.openaiTtsVoice ?? '')
+        : (config.edgeTtsVoice ?? '');
+  const inheritVoiceLabel =
+    orgProvider === 'elevenlabs'
+      ? (orgTts?.elevenLabsVoiceId ||
+          orgTts?.platformDefaults?.elevenLabsVoiceId ||
+          'ElevenLabs')
+      : orgProvider === 'openai'
+        ? (orgTts?.openaiTtsVoice || orgTts?.platformDefaults?.openaiTtsVoice || 'nova')
+        : (orgTts?.edgeTtsVoice ||
+            orgTts?.platformDefaults?.edgeTtsVoice ||
+            'es-ES-ElviraNeural');
+
+  function setChannelVoice(value: string) {
+    const next = value.trim() === '' ? null : value.trim();
+    if (orgProvider === 'elevenlabs') {
+      setField('elevenLabsVoiceId', next);
+    } else if (orgProvider === 'openai') {
+      setField('openaiTtsVoice', next);
+    } else {
+      setField('edgeTtsVoice', next);
+    }
+  }
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -43,7 +114,13 @@ export function ChannelSettingsForm({
       .split(',')
       .map((t) => t.trim())
       .filter(Boolean);
-    const payload = { ...config, forbiddenTopics };
+    const payload: Record<string, unknown> = { ...config, forbiddenTopics };
+    // null = inherit org/env (explicit clear of channel override)
+    if (config.maxScenesLong == null) payload.maxScenesLong = null;
+    if (config.generateAiImages == null) payload.generateAiImages = null;
+    if (config.edgeTtsVoice == null) payload.edgeTtsVoice = null;
+    if (config.elevenLabsVoiceId == null) payload.elevenLabsVoiceId = null;
+    if (config.openaiTtsVoice == null) payload.openaiTtsVoice = null;
     try {
       await api(`/api/channels/${channelId}`, {
         method: 'PATCH',
@@ -161,6 +238,135 @@ export function ChannelSettingsForm({
             maxLength={500}
             rows={2}
           />
+        </label>
+      </fieldset>
+
+      <fieldset className="settings-fieldset">
+        <legend>{t('opsLegend')}</legend>
+        <label className="modal-field">
+          <span className="field-label-row">
+            <span>{t('languageLabel')}</span>
+            <InfoTooltip content={t('languageTooltip')} />
+          </span>
+          <select
+            className="topic-input"
+            value={config.language ?? 'es'}
+            onChange={(e) => setField('language', e.target.value)}
+          >
+            <option value="es">Español</option>
+            <option value="en">English</option>
+          </select>
+        </label>
+        <label className="modal-field">
+          <span className="field-label-row">
+            <span>{t('ideasPerRunLabel')}</span>
+            <InfoTooltip content={t('ideasPerRunTooltip')} />
+          </span>
+          <input
+            type="number"
+            className="topic-input"
+            min={1}
+            max={50}
+            value={config.ideasPerRun ?? 3}
+            onChange={(e) => setField('ideasPerRun', Number(e.target.value))}
+          />
+        </label>
+        <label className="modal-checkbox">
+          <input
+            type="checkbox"
+            checked={config.autoPublish ?? false}
+            onChange={() => toggle('autoPublish')}
+          />
+          <span className="checkbox-label-row">
+            <span>{t('autoPublishLabel')}</span>
+            <InfoTooltip content={t('autoPublishTooltip')} />
+          </span>
+        </label>
+        <label className="modal-field">
+          <span className="field-label-row">
+            <span>{t('shortsClipMaxLabel')}</span>
+            <InfoTooltip content={t('shortsClipMaxTooltip')} />
+          </span>
+          <input
+            type="number"
+            className="topic-input"
+            min={15}
+            max={600}
+            value={config.shortsClipMaxSec ?? 60}
+            onChange={(e) => setField('shortsClipMaxSec', Number(e.target.value))}
+          />
+        </label>
+        {(config.videoFormat === 'long' || !config.videoFormat) && (
+          <label className="modal-field">
+            <span className="field-label-row">
+              <span>{t('maxScenesLongLabel')}</span>
+              <InfoTooltip content={t('maxScenesLongTooltip')} />
+            </span>
+            <input
+              type="number"
+              className="topic-input"
+              min={4}
+              max={40}
+              value={config.maxScenesLong ?? ''}
+              placeholder={t('maxScenesLongInherit')}
+              onChange={(e) => {
+                const v = e.target.value.trim();
+                setField('maxScenesLong', v === '' ? null : Number(v));
+              }}
+            />
+          </label>
+        )}
+        <label className="modal-field">
+          <span className="field-label-row">
+            <span>{t('generateAiImagesLabel')}</span>
+            <InfoTooltip content={t('generateAiImagesTooltip')} />
+          </span>
+          <select
+            className="topic-input"
+            value={
+              config.generateAiImages === true
+                ? 'on'
+                : config.generateAiImages === false
+                  ? 'off'
+                  : 'inherit'
+            }
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === 'inherit') setField('generateAiImages', null);
+              else setField('generateAiImages', v === 'on');
+            }}
+          >
+            <option value="inherit">{t('generateAiImagesInherit')}</option>
+            <option value="on">{t('generateAiImagesOn')}</option>
+            <option value="off">{t('generateAiImagesOff')}</option>
+          </select>
+        </label>
+        <label className="modal-field" htmlFor={voiceFieldId}>
+          <span className="field-label-row">
+            <span>{t('ttsVoiceLabel')}</span>
+            <InfoTooltip content={t('ttsVoiceTooltip')} />
+          </span>
+          <select
+            id={voiceFieldId}
+            className="topic-input"
+            value={typeof activeChannelVoice === 'string' ? activeChannelVoice : ''}
+            onChange={(e) => setChannelVoice(e.target.value)}
+          >
+            <option value="">{t('ttsVoiceInherit', { default: inheritVoiceLabel })}</option>
+            {voiceOptions.map((voice) => (
+              <option key={voice.id} value={voice.id}>
+                {voice.label}
+                {voice.gender ? ` · ${voice.gender}` : ''}
+              </option>
+            ))}
+            {typeof activeChannelVoice === 'string' &&
+              activeChannelVoice &&
+              !voiceOptions.some((v) => v.id === activeChannelVoice) && (
+                <option value={activeChannelVoice}>
+                  {t('ttsVoiceCustom', { id: activeChannelVoice })}
+                </option>
+              )}
+          </select>
         </label>
       </fieldset>
 

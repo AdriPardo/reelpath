@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import type { ChannelConfig } from '@autotube/shared';
 import { getOrgPipelineOverrides } from './org-runtime.js';
+import {
+  resolveGenerateAiImages,
+  resolveImageQuality,
+  resolveMaxAiImagesPerVideo,
+  resolveMaxScenesLong,
+} from './resolve-settings.js';
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -252,6 +258,11 @@ export const channelConfigSchema = z.object({
   scriptGenerationMode: z.enum(['monolithic', 'chunked']).optional(),
   videoMotionIntensity: z.enum(['subtle', 'normal', 'dynamic']).optional(),
   visualSourceMode: z.enum(['image', 'stock', 'mixed']).optional(),
+  maxScenesLong: z.union([z.coerce.number().int().min(4).max(40), z.null()]).optional(),
+  generateAiImages: z.union([z.boolean(), z.null()]).optional(),
+  edgeTtsVoice: z.union([z.string().min(2).max(120), z.null()]).optional(),
+  elevenLabsVoiceId: z.union([z.string().min(2).max(120), z.null()]).optional(),
+  openaiTtsVoice: z.union([z.string().min(2).max(120), z.null()]).optional(),
 });
 
 export function getIdeaMaxRetries(channelMax?: number): number {
@@ -259,22 +270,35 @@ export function getIdeaMaxRetries(channelMax?: number): number {
   return channelMax ?? config.IDEA_MAX_RETRIES;
 }
 
+export type GetMaxScenesOptions = {
+  retentionMode?: boolean;
+  /** Channel.config.maxScenesLong — wins over org/env for long format. */
+  maxScenesLong?: number | null;
+};
+
 export function getMaxScenes(
   format: 'shorts' | 'long',
-  options?: { retentionMode?: boolean },
+  options?: GetMaxScenesOptions,
 ): number {
   const config = loadConfig();
   const org = getOrgPipelineOverrides();
   const retention = options?.retentionMode ?? false;
   let max: number;
-  if (config.PIPELINE_MAX_SCENES != null) max = config.PIPELINE_MAX_SCENES;
-  else if (format === 'long') {
-    const orgMax = org?.maxScenesLong;
+  if (format === 'long') {
+    max = resolveMaxScenesLong({
+      channelMaxScenesLong: options?.maxScenesLong,
+      orgMaxScenesLong: org?.maxScenesLong,
+      envMaxScenesLong: config.PIPELINE_MAX_SCENES_LONG,
+      envPipelineMaxScenes: config.PIPELINE_MAX_SCENES,
+    });
+  } else {
     max =
-      typeof orgMax === 'number' && Number.isFinite(orgMax) && orgMax > 0
-        ? orgMax
-        : config.PIPELINE_MAX_SCENES_LONG;
-  } else max = retention ? 5 : config.PIPELINE_MAX_SCENES_SHORT;
+      config.PIPELINE_MAX_SCENES != null
+        ? config.PIPELINE_MAX_SCENES
+        : retention
+          ? 5
+          : config.PIPELINE_MAX_SCENES_SHORT;
+  }
   if (format === 'long') {
     max = Math.max(max, getMinScenes('long', options));
   }
@@ -393,6 +417,7 @@ export function resolveLlmConnection(options?: {
 /**
  * Config with org pipeline overrides applied (keys, TTS/LLM provider, DALL·E flag, scenes).
  * Use in TTS/media paths so BYOK and UI prefs take effect without rewriting every call site.
+ * Channel overrides for scenes/AI images are applied via getMaxScenes / isAiSceneImagesEnabled.
  */
 export function loadEffectiveConfig(): AppConfig {
   const base = loadConfig();
@@ -422,6 +447,17 @@ export function loadEffectiveConfig(): AppConfig {
       typeof org.maxScenesLong === 'number' && org.maxScenesLong > 0
         ? org.maxScenesLong
         : base.PIPELINE_MAX_SCENES_LONG,
+    MAX_AI_IMAGES_PER_VIDEO: resolveMaxAiImagesPerVideo({
+      orgMaxAiImagesPerVideo: org.maxAiImagesPerVideo,
+      envMaxAiImagesPerVideo: base.MAX_AI_IMAGES_PER_VIDEO,
+    }),
+    OPENAI_IMAGE_QUALITY: resolveImageQuality({
+      orgOpenaiImageQuality: org.openaiImageQuality,
+      envOpenaiImageQuality: base.OPENAI_IMAGE_QUALITY,
+    }),
+    EDGE_TTS_VOICE: org.edgeTtsVoice?.trim() || base.EDGE_TTS_VOICE,
+    ELEVENLABS_VOICE_ID: org.elevenLabsVoiceId?.trim() || base.ELEVENLABS_VOICE_ID,
+    OPENAI_TTS_VOICE: org.openaiTtsVoice?.trim() || base.OPENAI_TTS_VOICE,
     OPENAI_API_KEY: org.openAiApiKey?.trim() || base.OPENAI_API_KEY,
     DEEPSEEK_API_KEY: org.deepseekApiKey?.trim() || base.DEEPSEEK_API_KEY,
     ELEVENLABS_API_KEY: org.elevenLabsApiKey?.trim() || base.ELEVENLABS_API_KEY,
@@ -429,15 +465,19 @@ export function loadEffectiveConfig(): AppConfig {
 }
 
 /** Whether scene images may use paid AI (DALL·E / gpt-image), ignoring per-video caps. */
-export function isAiSceneImagesEnabled(orgPlan?: string | null): boolean {
+export function isAiSceneImagesEnabled(
+  orgPlan?: string | null,
+  options?: { channelGenerateAiImages?: boolean | null },
+): boolean {
   const org = getOrgPipelineOverrides();
-  if (org?.generateAiImages != null) {
-    return org.generateAiImages;
-  }
   const config = loadConfig();
-  if (config.GENERATE_DALLE_IMAGES) return true;
-  if (!config.FORCE_AI_IMAGES_ON_PAID) return false;
-  return ['starter', 'pro', 'unlimited'].includes(orgPlan ?? '');
+  return resolveGenerateAiImages({
+    channelGenerateAiImages: options?.channelGenerateAiImages,
+    orgGenerateAiImages: org?.generateAiImages,
+    envGenerateAiImages: config.GENERATE_DALLE_IMAGES,
+    forceAiImagesOnPaid: config.FORCE_AI_IMAGES_ON_PAID,
+    orgPlan,
+  });
 }
 
 export function getMinScenes(
@@ -451,13 +491,26 @@ export function getMinScenes(
 
 export function parseChannelConfig(raw: unknown): ChannelConfig {
   const defaults = loadConfig();
-  return channelConfigSchema.parse({
+  const parsed = channelConfigSchema.parse({
     reviewRequired: defaults.DEFAULT_REVIEW_REQUIRED,
     autoPublish: !defaults.DEFAULT_REVIEW_REQUIRED,
     minViralScore: defaults.DEFAULT_MIN_VIRAL_SCORE,
     visualSourceMode: 'mixed',
     ...((raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>),
   });
+  // null = inherit org/env — strip so JSON stays clean
+  if (parsed.maxScenesLong == null) delete (parsed as { maxScenesLong?: number | null }).maxScenesLong;
+  if (parsed.generateAiImages == null) {
+    delete (parsed as { generateAiImages?: boolean | null }).generateAiImages;
+  }
+  if (parsed.edgeTtsVoice == null) delete (parsed as { edgeTtsVoice?: string | null }).edgeTtsVoice;
+  if (parsed.elevenLabsVoiceId == null) {
+    delete (parsed as { elevenLabsVoiceId?: string | null }).elevenLabsVoiceId;
+  }
+  if (parsed.openaiTtsVoice == null) {
+    delete (parsed as { openaiTtsVoice?: string | null }).openaiTtsVoice;
+  }
+  return parsed;
 }
 
 export function getStoragePath(...segments: string[]): string {
@@ -485,11 +538,19 @@ export {
 export {
   clearOrgPipelineOverrides,
   getOrgPipelineOverrides,
+  mergeChannelVoiceOverrides,
   setOrgPipelineOverrides,
+  type OrgImageQuality,
   type OrgLlmProvider,
   type OrgPipelineOverrides,
   type OrgTtsProvider,
 } from './org-runtime.js';
+export {
+  resolveGenerateAiImages,
+  resolveImageQuality,
+  resolveMaxAiImagesPerVideo,
+  resolveMaxScenesLong,
+} from './resolve-settings.js';
 export {
   buildOrgInviteEmail,
   buildPaymentFailedEmail,

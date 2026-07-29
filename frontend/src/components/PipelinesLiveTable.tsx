@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { api, type PipelineRun } from '@/lib/api';
+import { api, listItems, type Channel, type PaginatedResponse, type PipelineRun } from '@/lib/api';
 import { PipelineProgressBar } from '@/components/PipelineProgressBar';
 import { ChannelBadge } from '@/components/ChannelBadge';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -11,28 +12,59 @@ import { isPipelineCancellable, isPipelineInProgress } from '@/lib/pipeline-stat
 import { PipelineCancelButton } from '@/components/PipelineCancelButton';
 import { PipelineRetryButton } from '@/components/PipelineRetryButton';
 import { PipelineElapsed } from '@/components/PipelineElapsed';
-import { EmptyState } from '@/components/ui/EmptyState';
 import { pipelineStepLabel } from '@/lib/pipeline-progress';
 import { mapPipelineError } from '@/lib/user-messages';
 
 type Filter = 'all' | 'active' | 'done' | 'failed';
 
-interface PipelinesLiveTableProps {
-  initialPipelines: PipelineRun[];
+interface PipelineCounts {
+  all: number;
+  active: number;
+  done: number;
+  failed: number;
 }
 
-export function PipelinesLiveTable({ initialPipelines }: PipelinesLiveTableProps) {
+interface PipelinesLiveTableProps {
+  initialPipelines: PipelineRun[];
+  page?: number;
+  filter?: Filter;
+  channelFilter?: string;
+  counts?: PipelineCounts;
+  channels?: Channel[];
+}
+
+function buildPipelinesHref(opts: {
+  page?: number;
+  filter?: Filter;
+  channel?: string;
+}): string {
+  const params = new URLSearchParams();
+  if (opts.filter && opts.filter !== 'all') params.set('filter', opts.filter);
+  if (opts.channel && opts.channel !== 'all') params.set('channel', opts.channel);
+  if (opts.page && opts.page > 1) params.set('page', String(opts.page));
+  const qs = params.toString();
+  return qs ? `/pipelines?${qs}` : '/pipelines';
+}
+
+export function PipelinesLiveTable({
+  initialPipelines,
+  page = 1,
+  filter = 'all',
+  channelFilter = 'all',
+  counts = { all: 0, active: 0, done: 0, failed: 0 },
+  channels = [],
+}: PipelinesLiveTableProps) {
   const locale = useLocale();
+  const router = useRouter();
   const t = useTranslations('pipelines');
   const tc = useTranslations('common');
   const tch = useTranslations('channels');
   const [pipelines, setPipelines] = useState(initialPipelines);
-  const [filter, setFilter] = useState<Filter>('all');
-  const [channelFilter, setChannelFilter] = useState<string>('all');
   const [refreshing, setRefreshing] = useState(false);
 
   const dateLocale = locale === 'en' ? 'en-GB' : 'es-ES';
-  const hasInProgress = pipelines.some((p) => isPipelineInProgress(p.status));
+  const hasInProgress =
+    counts.active > 0 || pipelines.some((p) => isPipelineInProgress(p.status));
 
   useEffect(() => {
     setPipelines(initialPipelines);
@@ -44,8 +76,13 @@ export function PipelinesLiveTable({ initialPipelines }: PipelinesLiveTableProps
     const interval = setInterval(async () => {
       setRefreshing(true);
       try {
-        const data = await api<PipelineRun[]>('/api/pipelines');
-        setPipelines(data);
+        const qs = new URLSearchParams();
+        qs.set('page', String(page));
+        qs.set('limit', '50');
+        if (filter !== 'all') qs.set('filter', filter);
+        if (channelFilter !== 'all') qs.set('channelId', channelFilter);
+        const data = await api<PaginatedResponse<PipelineRun>>(`/api/pipelines?${qs}`);
+        setPipelines(listItems(data));
       } catch {
         // silencioso
       } finally {
@@ -54,47 +91,26 @@ export function PipelinesLiveTable({ initialPipelines }: PipelinesLiveTableProps
     }, 20000);
 
     return () => clearInterval(interval);
-  }, [hasInProgress]);
+  }, [hasInProgress, page, filter, channelFilter]);
 
-  const stats = useMemo(() => ({
-    active: pipelines.filter((p) => isPipelineInProgress(p.status)).length,
-    done: pipelines.filter((p) => p.status === 'completed').length,
-    failed: pipelines.filter((p) => p.status === 'failed').length,
-  }), [pipelines]);
+  const channelOptions = channels
+    .map((ch) => ({ id: ch.id, name: ch.name }))
+    .sort((a, b) => a.name.localeCompare(b.name, dateLocale));
 
-  const channelOptions = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const p of pipelines) {
-      if (p.channel?.id && p.channel.name) map.set(p.channel.id, p.channel.name);
-    }
-    return Array.from(map, ([id, name]) => ({ id, name })).sort((a, b) =>
-      a.name.localeCompare(b.name, dateLocale),
-    );
-  }, [pipelines, dateLocale]);
-
-  const filtered = useMemo(() => {
-    const byChannel =
-      channelFilter === 'all'
-        ? pipelines
-        : pipelines.filter((p) => p.channel?.id === channelFilter);
-    switch (filter) {
-      case 'active':
-        return byChannel.filter((p) => isPipelineInProgress(p.status));
-      case 'done':
-        return byChannel.filter((p) => p.status === 'completed');
-      case 'failed':
-        return byChannel.filter((p) => p.status === 'failed');
-      default:
-        return byChannel;
-    }
-  }, [pipelines, filter, channelFilter]);
-
-  const filters: { key: Filter; label: string; count?: number }[] = [
-    { key: 'all', label: t('filterAll'), count: pipelines.length },
-    { key: 'active', label: t('filterActive'), count: stats.active },
-    { key: 'done', label: t('filterDone'), count: stats.done },
-    { key: 'failed', label: t('filterFailed'), count: stats.failed },
+  const filters: { key: Filter; label: string; count: number }[] = [
+    { key: 'all', label: t('filterAll'), count: counts.all },
+    { key: 'active', label: t('filterActive'), count: counts.active },
+    { key: 'done', label: t('filterDone'), count: counts.done },
+    { key: 'failed', label: t('filterFailed'), count: counts.failed },
   ];
+
+  function setFilter(next: Filter) {
+    router.push(buildPipelinesHref({ filter: next, channel: channelFilter }));
+  }
+
+  function setChannel(next: string) {
+    router.push(buildPipelinesHref({ filter, channel: next }));
+  }
 
   return (
     <>
@@ -106,16 +122,16 @@ export function PipelinesLiveTable({ initialPipelines }: PipelinesLiveTableProps
       )}
 
       <div className="generaciones-stats" aria-label={t('stats.summaryAria')}>
-        <div className={`generaciones-stat${stats.active > 0 ? ' generaciones-stat-active' : ''}`}>
-          <span className="generaciones-stat-value">{stats.active}</span>
+        <div className={`generaciones-stat${counts.active > 0 ? ' generaciones-stat-active' : ''}`}>
+          <span className="generaciones-stat-value">{counts.active}</span>
           <span className="generaciones-stat-label">{t('stats.inProgress')}</span>
         </div>
         <div className="generaciones-stat">
-          <span className="generaciones-stat-value">{stats.done}</span>
+          <span className="generaciones-stat-value">{counts.done}</span>
           <span className="generaciones-stat-label">{t('stats.completed')}</span>
         </div>
         <div className="generaciones-stat">
-          <span className="generaciones-stat-value">{stats.failed}</span>
+          <span className="generaciones-stat-value">{counts.failed}</span>
           <span className="generaciones-stat-label">{t('stats.failed')}</span>
         </div>
       </div>
@@ -129,7 +145,7 @@ export function PipelinesLiveTable({ initialPipelines }: PipelinesLiveTableProps
             onClick={() => setFilter(key)}
           >
             {label}
-            {count != null && count > 0 && <span className="pipeline-filter-count">{count}</span>}
+            {count > 0 && <span className="pipeline-filter-count">{count}</span>}
           </button>
         ))}
         {channelOptions.length > 1 && (
@@ -141,7 +157,7 @@ export function PipelinesLiveTable({ initialPipelines }: PipelinesLiveTableProps
               id="pipeline-channel-filter"
               className="channel-filter-select"
               value={channelFilter}
-              onChange={(e) => setChannelFilter(e.target.value)}
+              onChange={(e) => setChannel(e.target.value)}
             >
               <option value="all">{tch('allChannels')}</option>
               {channelOptions.map((ch) => (
@@ -154,17 +170,10 @@ export function PipelinesLiveTable({ initialPipelines }: PipelinesLiveTableProps
         )}
       </div>
 
-      {filtered.length === 0 ? (
-        <EmptyState
-          variant="pipeline"
-          compact
-          title={t('emptyCategory')}
-          description={t('emptyCategoryDesc')}
-        />
-      ) : (
+      {pipelines.length > 0 && (
         <>
           <div className="pipeline-cards">
-            {filtered.map((p) => {
+            {pipelines.map((p) => {
               const video = p.videos?.[0];
               const forcedTopic = p.metadata?.forcedTopic;
               const errorMessage = p.error ? mapPipelineError(p.error) : null;
@@ -178,44 +187,45 @@ export function PipelinesLiveTable({ initialPipelines }: PipelinesLiveTableProps
                   className={`pipeline-card pipeline-card-studio card${isActive ? ' pipeline-card-studio-active' : ''}`}
                 >
                   <Link href={`/pipelines/${p.id}`} className="pipeline-card-link">
-                  <div className="pipeline-card-top">
-                    <StatusBadge status={p.status} kind="pipeline" />
-                    <PipelineElapsed
-                      createdAt={p.createdAt}
-                      completedAt={p.completedAt}
-                      className="text-muted text-sm"
+                    <div className="pipeline-card-top">
+                      <StatusBadge status={p.status} kind="pipeline" />
+                      <PipelineElapsed
+                        createdAt={p.createdAt}
+                        completedAt={p.completedAt}
+                        className="text-muted text-sm"
+                      />
+                    </div>
+                    {p.channel?.name && <ChannelBadge name={p.channel.name} asText />}
+                    <h3 className="pipeline-card-title">
+                      {forcedTopic ?? video?.title ?? p.channel?.name ?? t('untitled')}
+                    </h3>
+                    <p className="pipeline-card-sub text-muted text-sm">
+                      {new Date(p.createdAt).toLocaleString(dateLocale)}
+                    </p>
+                    <PipelineProgressBar
+                      currentStep={p.currentStep}
+                      status={p.status}
+                      size="sm"
                     />
-                  </div>
-                  {p.channel?.name && (
-                    <ChannelBadge name={p.channel.name} asText />
-                  )}
-                  <h3 className="pipeline-card-title">
-                    {forcedTopic ?? video?.title ?? p.channel?.name ?? t('untitled')}
-                  </h3>
-                  <p className="pipeline-card-sub text-muted text-sm">
-                    {new Date(p.createdAt).toLocaleString(dateLocale)}
-                  </p>
-                  <PipelineProgressBar
-                    currentStep={p.currentStep}
-                    status={p.status}
-                    size="sm"
-                  />
-                  {errorMessage && (
-                    <p className="pipeline-card-error" title={errorMessage}>
-                      {errorMessage.slice(0, 80)}{errorMessage.length > 80 ? '…' : ''}
-                    </p>
-                  )}
-                  {video && (
-                    <p className="pipeline-card-video text-sm">
-                      {t('videoLabel')} <span>{video.title.slice(0, 50)}{video.title.length > 50 ? '…' : ''}</span>
-                    </p>
-                  )}
+                    {errorMessage && (
+                      <p className="pipeline-card-error" title={errorMessage}>
+                        {errorMessage.slice(0, 80)}
+                        {errorMessage.length > 80 ? '…' : ''}
+                      </p>
+                    )}
+                    {video && (
+                      <p className="pipeline-card-video text-sm">
+                        {t('videoLabel')}{' '}
+                        <span>
+                          {video.title.slice(0, 50)}
+                          {video.title.length > 50 ? '…' : ''}
+                        </span>
+                      </p>
+                    )}
                   </Link>
                   {(canCancel || canRetry) && (
                     <div className="pipeline-card-actions">
-                      {canRetry && (
-                        <PipelineRetryButton pipelineId={p.id} compact />
-                      )}
+                      {canRetry && <PipelineRetryButton pipelineId={p.id} compact />}
                       {canCancel && (
                         <PipelineCancelButton
                           pipelineId={p.id}
@@ -253,12 +263,14 @@ export function PipelinesLiveTable({ initialPipelines }: PipelinesLiveTableProps
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((p) => {
+                  {pipelines.map((p) => {
                     const video = p.videos?.[0];
                     const forcedTopic = p.metadata?.forcedTopic;
                     return (
                       <tr key={p.id}>
-                        <td><StatusBadge status={p.status} kind="pipeline" /></td>
+                        <td>
+                          <StatusBadge status={p.status} kind="pipeline" />
+                        </td>
                         <td className="pipeline-table-progress">
                           <PipelineProgressBar
                             currentStep={p.currentStep}

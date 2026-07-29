@@ -4,11 +4,15 @@ import { ReviewVideoCard } from '@/components/ReviewVideoCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ButtonLink } from '@/components/ui/Button';
-import { type Video } from '@/lib/api';
+import { Pagination } from '@/components/ui/Pagination';
+import { type PaginatedResponse, type Video } from '@/lib/api';
 import { serverApi } from '@/lib/api-server';
 import { parseApiError } from '@/lib/user-messages';
 
-type Props = { params: Promise<{ locale: string }> };
+type Props = {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<{ page?: string }>;
+};
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
@@ -16,22 +20,31 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: t('title') };
 }
 
-export default async function ReviewPage({ params }: Props) {
+export default async function ReviewPage({ params, searchParams }: Props) {
   const { locale } = await params;
+  const { page: pageParam } = await searchParams;
+  const page = Math.max(1, parseInt(pageParam ?? '1', 10) || 1);
   const t = await getTranslations({ locale, namespace: 'review' });
   const tc = await getTranslations({ locale, namespace: 'common' });
 
   let videos: Video[] = [];
+  let total = 0;
+  let totalPages = 1;
   let loadError: string | null = null;
   try {
-    videos = await serverApi<Video[]>('/api/videos?reviewStatus=pending');
+    const res = await serverApi<PaginatedResponse<Video>>(
+      `/api/videos?reviewStatus=pending&page=${page}&limit=20`,
+    );
+    videos = res.items;
+    total = res.total;
+    totalPages = res.totalPages;
   } catch (err) {
     loadError = parseApiError(err instanceof Error ? err.message : String(err));
   }
 
   const subtitle =
-    !loadError && videos.length > 0
-      ? t('subtitleWithCount', { count: videos.length })
+    !loadError && total > 0
+      ? t('subtitleWithCount', { count: total })
       : t('subtitle');
 
   return (
@@ -40,7 +53,7 @@ export default async function ReviewPage({ params }: Props) {
         title={t('title')}
         subtitle={subtitle}
         actions={
-          videos.length > 0 ? (
+          total > 0 ? (
             <ButtonLink href="/channels" variant="secondary" size="sm">
               {tc('generateVideo')}
             </ButtonLink>
@@ -59,6 +72,20 @@ export default async function ReviewPage({ params }: Props) {
             </ButtonLink>
           }
         />
+      ) : total > 0 && videos.length === 0 ? (
+        <>
+          <EmptyState
+            variant="review"
+            title={t('emptyTitle')}
+            description={t('subtitleWithCount', { count: total })}
+            action={
+              <ButtonLink href="/review" variant="primary">
+                {tc('retry')}
+              </ButtonLink>
+            }
+          />
+          <Pagination page={Math.min(page, totalPages)} totalPages={totalPages} basePath="/review" />
+        </>
       ) : videos.length === 0 ? (
         <EmptyState
           variant="review"
@@ -71,11 +98,16 @@ export default async function ReviewPage({ params }: Props) {
           }
         />
       ) : (
-        <div className="review-queue">
-          {videos.map((v) => (
-            <ReviewVideoCard key={v.id} video={v} />
-          ))}
-        </div>
+        <>
+          <div className="review-queue">
+            {videos.map((v) => (
+              <ReviewVideoCard key={v.id} video={v} />
+            ))}
+          </div>
+          {totalPages > 1 && (
+            <Pagination page={page} totalPages={totalPages} basePath="/review" />
+          )}
+        </>
       )}
     </div>
   );

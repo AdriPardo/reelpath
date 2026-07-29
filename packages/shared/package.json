@@ -4,6 +4,16 @@
   "private": true,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./ffmpeg-runner": {
+      "types": "./dist/ffmpeg-runner.d.ts",
+      "default": "./dist/ffmpeg-runner.js"
+    }
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",

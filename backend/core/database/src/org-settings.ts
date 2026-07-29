@@ -1,6 +1,7 @@
 import {
   decryptCredentialPayload,
   encryptCredentialPayload,
+  type OrgImageQuality,
   type OrgLlmProvider,
   type OrgPipelineOverrides,
   type OrgTtsProvider,
@@ -12,6 +13,7 @@ export type ByokProvider = (typeof BYOK_PROVIDERS)[number];
 
 const LLM_PROVIDERS = new Set<OrgLlmProvider>(['auto', 'deepseek', 'openai']);
 const TTS_PROVIDERS = new Set<OrgTtsProvider>(['auto', 'edge', 'elevenlabs', 'openai']);
+const IMAGE_QUALITIES = new Set<OrgImageQuality>(['low', 'medium', 'high', 'auto']);
 
 async function readByokApiKey(
   organizationId: string,
@@ -125,6 +127,11 @@ export type OrgPipelineSettings = {
   ttsProvider: OrgTtsProvider;
   generateAiImages: boolean;
   maxScenesLong: number | null;
+  maxAiImagesPerVideo: number | null;
+  openaiImageQuality: OrgImageQuality | null;
+  edgeTtsVoice: string | null;
+  elevenLabsVoiceId: string | null;
+  openaiTtsVoice: string | null;
   hasOpenaiKey: boolean;
   hasDeepseekKey: boolean;
   hasElevenLabsKey: boolean;
@@ -138,6 +145,16 @@ function parseTtsProvider(value: string | null | undefined): OrgTtsProvider {
   return TTS_PROVIDERS.has(value as OrgTtsProvider) ? (value as OrgTtsProvider) : 'auto';
 }
 
+function parseImageQuality(value: string | null | undefined): OrgImageQuality | null {
+  if (!value) return null;
+  return IMAGE_QUALITIES.has(value as OrgImageQuality) ? (value as OrgImageQuality) : null;
+}
+
+function parseOptionalVoice(value: string | null | undefined): string | null {
+  const trimmed = typeof value === 'string' ? value.trim() : '';
+  return trimmed ? trimmed : null;
+}
+
 export async function getOrgPipelineSettings(
   organizationId: string,
 ): Promise<OrgPipelineSettings | null> {
@@ -148,6 +165,11 @@ export async function getOrgPipelineSettings(
       ttsProvider: true,
       generateAiImages: true,
       maxScenesLong: true,
+      maxAiImagesPerVideo: true,
+      openaiImageQuality: true,
+      edgeTtsVoice: true,
+      elevenLabsVoiceId: true,
+      openaiTtsVoice: true,
     },
   });
   if (!org) return null;
@@ -163,6 +185,11 @@ export async function getOrgPipelineSettings(
     ttsProvider: parseTtsProvider(org.ttsProvider),
     generateAiImages: org.generateAiImages,
     maxScenesLong: org.maxScenesLong,
+    maxAiImagesPerVideo: org.maxAiImagesPerVideo,
+    openaiImageQuality: parseImageQuality(org.openaiImageQuality),
+    edgeTtsVoice: parseOptionalVoice(org.edgeTtsVoice),
+    elevenLabsVoiceId: parseOptionalVoice(org.elevenLabsVoiceId),
+    openaiTtsVoice: parseOptionalVoice(org.openaiTtsVoice),
     hasOpenaiKey,
     hasDeepseekKey,
     hasElevenLabsKey,
@@ -180,6 +207,11 @@ export async function loadOrgPipelineOverrides(
       ttsProvider: true,
       generateAiImages: true,
       maxScenesLong: true,
+      maxAiImagesPerVideo: true,
+      openaiImageQuality: true,
+      edgeTtsVoice: true,
+      elevenLabsVoiceId: true,
+      openaiTtsVoice: true,
     },
   });
   if (!org) return null;
@@ -195,6 +227,11 @@ export async function loadOrgPipelineOverrides(
     ttsProvider: parseTtsProvider(org.ttsProvider),
     generateAiImages: org.generateAiImages,
     maxScenesLong: org.maxScenesLong,
+    maxAiImagesPerVideo: org.maxAiImagesPerVideo,
+    openaiImageQuality: parseImageQuality(org.openaiImageQuality),
+    edgeTtsVoice: parseOptionalVoice(org.edgeTtsVoice),
+    elevenLabsVoiceId: parseOptionalVoice(org.elevenLabsVoiceId),
+    openaiTtsVoice: parseOptionalVoice(org.openaiTtsVoice),
     openAiApiKey,
     deepseekApiKey,
     elevenLabsApiKey,

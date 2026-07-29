@@ -45,7 +45,7 @@ async function assertPipelineInOrg(pipelineId: string, orgId: string | undefined
 }
 
 pipelinesRouter.get('/', async (req, res) => {
-  const { channelId } = req.query;
+  const { channelId, active, status, filter } = req.query;
   const orgId = orgScope(req);
   const orgFilter = await scopedChannelFilter(req);
 
@@ -55,12 +55,37 @@ pipelinesRouter.get('/', async (req, res) => {
 
   const pagination = parsePagination(req.query as Record<string, unknown>);
 
-  const where = {
+  const PIPELINE_IDLE_STATUSES = [
+    'completed',
+    'failed',
+    'rejected',
+    'pending_review',
+    'cancelled',
+  ] as const;
+
+  const filterKey = typeof filter === 'string' ? filter : undefined;
+  const statusFilter =
+    active === 'true' || active === '1' || filterKey === 'active'
+      ? { status: { notIn: [...PIPELINE_IDLE_STATUSES] } }
+      : filterKey === 'done'
+        ? { status: 'completed' }
+        : filterKey === 'failed'
+          ? { status: 'failed' }
+          : status
+            ? { status: String(status) }
+            : {};
+
+  const baseWhere = {
     ...(orgFilter ?? {}),
     ...(channelId ? { channelId: String(channelId) } : {}),
   };
 
-  const [runs, total] = await Promise.all([
+  const where = {
+    ...baseWhere,
+    ...statusFilter,
+  };
+
+  const [runs, total, countAll, countActive, countDone, countFailed] = await Promise.all([
     prisma.pipelineRun.findMany({
       where,
       orderBy: { createdAt: 'desc' },
@@ -68,17 +93,27 @@ pipelinesRouter.get('/', async (req, res) => {
       take: pagination.limit,
       include: {
         channel: { select: { id: true, name: true, slug: true } },
-        videos: { select: { id: true, title: true, reviewStatus: true } },
+        videos: { select: { id: true, title: true, reviewStatus: true }, take: 1 },
       },
     }),
     prisma.pipelineRun.count({ where }),
+    prisma.pipelineRun.count({ where: baseWhere }),
+    prisma.pipelineRun.count({
+      where: { ...baseWhere, status: { notIn: [...PIPELINE_IDLE_STATUSES] } },
+    }),
+    prisma.pipelineRun.count({ where: { ...baseWhere, status: 'completed' } }),
+    prisma.pipelineRun.count({ where: { ...baseWhere, status: 'failed' } }),
   ]);
 
-  if (pagination.explicit) {
-    return res.json(paginatedResponse(runs, total, pagination));
-  }
-
-  res.json(runs);
+  return res.json({
+    ...paginatedResponse(runs, total, pagination),
+    counts: {
+      all: countAll,
+      active: countActive,
+      done: countDone,
+      failed: countFailed,
+    },
+  });
 });
 
 pipelinesRouter.get('/stuck/list', async (req, res) => {

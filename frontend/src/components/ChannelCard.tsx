@@ -4,8 +4,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import type { Channel, PipelineRun } from '@/lib/api';
-import { api } from '@/lib/api';
+import type { Channel, PaginatedResponse, PipelineRun } from '@/lib/api';
+import { api, listItems } from '@/lib/api';
 import {
   getIntegrationUiState,
   INTEGRATION_SERVICE_NAMES,
@@ -17,7 +17,6 @@ import { SERVICE_UNAVAILABLE } from '@/lib/user-messages';
 import { useToast } from '@/components/ui/Toast';
 import { Button } from '@/components/ui/Button';
 import { Chip } from '@/components/ui/Chip';
-import { isPipelineInProgress } from '@/lib/pipeline-status';
 import { DeleteChannelModal } from '@/components/ChannelDeleteButton';
 import type { AppLocale } from '@/i18n/routing';
 
@@ -181,8 +180,10 @@ export function ChannelCard({
 
     setGenerating(true);
     try {
-      const pipelines = await api<PipelineRun[]>(`/api/pipelines?channelId=${channel.id}`);
-      const active = pipelines.filter((p) => isPipelineInProgress(p.status));
+      const pipelines = await api<PaginatedResponse<PipelineRun>>(
+        `/api/pipelines?channelId=${channel.id}&active=true&page=1&limit=20`,
+      );
+      const active = listItems(pipelines);
       if (active.length > 0) {
         const proceed = window.confirm(
           active.length === 1

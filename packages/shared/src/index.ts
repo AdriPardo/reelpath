@@ -4,7 +4,7 @@ export * from './scheduling.js';
 export * from './retention.js';
 export * from './video-motion.js';
 export * from './video-encoding.js';
-export * from './ffmpeg-runner.js';
+// ffmpeg-runner uses node:child_process — import from '@autotube/shared/ffmpeg-runner' (not the barrel)
 export * from './ass-subtitles.js';
 export * from './duration.js';
 export * from './shorts.js';
@@ -13,3 +13,4 @@ export * from './analytics.js';
 export * from './visual-source.js';
 export * from './visual-origin.js';
 export * from './billing-plans.js';
+export * from './tts-voices.js';

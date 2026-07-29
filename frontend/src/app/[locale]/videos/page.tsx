@@ -58,7 +58,7 @@ export default async function VideosPage({ params, searchParams }: Props) {
     const qs = paramsQs.toString();
     const [videosRes, channelsRes] = await Promise.all([
       serverApi<PaginatedResponse<Video>>(`/api/videos?${qs}`),
-      serverApi<Channel[]>('/api/channels'),
+      serverApi<Channel[]>('/api/channels?light=1'),
     ]);
     videos = videosRes.items;
     totalPages = videosRes.totalPages;

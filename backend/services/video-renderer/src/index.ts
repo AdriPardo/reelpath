@@ -19,10 +19,10 @@ import {
   getMotionFilterParams,
   isFfmpegFilmGrainEnabled,
   mapTransitionToFfmpeg,
-  runFfmpeg,
   VIDEO_RESOLUTION_LONG,
   VIDEO_RESOLUTION_SHORT,
 } from '@autotube/shared';
+import { runFfmpeg } from '@autotube/shared/ffmpeg-runner';
 import {
   buildMotionScaleCrop,
   escapeFfmpegPath,

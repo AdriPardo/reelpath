@@ -2452,9 +2452,28 @@ th { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; }
 }
 
 .notification-bell-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
   padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
+}
+
+.notification-bell-mark-all {
+  border: none;
+  background: transparent;
+  color: var(--accent, var(--primary));
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.15rem 0;
+  white-space: nowrap;
+}
+
+.notification-bell-mark-all:hover {
+  text-decoration: underline;
 }
 
 .notification-bell-status {

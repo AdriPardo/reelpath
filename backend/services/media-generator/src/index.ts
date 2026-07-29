@@ -35,6 +35,8 @@ export async function generateMedia(params: {
   visualSourceMode?: ChannelConfig['visualSourceMode'];
   /** Plan de la organización — solo fuerza IA si FORCE_AI_IMAGES_ON_PAID=true. */
   orgPlan?: string | null;
+  /** Channel.config.generateAiImages — undefined = heredar org/env. */
+  channelGenerateAiImages?: boolean | null;
   /** Subfolder under pipelines/<id>/ (e.g. "short"). */
   subdir?: string;
   /** When false, skip MediaAsset DB writes (for auxiliary renders like dedicated shorts). */
@@ -45,7 +47,9 @@ export async function generateMedia(params: {
   const persist = params.persist !== false;
   const visualSourceMode = params.visualSourceMode ?? 'mixed';
   const cfg = loadEffectiveConfig();
-  const aiImagesBase = isAiSceneImagesEnabled(params.orgPlan);
+  const aiImagesBase = isAiSceneImagesEnabled(params.orgPlan, {
+    channelGenerateAiImages: params.channelGenerateAiImages,
+  });
   const maxAiImages = cfg.MAX_AI_IMAGES_PER_VIDEO;
   let aiImagesUsed = 0;
   const forceAiImages = cfg.FORCE_AI_IMAGES_ON_PAID && aiImagesBase && !cfg.GENERATE_DALLE_IMAGES;
