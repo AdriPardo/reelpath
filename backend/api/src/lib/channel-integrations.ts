@@ -1,4 +1,9 @@
-import { decryptCredentialPayload, encryptCredentialPayload, loadConfig } from '@autotube/config';
+import {
+  decryptCredentialPayload,
+  encryptCredentialPayload,
+  loadConfig,
+  resolvePlatformYouTubeOAuthAppSync,
+} from '@autotube/config';
 import { prisma } from '@autotube/database';
 import { google } from 'googleapis';
 import { hasYouTubeOAuthApp } from './youtube-oauth.js';
@@ -32,7 +37,7 @@ export interface IntegrationProviderStatus {
   error: string | null;
   channelTitle?: string | null;
   privacyStatus?: string;
-  /** Platform has YOUTUBE_CLIENT_ID/SECRET — user can connect via OAuth in the UI. */
+  /** Platform OAuth app configured (PlatformSecret / legacy env). */
   oauthAvailable?: boolean;
   /** Token includes yt-analytics.readonly scope. */
   analyticsOk?: boolean;
@@ -46,12 +51,13 @@ export interface ChannelIntegrationsResponse {
 
 function envYouTubeData(): YouTubeCredentialData | null {
   const config = loadConfig();
-  if (!config.YOUTUBE_CLIENT_ID || !config.YOUTUBE_CLIENT_SECRET || !config.YOUTUBE_REFRESH_TOKEN) {
+  const oauthApp = resolvePlatformYouTubeOAuthAppSync();
+  if (!oauthApp || !config.YOUTUBE_REFRESH_TOKEN) {
     return null;
   }
   return {
-    clientId: config.YOUTUBE_CLIENT_ID,
-    clientSecret: config.YOUTUBE_CLIENT_SECRET,
+    clientId: oauthApp.clientId,
+    clientSecret: oauthApp.clientSecret,
     refreshToken: config.YOUTUBE_REFRESH_TOKEN,
     privacyStatus: config.YOUTUBE_PRIVACY_STATUS ?? 'private',
     linkedFromEnv: true,
@@ -62,10 +68,11 @@ export function resolveYouTubeCredentials(
   stored: YouTubeCredentialData | null,
 ): { data: YouTubeCredentialData | null; source: 'channel' | 'env' | 'none' } {
   const config = loadConfig();
+  const oauthApp = resolvePlatformYouTubeOAuthAppSync();
 
   if (stored?.refreshToken) {
-    const clientId = stored.clientId ?? config.YOUTUBE_CLIENT_ID;
-    const clientSecret = stored.clientSecret ?? config.YOUTUBE_CLIENT_SECRET;
+    const clientId = stored.clientId ?? oauthApp?.clientId;
+    const clientSecret = stored.clientSecret ?? oauthApp?.clientSecret;
     if (clientId && clientSecret) {
       return {
         data: {

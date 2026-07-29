@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { mergeChannelVoiceOverrides } from './org-runtime.js';
+import { mergeChannelProductOverrides } from './org-runtime.js';
 
-describe('mergeChannelVoiceOverrides (channel > org)', () => {
-  it('keeps org voices when channel is empty', () => {
+describe('mergeChannelProductOverrides (channel > org)', () => {
+  it('keeps org voices when channel empty', () => {
     expect(
-      mergeChannelVoiceOverrides(
+      mergeChannelProductOverrides(
         { edgeTtsVoice: 'es-ES-ElviraNeural', elevenLabsVoiceId: 'org-11' },
         {},
       ),
@@ -14,26 +14,38 @@ describe('mergeChannelVoiceOverrides (channel > org)', () => {
     });
   });
 
-  it('overrides only set channel voices', () => {
+  it('overrides product fields from channel', () => {
     expect(
-      mergeChannelVoiceOverrides(
+      mergeChannelProductOverrides(
         {
+          ttsProvider: 'auto',
           edgeTtsVoice: 'es-ES-ElviraNeural',
-          elevenLabsVoiceId: 'org-11',
-          openaiTtsVoice: 'nova',
+          maxAiImagesPerVideo: 4,
+          openaiImageQuality: 'medium',
         },
-        { edgeTtsVoice: 'es-MX-DaliaNeural', openaiTtsVoice: null },
+        {
+          ttsProvider: 'edge',
+          edgeTtsVoice: 'es-MX-DaliaNeural',
+          maxAiImagesPerVideo: 2,
+          openaiImageQuality: 'high',
+          generateAiImages: true,
+        },
       ),
     ).toEqual({
+      ttsProvider: 'edge',
       edgeTtsVoice: 'es-MX-DaliaNeural',
-      elevenLabsVoiceId: 'org-11',
-      openaiTtsVoice: 'nova',
+      maxAiImagesPerVideo: 2,
+      openaiImageQuality: 'high',
+      generateAiImages: true,
     });
   });
 
-  it('works with null org overrides', () => {
+  it('works from null org', () => {
     expect(
-      mergeChannelVoiceOverrides(null, { openaiTtsVoice: 'shimmer' }),
-    ).toEqual({ openaiTtsVoice: 'shimmer' });
+      mergeChannelProductOverrides(null, { openaiTtsVoice: 'shimmer', maxScenesShort: 5 }),
+    ).toEqual({
+      openaiTtsVoice: 'shimmer',
+      maxScenesShort: 5,
+    });
   });
 });

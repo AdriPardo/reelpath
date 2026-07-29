@@ -238,9 +238,11 @@ channelsRouter.patch('/:id/integrations/:provider', async (req, res) => {
   if (body.action === 'connect') {
     const creds = body.credentials;
     const config = loadConfig();
+    const { resolvePlatformYouTubeOAuthAppSync } = await import('@autotube/config');
+    const oauthApp = resolvePlatformYouTubeOAuthAppSync();
     const refreshToken = creds?.refreshToken;
-    const clientId = creds?.clientId ?? config.YOUTUBE_CLIENT_ID;
-    const clientSecret = creds?.clientSecret ?? config.YOUTUBE_CLIENT_SECRET;
+    const clientId = creds?.clientId ?? oauthApp?.clientId;
+    const clientSecret = creds?.clientSecret ?? oauthApp?.clientSecret;
 
     if (!refreshToken || !clientId || !clientSecret) {
       return res.status(400).json({
@@ -499,14 +501,11 @@ channelsRouter.post('/', async (req, res) => {
     }
   }
 
-  const defaults = loadConfig();
   const config = parseChannelConfig({
     niche: body.niche,
     videoFormat: 'shorts',
     aspectRatio: '9:16',
     templateId: 'shorts-default',
-    autoPublish: !defaults.DEFAULT_REVIEW_REQUIRED,
-    reviewRequired: defaults.DEFAULT_REVIEW_REQUIRED,
     ideasPerRun: 5,
     language: 'es',
     visualSourceMode: 'mixed',

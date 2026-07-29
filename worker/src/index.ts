@@ -18,6 +18,25 @@ worker.on('failed', (job, err) => {
 
 worker.on('ready', () => {
   console.log('[worker] AutoTube pipeline worker ready');
+  void (async () => {
+    try {
+      const {
+        importPlatformSecretsFromEnvIfEmpty,
+        loadPlatformSecretsOverrides,
+      } = await import('@autotube/database');
+      await importPlatformSecretsFromEnvIfEmpty({
+        YOUTUBE_CLIENT_ID: process.env.YOUTUBE_CLIENT_ID,
+        YOUTUBE_CLIENT_SECRET: process.env.YOUTUBE_CLIENT_SECRET,
+        OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+        DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY,
+        ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY,
+        PEXELS_API_KEY: process.env.PEXELS_API_KEY,
+      });
+      await loadPlatformSecretsOverrides();
+    } catch (err) {
+      console.warn('[worker] No se pudieron cargar secretos de plataforma:', err);
+    }
+  })();
 });
 
 let shuttingDown = false;

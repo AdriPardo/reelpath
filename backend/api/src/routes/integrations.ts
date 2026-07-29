@@ -66,27 +66,24 @@ integrationsRouter.use(authMiddleware);
 integrationsRouter.get('/youtube/status', async (req, res) => {
   const orgId = orgScope(req);
   const config = loadConfig();
-  const hasCredentials = !!(
-    config.YOUTUBE_CLIENT_ID &&
-    config.YOUTUBE_CLIENT_SECRET &&
-    config.YOUTUBE_REFRESH_TOKEN
-  );
+  const { resolvePlatformYouTubeOAuthAppSync } = await import('@autotube/config');
+  const oauthApp = resolvePlatformYouTubeOAuthAppSync();
+  const hasCredentials = !!(oauthApp && config.YOUTUBE_REFRESH_TOKEN);
 
   if (!hasCredentials) {
     return res.json({
       hasCredentials: false,
       tokenOk: false,
-      error: 'Faltan credenciales YouTube en la configuración',
+      error: oauthApp
+        ? 'Falta refresh token de YouTube (desarrollo)'
+        : 'Configura Client ID/Secret en Ajustes → Secretos de plataforma',
       channelTitle: null,
       organizationId: orgId ?? null,
     });
   }
 
   try {
-    const oauth2 = new google.auth.OAuth2(
-      config.YOUTUBE_CLIENT_ID,
-      config.YOUTUBE_CLIENT_SECRET,
-    );
+    const oauth2 = new google.auth.OAuth2(oauthApp!.clientId, oauthApp!.clientSecret);
     oauth2.setCredentials({ refresh_token: config.YOUTUBE_REFRESH_TOKEN });
     const { credentials } = await oauth2.refreshAccessToken();
 

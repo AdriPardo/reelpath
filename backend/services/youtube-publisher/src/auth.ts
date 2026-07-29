@@ -1,14 +1,11 @@
-import { loadConfig } from '@autotube/config';
+import { loadConfig, resolvePlatformYouTubeOAuthAppSync } from '@autotube/config';
 import { google } from 'googleapis';
 import type { ResolvedYouTubeCredentials } from './credentials.js';
 
 export function hasYouTubeCredentials(): boolean {
   const config = loadConfig();
-  return !!(
-    config.YOUTUBE_CLIENT_ID &&
-    config.YOUTUBE_CLIENT_SECRET &&
-    config.YOUTUBE_REFRESH_TOKEN
-  );
+  const oauthApp = resolvePlatformYouTubeOAuthAppSync();
+  return !!(oauthApp && config.YOUTUBE_REFRESH_TOKEN);
 }
 
 export function createYouTubeOAuthFromCredentials(creds: ResolvedYouTubeCredentials) {
@@ -20,16 +17,17 @@ export function createYouTubeOAuthFromCredentials(creds: ResolvedYouTubeCredenti
 /** @deprecated Prefer createYouTubeOAuthFromCredentials with per-channel credentials. */
 export function createYouTubeOAuth() {
   const config = loadConfig();
-  if (!hasYouTubeCredentials()) {
+  const oauthApp = resolvePlatformYouTubeOAuthAppSync();
+  if (!oauthApp || !config.YOUTUBE_REFRESH_TOKEN) {
     throw new Error(
-      'YouTube OAuth incompleto — conecta YouTube en Integraciones del canal o configura credenciales de desarrollo',
+      'YouTube OAuth incompleto — conecta YouTube en Integraciones del canal o configura secretos de plataforma',
     );
   }
 
   return createYouTubeOAuthFromCredentials({
-    clientId: config.YOUTUBE_CLIENT_ID!,
-    clientSecret: config.YOUTUBE_CLIENT_SECRET!,
-    refreshToken: config.YOUTUBE_REFRESH_TOKEN!,
+    clientId: oauthApp.clientId,
+    clientSecret: oauthApp.clientSecret,
+    refreshToken: config.YOUTUBE_REFRESH_TOKEN,
     privacyStatus: config.YOUTUBE_PRIVACY_STATUS ?? 'private',
     source: 'env',
   });

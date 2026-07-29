@@ -39,19 +39,24 @@ export function organizationDisplayName(name: string, slug: string): string {
   return name;
 }
 
-/** Canal/organización de ejemplo — landing pública y sitio del creador (no login). */
+/**
+ * Canal de ejemplo en la landing: prueba de resultado (hecho *con* Reelpath),
+ * no marca gemela del SaaS.
+ */
 export const DEMO_CHANNEL = {
   name: 'Saberes del Pasado',
-  eyebrow: 'Canal educativo',
-  tagline: 'Curiosidades de historia que no te enseñaron — en YouTube',
+  eyebrow: 'Hecho con Reelpath',
+  tagline: 'Curiosidades de historia en YouTube',
   description:
-    'Herramienta privada de creación de contenido: genera guiones educativos, voz, imágenes y vídeos, y los publica en las cuentas del creador en YouTube (vídeos largos y Shorts verticales).',
+    'Canal educativo real: guiones, voz, imágenes y publicación en YouTube producidos con Reelpath — con revisión humana antes de salir al aire.',
   contactEmail: 'adripardo72@gmail.com',
   youtubeUrl: 'https://www.youtube.com/@SaberesdelPasado',
+  /** Si se define, la landing embebe este vídeo; si no, muestra el pipeline visual. */
+  demoYoutubeVideoId: '' as string,
   publicSiteUrl: '/landing',
   features: [
-    'Guiones educativos de historia generados con IA',
-    'Voz, imágenes y vídeo listos para revisión',
-    'Publicación en YouTube: vídeos largos y Shorts verticales',
+    'Guiones educativos de historia',
+    'Voz e imágenes revisadas antes de publicar',
+    'Largos y Shorts en el mismo flujo',
   ],
 } as const;

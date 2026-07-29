@@ -4,6 +4,7 @@ import { z } from 'zod';
 import {
   buildOrgInviteEmail,
   loadConfig,
+  PRODUCT_DEFAULTS,
   sendEmail,
 } from '@autotube/config';
 import {
@@ -274,21 +275,20 @@ orgRouter.get('/settings', async (req, res) => {
     return res.status(404).json({ error: 'Organización no encontrada' });
   }
 
-  const platform = loadConfig();
   res.json({
     ...settings,
     /** Compat con UI antigua que solo miraba OpenAI BYOK. */
     hasOpenaiKey: settings.hasOpenaiKey,
     platformDefaults: {
-      llmProvider: platform.LLM_PROVIDER,
-      ttsProvider: platform.TTS_PROVIDER,
-      generateAiImages: platform.GENERATE_DALLE_IMAGES,
-      maxScenesLong: platform.PIPELINE_MAX_SCENES_LONG,
-      maxAiImagesPerVideo: platform.MAX_AI_IMAGES_PER_VIDEO,
-      openaiImageQuality: platform.OPENAI_IMAGE_QUALITY,
-      edgeTtsVoice: platform.EDGE_TTS_VOICE,
-      elevenLabsVoiceId: platform.ELEVENLABS_VOICE_ID,
-      openaiTtsVoice: platform.OPENAI_TTS_VOICE,
+      llmProvider: PRODUCT_DEFAULTS.llmProvider,
+      ttsProvider: PRODUCT_DEFAULTS.ttsProvider,
+      generateAiImages: PRODUCT_DEFAULTS.generateAiImages,
+      maxScenesLong: PRODUCT_DEFAULTS.maxScenesLong,
+      maxAiImagesPerVideo: PRODUCT_DEFAULTS.maxAiImagesPerVideo,
+      openaiImageQuality: PRODUCT_DEFAULTS.openaiImageQuality,
+      edgeTtsVoice: PRODUCT_DEFAULTS.edgeTtsVoice,
+      elevenLabsVoiceId: PRODUCT_DEFAULTS.elevenLabsVoiceId,
+      openaiTtsVoice: PRODUCT_DEFAULTS.openaiTtsVoice,
     },
   });
 });

@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { loadConfig } from '@autotube/config';
+import { effectivePexelsApiKey } from '@autotube/config';
 import {
   buildLanczosScaleCrop,
   ffmpegH264EncodeArgs,
@@ -44,7 +44,7 @@ async function fetchPexelsVideo(
   query: string,
   aspectRatio: '9:16' | '16:9',
 ): Promise<string | null> {
-  const apiKey = loadConfig().PEXELS_API_KEY?.trim();
+  const apiKey = effectivePexelsApiKey()?.trim();
   if (!apiKey) return null;
 
   const orientation = aspectRatio === '9:16' ? 'portrait' : 'landscape';
@@ -106,7 +106,7 @@ async function fetchPexelsImage(
   query: string,
   aspectRatio: '9:16' | '16:9',
 ): Promise<string | null> {
-  const apiKey = loadConfig().PEXELS_API_KEY?.trim();
+  const apiKey = effectivePexelsApiKey()?.trim();
   if (!apiKey) return null;
 
   const orientation = aspectRatio === '9:16' ? 'portrait' : 'landscape';
@@ -176,7 +176,7 @@ export async function resolveSceneVisual(params: ResolveSceneVisualParams): Prom
 }> {
   if (params.preferredSource === 'stock') {
     const query = stockSearchQuery(params.visualPrompt, params.narration);
-    const apiKey = loadConfig().PEXELS_API_KEY?.trim();
+    const apiKey = effectivePexelsApiKey()?.trim();
 
     if (!apiKey) {
       console.info(

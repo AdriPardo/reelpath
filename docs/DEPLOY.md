@@ -119,10 +119,10 @@ Variables **obligatorias**:
 | `AUTH_REQUIRED` | `true` | |
 | `NEXT_PUBLIC_AUTH_REQUIRED` | `true` | |
 | `MOCK_EXTERNAL_APIS` | `false` | |
-| `OPENAI_API_KEY` | `sk-...` | O ElevenLabs + Edge TTS |
-| `YOUTUBE_CLIENT_ID` | | Google Cloud OAuth |
-| `YOUTUBE_CLIENT_SECRET` | | |
+| `CREDENTIALS_ENCRYPTION_KEY` | (hex 32) | Cifrado BYOK + secretos de plataforma |
 | `DEFAULT_ADMIN_PASSWORD` | (segura) | Usuario admin del seed |
+
+API keys (OpenAI/DeepSeek/ElevenLabs/Pexels) y YouTube **Client ID/Secret** se configuran en **Ajustes → Secretos de plataforma** tras el primer login (o `npm run secrets:import-from-env` si migras desde un `.env` antiguo).
 
 Asegúrate de que `NEXT_PUBLIC_API_URL` y `FRONTEND_URL` usan `https://` + tu `DOMAIN`.
 
@@ -341,14 +341,11 @@ STRIPE_TAX_ENABLED=false   # true si tienes Stripe Tax configurado
 Antes de abrir registro público o cobrar clientes, verifica:
 
 - [ ] **SMTP Brevo** (u otro): `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM` — ver [EMAIL.md](./EMAIL.md)
-- [ ] **`CREDENTIALS_ENCRYPTION_KEY`**: genera con `openssl rand -base64 32` (cifrado BYOK YouTube/OpenAI)
+- [ ] **`CREDENTIALS_ENCRYPTION_KEY`**: genera con `openssl rand -hex 32` (cifrado BYOK + secretos de plataforma)
 - [ ] **OAuth Google / YouTube**: proyecto GCP, consent screen, redirect URI `https://TU_DOMINIO/api/integrations/youtube/callback`
+- [ ] **Secretos de plataforma** (UI owner): YouTube Client ID/Secret + DeepSeek/OpenAI (y opcional ElevenLabs/Pexels)
 - [ ] **Stripe webhook**: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, precios y portal — ver [BILLING.md](./BILLING.md)
 - [ ] **`MOCK_EXTERNAL_APIS=false`** en producción (TTS, imágenes y YouTube reales)
-- [ ] **`PEXELS_API_KEY`**: stock B-roll en modo `stock`/`mixed` por canal ([Pexels API](https://www.pexels.com/api/))
-- [ ] **`GENERATE_DALLE_IMAGES=true`** solo si quieres imágenes IA (coste); por defecto `false` + Pexels
-- [ ] **`DEEPSEEK_API_KEY`** (recomendado para guiones baratos) y/o **`OPENAI_API_KEY`**
-- [ ] **`TTS_PROVIDER=auto`** con Edge (gratis) o `elevenlabs` si pagas calidad de voz
 - [ ] Health check: `https://TU_DOMINIO/health`
 - [ ] Pipeline de prueba end-to-end con revisión y publicación
 
@@ -358,12 +355,11 @@ Antes de abrir registro público o cobrar clientes, verifica:
 - [ ] Registrar dominio y apuntar DNS al VPS
 - [ ] Instalar Docker en el VPS
 - [ ] Clonar repo y copiar `.env.production.example` → `.env`
-- [ ] Generar `AUTH_SECRET` (`openssl rand -base64 48`)
-- [ ] Configurar `OPENAI_API_KEY` y/o `ELEVENLABS_API_KEY`
+- [ ] Generar `AUTH_SECRET` (`openssl rand -base64 48`) y `CREDENTIALS_ENCRYPTION_KEY`
 - [ ] Crear proyecto Google Cloud + OAuth web + redirect URI de producción
 - [ ] Ejecutar `./infrastructure/scripts/deploy-prod.sh`
 - [ ] Verificar `https://TU_DOMINIO/health`
-- [ ] Login admin → cambiar contraseña
+- [ ] Login admin → Ajustes → Secretos de plataforma (Client ID/Secret + API keys)
 - [ ] Conectar canal YouTube vía OAuth
 - [ ] Lanzar pipeline de prueba
 - [ ] (Opcional) Configurar backup cron de Postgres

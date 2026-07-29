@@ -115,27 +115,37 @@ export interface ChannelConfig {
   visualSourceMode?: VisualSourceMode;
   /**
    * Tope de escenas en vídeos largos (override canal).
-   * undefined/null = heredar Organization.maxScenesLong → env PIPELINE_MAX_SCENES_LONG.
+   * undefined/null = heredar Organization.maxScenesLong → default de código.
    */
   maxScenesLong?: number | null;
+  /** Mínimo de escenas long; null = heredar org → código. */
+  minScenesLong?: number | null;
+  /** Máx. escenas short; null = heredar → código. */
+  maxScenesShort?: number | null;
   /**
    * Imágenes IA de escena (override canal).
-   * undefined/null = heredar Organization.generateAiImages → env GENERATE_DALLE_IMAGES.
+   * undefined/null = heredar Organization.generateAiImages → default de código.
    */
   generateAiImages?: boolean | null;
+  /** Tope de imágenes IA por vídeo; null = heredar org → código. */
+  maxAiImagesPerVideo?: number | null;
+  /** Calidad gpt-image; null = heredar org → código. */
+  openaiImageQuality?: 'low' | 'medium' | 'high' | 'auto' | null;
+  /** Proveedor TTS; null = heredar org → código. */
+  ttsProvider?: 'auto' | 'edge' | 'elevenlabs' | 'openai' | null;
   /**
    * Voz Edge TTS (override canal).
-   * undefined/null = heredar Organization.edgeTtsVoice → env EDGE_TTS_VOICE.
+   * undefined/null = heredar Organization.edgeTtsVoice → default de código.
    */
   edgeTtsVoice?: string | null;
   /**
    * Voice ID ElevenLabs (override canal).
-   * undefined/null = heredar Organization.elevenLabsVoiceId → env ELEVENLABS_VOICE_ID.
+   * undefined/null = heredar Organization.elevenLabsVoiceId → default de código.
    */
   elevenLabsVoiceId?: string | null;
   /**
    * Voz OpenAI TTS (override canal).
-   * undefined/null = heredar Organization.openaiTtsVoice → env OPENAI_TTS_VOICE.
+   * undefined/null = heredar Organization.openaiTtsVoice → default de código.
    */
   openaiTtsVoice?: string | null;
 }

@@ -1,11 +1,16 @@
 import { z } from 'zod';
 import type { ChannelConfig } from '@autotube/shared';
 import { getOrgPipelineOverrides } from './org-runtime.js';
+import { getPlatformSecretsOverrides } from './platform-secrets-runtime.js';
+import { PRODUCT_DEFAULTS } from './product-defaults.js';
 import {
   resolveGenerateAiImages,
   resolveImageQuality,
   resolveMaxAiImagesPerVideo,
   resolveMaxScenesLong,
+  resolveMaxScenesShort,
+  resolveMinScenesLong,
+  resolveTtsProvider,
 } from './resolve-settings.js';
 
 const envSchema = z.object({
@@ -14,71 +19,70 @@ const envSchema = z.object({
   REDIS_URL: z.string().default('redis://localhost:6379'),
   SENTRY_DSN: z.string().optional(),
   SENTRY_ENVIRONMENT: z.string().optional(),
-  // TTS provider priority (TTS_PROVIDER=auto, cost-efficient): Edge (free) → ElevenLabs → OpenAI → mock
-  // Set TTS_PROVIDER=elevenlabs for premium voice (paid). Starter/default: prefer free Edge.
-  TTS_PROVIDER: z.enum(['auto', 'elevenlabs', 'edge', 'openai', 'mock']).default('auto'),
+  // TTS — defaults from PRODUCT_DEFAULTS (preferencias en canal/org; .env no documenta producto)
+  TTS_PROVIDER: z
+    .enum(['auto', 'elevenlabs', 'edge', 'openai', 'mock'])
+    .default(PRODUCT_DEFAULTS.ttsProvider),
   TTS_ENABLE_EDGE: z
     .string()
     .transform((v) => v !== 'false')
     .default('true'),
   ELEVENLABS_API_KEY: z.string().optional(),
-  // Matilda — multilingual, natural Spanish (premade voice)
-  ELEVENLABS_VOICE_ID: z.string().default('XrExE9yKIg1WjnnlVkGX'),
-  ELEVENLABS_MODEL: z.string().default('eleven_multilingual_v2'),
-  ELEVENLABS_OUTPUT_FORMAT: z.string().default('mp3_44100_128'),
-  ELEVENLABS_LANGUAGE_CODE: z.string().default('es'),
-  ELEVENLABS_STABILITY: z.coerce.number().min(0).max(1).default(0.45),
-  ELEVENLABS_SIMILARITY: z.coerce.number().min(0).max(1).default(0.8),
-  ELEVENLABS_STYLE: z.coerce.number().min(0).max(1).default(0.15),
-  EDGE_TTS_VOICE: z.string().default('es-ES-ElviraNeural'),
-  EDGE_TTS_RATE: z.string().default('+0%'),
-  EDGE_TTS_VOLUME: z.string().default('+0%'),
-  EDGE_TTS_PITCH: z.string().default('+0Hz'),
+  ELEVENLABS_VOICE_ID: z.string().default(PRODUCT_DEFAULTS.elevenLabsVoiceId),
+  ELEVENLABS_MODEL: z.string().default(PRODUCT_DEFAULTS.elevenLabsModel),
+  ELEVENLABS_OUTPUT_FORMAT: z.string().default(PRODUCT_DEFAULTS.elevenLabsOutputFormat),
+  ELEVENLABS_LANGUAGE_CODE: z.string().default(PRODUCT_DEFAULTS.elevenLabsLanguageCode),
+  ELEVENLABS_STABILITY: z.coerce.number().min(0).max(1).default(PRODUCT_DEFAULTS.elevenLabsStability),
+  ELEVENLABS_SIMILARITY: z.coerce.number().min(0).max(1).default(PRODUCT_DEFAULTS.elevenLabsSimilarity),
+  ELEVENLABS_STYLE: z.coerce.number().min(0).max(1).default(PRODUCT_DEFAULTS.elevenLabsStyle),
+  EDGE_TTS_VOICE: z.string().default(PRODUCT_DEFAULTS.edgeTtsVoice),
+  EDGE_TTS_RATE: z.string().default(PRODUCT_DEFAULTS.edgeTtsRate),
+  EDGE_TTS_VOLUME: z.string().default(PRODUCT_DEFAULTS.edgeTtsVolume),
+  EDGE_TTS_PITCH: z.string().default(PRODUCT_DEFAULTS.edgeTtsPitch),
   OPENAI_API_KEY: z.string().optional(),
   /**
    * LLM for ideas/scripts/titles (OpenAI-compatible).
    * auto = DeepSeek if DEEPSEEK_API_KEY set, else OpenAI. Images/TTS never use DeepSeek.
    */
-  LLM_PROVIDER: z.enum(['auto', 'deepseek', 'openai']).default('auto'),
+  LLM_PROVIDER: z.enum(['auto', 'deepseek', 'openai']).default(PRODUCT_DEFAULTS.llmProvider),
   DEEPSEEK_API_KEY: z.string().optional(),
   DEEPSEEK_BASE_URL: z.string().default('https://api.deepseek.com'),
-  /** Prefer deepseek-v4-flash (cheap). Legacy: deepseek-chat (deprecated 2026-07-24). */
-  DEEPSEEK_MODEL: z.string().default('deepseek-v4-flash'),
-  /** Script/ideas LLM when LLM_PROVIDER=openai (alias: OPENAI_MODEL_SCRIPT). */
-  OPENAI_MODEL: z.string().default('gpt-4o-mini'),
+  DEEPSEEK_MODEL: z.string().default(PRODUCT_DEFAULTS.deepseekModel),
+  OPENAI_MODEL: z.string().default(PRODUCT_DEFAULTS.openaiModel),
   OPENAI_MODEL_SCRIPT: z.string().optional(),
-  OPENAI_MODEL_DEV: z.string().default('gpt-4o-mini'),
+  OPENAI_MODEL_DEV: z.string().default(PRODUCT_DEFAULTS.openaiModel),
   SCRIPT_DEV_MODE: z
     .string()
     .transform((v) => v === 'true')
     .default('false'),
-  OPENAI_TTS_VOICE: z.string().default('nova'),
-  /** tts-1 is ~2× cheaper than tts-1-hd; quality is enough for narration fallback. */
-  OPENAI_TTS_MODEL: z.string().default('tts-1'),
-  OPENAI_TTS_SPEED: z.coerce.number().min(0.25).max(4).default(1),
-  OPENAI_IMAGE_MODEL: z.string().default('gpt-image-1'),
-  /** gpt-image-* quality: low | medium | high | auto. medium ≈ 3–5× cheaper than high. */
-  OPENAI_IMAGE_QUALITY: z.enum(['low', 'medium', 'high', 'auto']).default('medium'),
+  OPENAI_TTS_VOICE: z.string().default(PRODUCT_DEFAULTS.openaiTtsVoice),
+  OPENAI_TTS_MODEL: z.string().default(PRODUCT_DEFAULTS.openaiTtsModel),
+  OPENAI_TTS_SPEED: z.coerce.number().min(0.25).max(4).default(PRODUCT_DEFAULTS.openaiTtsSpeed),
+  OPENAI_IMAGE_MODEL: z.string().default(PRODUCT_DEFAULTS.openaiImageModel),
+  OPENAI_IMAGE_QUALITY: z
+    .enum(['low', 'medium', 'high', 'auto'])
+    .default(PRODUCT_DEFAULTS.openaiImageQuality),
   GENERATE_DALLE_IMAGES: z
     .string()
     .transform((v) => v === 'true')
-    .default('false'),
-  /** If true, paid org plans force AI scene images even when GENERATE_DALLE_IMAGES=false. Default off (cost). */
+    .default(PRODUCT_DEFAULTS.generateAiImages ? 'true' : 'false'),
   FORCE_AI_IMAGES_ON_PAID: z
     .string()
     .transform((v) => v === 'true')
     .default('false'),
-  /** Cap AI scene images per media job (0 = unlimited). Applies when AI images are enabled. */
-  MAX_AI_IMAGES_PER_VIDEO: z.coerce.number().int().min(0).max(100).default(4),
-  /** YouTube thumbnails are SVG overlays (0 AI cost). Kept for docs/UI; generation always uses 1 variant. */
+  MAX_AI_IMAGES_PER_VIDEO: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .max(100)
+    .default(PRODUCT_DEFAULTS.maxAiImagesPerVideo),
   THUMBNAIL_VARIANTS: z.coerce.number().int().min(1).max(3).default(1),
   PIPELINE_MAX_SCENES: z.coerce.number().optional(),
-  PIPELINE_MIN_SCENES_LONG: z.coerce.number().default(6),
-  PIPELINE_MAX_SCENES_SHORT: z.coerce.number().default(3),
-  /** Fewer scenes → fewer TTS/image/FFmpeg encodes. Duration still driven by targetDuration*Sec. */
-  PIPELINE_MAX_SCENES_LONG: z.coerce.number().default(8),
-  OPENAI_MAX_TOKENS: z.coerce.number().default(1000),
-  OPENAI_MAX_TOKENS_LONG: z.coerce.number().default(8000),
+  PIPELINE_MIN_SCENES_LONG: z.coerce.number().default(PRODUCT_DEFAULTS.minScenesLong),
+  PIPELINE_MAX_SCENES_SHORT: z.coerce.number().default(PRODUCT_DEFAULTS.maxScenesShort),
+  PIPELINE_MAX_SCENES_LONG: z.coerce.number().default(PRODUCT_DEFAULTS.maxScenesLong),
+  OPENAI_MAX_TOKENS: z.coerce.number().default(PRODUCT_DEFAULTS.openaiMaxTokens),
+  OPENAI_MAX_TOKENS_LONG: z.coerce.number().default(PRODUCT_DEFAULTS.openaiMaxTokensLong),
   API_PORT: z.coerce.number().default(4000),
   FRONTEND_URL: z.string().default('http://localhost:3000'),
   STORAGE_PATH: z.string().default('./storage'),
@@ -86,13 +90,17 @@ const envSchema = z.object({
   YOUTUBE_CLIENT_SECRET: z.string().optional(),
   YOUTUBE_REFRESH_TOKEN: z.string().optional(),
   YOUTUBE_PRIVACY_STATUS: z.enum(['public', 'unlisted', 'private']).default('public'),
-  SHORTS_CLIP_MAX_SEC: z.coerce.number().default(60),
+  SHORTS_CLIP_MAX_SEC: z.coerce.number().default(PRODUCT_DEFAULTS.shortsClipMaxSec),
   DEFAULT_REVIEW_REQUIRED: z
     .string()
     .transform((v) => v === 'true')
-    .default('false'),
-  DEFAULT_MIN_VIRAL_SCORE: z.coerce.number().min(0).max(100).default(0),
-  IDEA_MAX_RETRIES: z.coerce.number().int().min(1).max(20).default(5),
+    .default(PRODUCT_DEFAULTS.reviewRequired ? 'true' : 'false'),
+  DEFAULT_MIN_VIRAL_SCORE: z.coerce
+    .number()
+    .min(0)
+    .max(100)
+    .default(PRODUCT_DEFAULTS.minViralScore),
+  IDEA_MAX_RETRIES: z.coerce.number().int().min(1).max(20).default(PRODUCT_DEFAULTS.ideaMaxRetries),
   SCRIPT_GENERATION_MODE: z.enum(['monolithic', 'chunked']).optional(),
   SCRIPT_MONOLITHIC_FALLBACK: z
     .string()
@@ -194,10 +202,8 @@ function validateProductionConfig(cfg: AppConfig): void {
     throw new Error('En producción se exige CREDENTIALS_ENCRYPTION_KEY (BYOK) configurada');
   }
 
-  // YouTube OAuth app (para conectar cuentas por canal desde UI)
-  if (!cfg.YOUTUBE_CLIENT_ID?.trim() || !cfg.YOUTUBE_CLIENT_SECRET?.trim()) {
-    throw new Error('En producción se exige YOUTUBE_CLIENT_ID y YOUTUBE_CLIENT_SECRET');
-  }
+  // YouTube OAuth app: client/secret viven en PlatformSecret (BD), no en .env.
+  // El redirect URI sí puede venir de env / DOMAIN.
 
   // Stripe: solo exigimos el set completo cuando se usa clave live
   const stripeKey = cfg.STRIPE_SECRET_KEY?.trim();
@@ -259,28 +265,35 @@ export const channelConfigSchema = z.object({
   videoMotionIntensity: z.enum(['subtle', 'normal', 'dynamic']).optional(),
   visualSourceMode: z.enum(['image', 'stock', 'mixed']).optional(),
   maxScenesLong: z.union([z.coerce.number().int().min(4).max(40), z.null()]).optional(),
+  minScenesLong: z.union([z.coerce.number().int().min(2).max(40), z.null()]).optional(),
+  maxScenesShort: z.union([z.coerce.number().int().min(1).max(12), z.null()]).optional(),
   generateAiImages: z.union([z.boolean(), z.null()]).optional(),
+  maxAiImagesPerVideo: z.union([z.coerce.number().int().min(0).max(100), z.null()]).optional(),
+  openaiImageQuality: z
+    .union([z.enum(['low', 'medium', 'high', 'auto']), z.null()])
+    .optional(),
+  ttsProvider: z
+    .union([z.enum(['auto', 'edge', 'elevenlabs', 'openai']), z.null()])
+    .optional(),
   edgeTtsVoice: z.union([z.string().min(2).max(120), z.null()]).optional(),
   elevenLabsVoiceId: z.union([z.string().min(2).max(120), z.null()]).optional(),
   openaiTtsVoice: z.union([z.string().min(2).max(120), z.null()]).optional(),
 });
 
 export function getIdeaMaxRetries(channelMax?: number): number {
-  const config = loadConfig();
-  return channelMax ?? config.IDEA_MAX_RETRIES;
+  return channelMax ?? PRODUCT_DEFAULTS.ideaMaxRetries;
 }
 
 export type GetMaxScenesOptions = {
   retentionMode?: boolean;
-  /** Channel.config.maxScenesLong — wins over org/env for long format. */
   maxScenesLong?: number | null;
+  maxScenesShort?: number | null;
 };
 
 export function getMaxScenes(
   format: 'shorts' | 'long',
   options?: GetMaxScenesOptions,
 ): number {
-  const config = loadConfig();
   const org = getOrgPipelineOverrides();
   const retention = options?.retentionMode ?? false;
   let max: number;
@@ -288,16 +301,13 @@ export function getMaxScenes(
     max = resolveMaxScenesLong({
       channelMaxScenesLong: options?.maxScenesLong,
       orgMaxScenesLong: org?.maxScenesLong,
-      envMaxScenesLong: config.PIPELINE_MAX_SCENES_LONG,
-      envPipelineMaxScenes: config.PIPELINE_MAX_SCENES,
+      codeDefault: PRODUCT_DEFAULTS.maxScenesLong,
     });
   } else {
-    max =
-      config.PIPELINE_MAX_SCENES != null
-        ? config.PIPELINE_MAX_SCENES
-        : retention
-          ? 5
-          : config.PIPELINE_MAX_SCENES_SHORT;
+    max = resolveMaxScenesShort({
+      channelMaxScenesShort: options?.maxScenesShort ?? org?.maxScenesShort,
+      codeDefault: retention ? 5 : PRODUCT_DEFAULTS.maxScenesShort,
+    });
   }
   if (format === 'long') {
     max = Math.max(max, getMinScenes('long', options));
@@ -331,17 +341,67 @@ function effectiveLlmProviderPreference(options?: {
 
 function effectiveDeepseekApiKey(): string | undefined {
   const org = getOrgPipelineOverrides();
-  return org?.deepseekApiKey?.trim() || loadConfig().DEEPSEEK_API_KEY?.trim() || undefined;
+  const platform = getPlatformSecretsOverrides();
+  return (
+    org?.deepseekApiKey?.trim() ||
+    platform?.deepseekApiKey?.trim() ||
+    loadConfig().DEEPSEEK_API_KEY?.trim() ||
+    undefined
+  );
 }
 
 function effectiveOpenAiApiKey(options?: { orgOpenAiApiKey?: string | null }): string | undefined {
   const org = getOrgPipelineOverrides();
+  const platform = getPlatformSecretsOverrides();
   return (
     options?.orgOpenAiApiKey?.trim() ||
     org?.openAiApiKey?.trim() ||
+    platform?.openAiApiKey?.trim() ||
     loadConfig().OPENAI_API_KEY?.trim() ||
     undefined
   );
+}
+
+/** Platform + env fallback for ElevenLabs (org BYOK applied in loadEffectiveConfig). */
+export function effectiveElevenLabsApiKey(): string | undefined {
+  const org = getOrgPipelineOverrides();
+  const platform = getPlatformSecretsOverrides();
+  return (
+    org?.elevenLabsApiKey?.trim() ||
+    platform?.elevenLabsApiKey?.trim() ||
+    loadConfig().ELEVENLABS_API_KEY?.trim() ||
+    undefined
+  );
+}
+
+export function effectivePexelsApiKey(): string | undefined {
+  const platform = getPlatformSecretsOverrides();
+  return platform?.pexelsApiKey?.trim() || loadConfig().PEXELS_API_KEY?.trim() || undefined;
+}
+
+/** YouTube OAuth app credentials: PlatformSecret cache, then legacy env. */
+export function resolvePlatformYouTubeOAuthAppSync(): {
+  clientId: string;
+  clientSecret: string;
+} | null {
+  const platform = getPlatformSecretsOverrides();
+  const fromCache =
+    platform?.youtubeClientId?.trim() && platform?.youtubeClientSecret?.trim()
+      ? {
+          clientId: platform.youtubeClientId.trim(),
+          clientSecret: platform.youtubeClientSecret.trim(),
+        }
+      : null;
+  if (fromCache) return fromCache;
+
+  const cfg = loadConfig();
+  if (cfg.YOUTUBE_CLIENT_ID?.trim() && cfg.YOUTUBE_CLIENT_SECRET?.trim()) {
+    return {
+      clientId: cfg.YOUTUBE_CLIENT_ID.trim(),
+      clientSecret: cfg.YOUTUBE_CLIENT_SECRET.trim(),
+    };
+  }
+  return null;
 }
 
 /**
@@ -415,100 +475,141 @@ export function resolveLlmConnection(options?: {
 }
 
 /**
- * Config with org pipeline overrides applied (keys, TTS/LLM provider, DALL·E flag, scenes).
- * Use in TTS/media paths so BYOK and UI prefs take effect without rewriting every call site.
- * Channel overrides for scenes/AI images are applied via getMaxScenes / isAiSceneImagesEnabled.
+ * Config with org (+ merged channel) pipeline overrides applied.
+ * Product prefs resolve channel > org > code defaults (not .env).
  */
 export function loadEffectiveConfig(): AppConfig {
   const base = loadConfig();
   const org = getOrgPipelineOverrides();
-  if (!org) return base;
+  if (!org) {
+    return {
+      ...base,
+      TTS_PROVIDER: PRODUCT_DEFAULTS.ttsProvider,
+      GENERATE_DALLE_IMAGES: PRODUCT_DEFAULTS.generateAiImages,
+      PIPELINE_MAX_SCENES_LONG: PRODUCT_DEFAULTS.maxScenesLong,
+      PIPELINE_MIN_SCENES_LONG: PRODUCT_DEFAULTS.minScenesLong,
+      PIPELINE_MAX_SCENES_SHORT: PRODUCT_DEFAULTS.maxScenesShort,
+      MAX_AI_IMAGES_PER_VIDEO: PRODUCT_DEFAULTS.maxAiImagesPerVideo,
+      OPENAI_IMAGE_QUALITY: PRODUCT_DEFAULTS.openaiImageQuality,
+      EDGE_TTS_VOICE: PRODUCT_DEFAULTS.edgeTtsVoice,
+      ELEVENLABS_VOICE_ID: PRODUCT_DEFAULTS.elevenLabsVoiceId,
+      OPENAI_TTS_VOICE: PRODUCT_DEFAULTS.openaiTtsVoice,
+    };
+  }
 
   const llmProvider =
     org.llmProvider === 'deepseek' || org.llmProvider === 'openai' || org.llmProvider === 'auto'
       ? org.llmProvider
-      : base.LLM_PROVIDER;
+      : PRODUCT_DEFAULTS.llmProvider;
 
-  const ttsProvider =
-    org.ttsProvider === 'edge' ||
-    org.ttsProvider === 'elevenlabs' ||
-    org.ttsProvider === 'openai' ||
-    org.ttsProvider === 'auto'
-      ? org.ttsProvider
-      : base.TTS_PROVIDER;
+  const ttsProvider = resolveTtsProvider({
+    channelTtsProvider: org.ttsProvider,
+    orgTtsProvider: org.ttsProvider,
+    codeDefault: PRODUCT_DEFAULTS.ttsProvider,
+  });
 
   return {
     ...base,
     LLM_PROVIDER: llmProvider,
     TTS_PROVIDER: ttsProvider,
-    GENERATE_DALLE_IMAGES:
-      org.generateAiImages != null ? org.generateAiImages : base.GENERATE_DALLE_IMAGES,
-    PIPELINE_MAX_SCENES_LONG:
-      typeof org.maxScenesLong === 'number' && org.maxScenesLong > 0
-        ? org.maxScenesLong
-        : base.PIPELINE_MAX_SCENES_LONG,
+    GENERATE_DALLE_IMAGES: resolveGenerateAiImages({
+      channelGenerateAiImages: org.generateAiImages,
+      orgGenerateAiImages: org.generateAiImages,
+      codeDefault: PRODUCT_DEFAULTS.generateAiImages,
+    }),
+    PIPELINE_MAX_SCENES_LONG: resolveMaxScenesLong({
+      channelMaxScenesLong: org.maxScenesLong,
+      orgMaxScenesLong: org.maxScenesLong,
+      codeDefault: PRODUCT_DEFAULTS.maxScenesLong,
+    }),
+    PIPELINE_MIN_SCENES_LONG: resolveMinScenesLong({
+      channelMinScenesLong: org.minScenesLong,
+      orgMinScenesLong: org.minScenesLong,
+      codeDefault: PRODUCT_DEFAULTS.minScenesLong,
+    }),
+    PIPELINE_MAX_SCENES_SHORT: resolveMaxScenesShort({
+      channelMaxScenesShort: org.maxScenesShort,
+      codeDefault: PRODUCT_DEFAULTS.maxScenesShort,
+    }),
     MAX_AI_IMAGES_PER_VIDEO: resolveMaxAiImagesPerVideo({
+      channelMaxAiImagesPerVideo: org.maxAiImagesPerVideo,
       orgMaxAiImagesPerVideo: org.maxAiImagesPerVideo,
-      envMaxAiImagesPerVideo: base.MAX_AI_IMAGES_PER_VIDEO,
+      codeDefault: PRODUCT_DEFAULTS.maxAiImagesPerVideo,
     }),
     OPENAI_IMAGE_QUALITY: resolveImageQuality({
+      channelOpenaiImageQuality: org.openaiImageQuality,
       orgOpenaiImageQuality: org.openaiImageQuality,
-      envOpenaiImageQuality: base.OPENAI_IMAGE_QUALITY,
+      codeDefault: PRODUCT_DEFAULTS.openaiImageQuality,
     }),
-    EDGE_TTS_VOICE: org.edgeTtsVoice?.trim() || base.EDGE_TTS_VOICE,
-    ELEVENLABS_VOICE_ID: org.elevenLabsVoiceId?.trim() || base.ELEVENLABS_VOICE_ID,
-    OPENAI_TTS_VOICE: org.openaiTtsVoice?.trim() || base.OPENAI_TTS_VOICE,
-    OPENAI_API_KEY: org.openAiApiKey?.trim() || base.OPENAI_API_KEY,
-    DEEPSEEK_API_KEY: org.deepseekApiKey?.trim() || base.DEEPSEEK_API_KEY,
-    ELEVENLABS_API_KEY: org.elevenLabsApiKey?.trim() || base.ELEVENLABS_API_KEY,
+    EDGE_TTS_VOICE: org.edgeTtsVoice?.trim() || PRODUCT_DEFAULTS.edgeTtsVoice,
+    ELEVENLABS_VOICE_ID: org.elevenLabsVoiceId?.trim() || PRODUCT_DEFAULTS.elevenLabsVoiceId,
+    OPENAI_TTS_VOICE: org.openaiTtsVoice?.trim() || PRODUCT_DEFAULTS.openaiTtsVoice,
+    OPENAI_API_KEY: org.openAiApiKey?.trim() || getPlatformSecretsOverrides()?.openAiApiKey?.trim() || base.OPENAI_API_KEY,
+    DEEPSEEK_API_KEY:
+      org.deepseekApiKey?.trim() || getPlatformSecretsOverrides()?.deepseekApiKey?.trim() || base.DEEPSEEK_API_KEY,
+    ELEVENLABS_API_KEY:
+      org.elevenLabsApiKey?.trim() ||
+      getPlatformSecretsOverrides()?.elevenLabsApiKey?.trim() ||
+      base.ELEVENLABS_API_KEY,
+    PEXELS_API_KEY: getPlatformSecretsOverrides()?.pexelsApiKey?.trim() || base.PEXELS_API_KEY,
   };
 }
 
 /** Whether scene images may use paid AI (DALL·E / gpt-image), ignoring per-video caps. */
 export function isAiSceneImagesEnabled(
-  orgPlan?: string | null,
+  _orgPlan?: string | null,
   options?: { channelGenerateAiImages?: boolean | null },
 ): boolean {
   const org = getOrgPipelineOverrides();
-  const config = loadConfig();
   return resolveGenerateAiImages({
-    channelGenerateAiImages: options?.channelGenerateAiImages,
+    channelGenerateAiImages: options?.channelGenerateAiImages ?? org?.generateAiImages,
     orgGenerateAiImages: org?.generateAiImages,
-    envGenerateAiImages: config.GENERATE_DALLE_IMAGES,
-    forceAiImagesOnPaid: config.FORCE_AI_IMAGES_ON_PAID,
-    orgPlan,
+    codeDefault: PRODUCT_DEFAULTS.generateAiImages,
   });
 }
 
 export function getMinScenes(
   format: 'shorts' | 'long',
-  options?: { retentionMode?: boolean },
+  options?: { retentionMode?: boolean; minScenesLong?: number | null },
 ): number {
   const retention = options?.retentionMode ?? false;
-  if (format === 'long') return loadConfig().PIPELINE_MIN_SCENES_LONG;
+  const org = getOrgPipelineOverrides();
+  if (format === 'long') {
+    return resolveMinScenesLong({
+      channelMinScenesLong: options?.minScenesLong ?? org?.minScenesLong,
+      orgMinScenesLong: org?.minScenesLong,
+      codeDefault: PRODUCT_DEFAULTS.minScenesLong,
+    });
+  }
   return retention ? 4 : 2;
 }
 
 export function parseChannelConfig(raw: unknown): ChannelConfig {
-  const defaults = loadConfig();
   const parsed = channelConfigSchema.parse({
-    reviewRequired: defaults.DEFAULT_REVIEW_REQUIRED,
-    autoPublish: !defaults.DEFAULT_REVIEW_REQUIRED,
-    minViralScore: defaults.DEFAULT_MIN_VIRAL_SCORE,
+    reviewRequired: PRODUCT_DEFAULTS.reviewRequired,
+    autoPublish: !PRODUCT_DEFAULTS.reviewRequired,
+    minViralScore: PRODUCT_DEFAULTS.minViralScore,
+    shortsClipMaxSec: PRODUCT_DEFAULTS.shortsClipMaxSec,
     visualSourceMode: 'mixed',
     ...((raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>),
   });
-  // null = inherit org/env — strip so JSON stays clean
-  if (parsed.maxScenesLong == null) delete (parsed as { maxScenesLong?: number | null }).maxScenesLong;
-  if (parsed.generateAiImages == null) {
-    delete (parsed as { generateAiImages?: boolean | null }).generateAiImages;
-  }
-  if (parsed.edgeTtsVoice == null) delete (parsed as { edgeTtsVoice?: string | null }).edgeTtsVoice;
-  if (parsed.elevenLabsVoiceId == null) {
-    delete (parsed as { elevenLabsVoiceId?: string | null }).elevenLabsVoiceId;
-  }
-  if (parsed.openaiTtsVoice == null) {
-    delete (parsed as { openaiTtsVoice?: string | null }).openaiTtsVoice;
+  // null = inherit org/code — strip so JSON stays clean
+  const nullableKeys = [
+    'maxScenesLong',
+    'minScenesLong',
+    'maxScenesShort',
+    'generateAiImages',
+    'maxAiImagesPerVideo',
+    'openaiImageQuality',
+    'ttsProvider',
+    'edgeTtsVoice',
+    'elevenLabsVoiceId',
+    'openaiTtsVoice',
+  ] as const;
+  for (const key of nullableKeys) {
+    if ((parsed as Record<string, unknown>)[key] == null) {
+      delete (parsed as Record<string, unknown>)[key];
+    }
   }
   return parsed;
 }
@@ -538,6 +639,7 @@ export {
 export {
   clearOrgPipelineOverrides,
   getOrgPipelineOverrides,
+  mergeChannelProductOverrides,
   mergeChannelVoiceOverrides,
   setOrgPipelineOverrides,
   type OrgImageQuality,
@@ -546,10 +648,20 @@ export {
   type OrgTtsProvider,
 } from './org-runtime.js';
 export {
+  clearPlatformSecretsOverrides,
+  getPlatformSecretsOverrides,
+  setPlatformSecretsOverrides,
+  type PlatformSecretsOverrides,
+} from './platform-secrets-runtime.js';
+export { PRODUCT_DEFAULTS } from './product-defaults.js';
+export {
   resolveGenerateAiImages,
   resolveImageQuality,
   resolveMaxAiImagesPerVideo,
   resolveMaxScenesLong,
+  resolveMaxScenesShort,
+  resolveMinScenesLong,
+  resolveTtsProvider,
 } from './resolve-settings.js';
 export {
   buildOrgInviteEmail,

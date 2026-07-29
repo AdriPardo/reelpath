@@ -1,6 +1,6 @@
 import type { Job } from 'bullmq';
 import { existsSync } from 'node:fs';
-import { clearOrgPipelineOverrides, mergeChannelVoiceOverrides, parseChannelConfig, setOrgPipelineOverrides } from '@autotube/config';
+import { clearOrgPipelineOverrides, mergeChannelProductOverrides, parseChannelConfig, setOrgPipelineOverrides } from '@autotube/config';
 import { loadOrgPipelineOverrides, prisma } from '@autotube/database';
 import { clearOrgOpenAiApiKey, resetLlmClient } from '@autotube/llm';
 import { scoreVideoQuality } from '@autotube/content-scorer';
@@ -139,7 +139,9 @@ export async function processPipelineJob(job: Job<PipelineJobPayload>): Promise<
 
   const overrides = await loadOrgPipelineOverrides(run.channel.organizationId);
   const channelConfig = parseChannelConfig(run.channel.config);
-  setOrgPipelineOverrides(mergeChannelVoiceOverrides(overrides, channelConfig));
+  setOrgPipelineOverrides(mergeChannelProductOverrides(overrides, channelConfig));
+  const { loadPlatformSecretsOverrides } = await import('@autotube/database');
+  await loadPlatformSecretsOverrides();
   resetLlmClient();
 
   try {

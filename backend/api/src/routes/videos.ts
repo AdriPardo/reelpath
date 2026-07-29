@@ -96,14 +96,26 @@ function orgChannelWhere(orgChannelIdList: string[] | null) {
 }
 
 videosRouter.get('/', async (req, res) => {
-  const { channelId, reviewStatus, q, includeArchived } = req.query;
+  const { channelId, reviewStatus, q, includeArchived, upcoming, sort } = req.query;
   const search = typeof q === 'string' && q.trim() ? q.trim() : undefined;
   const orgId = orgScope(req);
   const orgChannelIdList = await orgChannelIds(req);
   const showArchived = includeArchived === 'true';
+  const onlyUpcoming = upcoming === 'true' || upcoming === '1';
+  const status = reviewStatus ? String(reviewStatus) : undefined;
 
   if (channelId && orgId && !(await assertChannelInOrg(String(channelId), orgId))) {
     return res.status(404).json({ error: 'Channel not found' });
+  }
+
+  // Vídeos ya vivos en YouTube tras un publishAt vencido dejan de figurar como scheduled.
+  if (onlyUpcoming || status === 'scheduled') {
+    const { reconcileOverdueYoutubeScheduledVideos } = await import(
+      '../lib/video-schedule-reconcile.js'
+    );
+    await reconcileOverdueYoutubeScheduledVideos(
+      channelId ? String(channelId) : undefined,
+    );
   }
 
   const pagination = parsePagination(req.query as Record<string, unknown>);
@@ -111,11 +123,17 @@ videosRouter.get('/', async (req, res) => {
   const where = {
     ...orgChannelWhere(orgChannelIdList),
     ...(channelId ? { channelId: String(channelId) } : {}),
-    ...(reviewStatus
-      ? { reviewStatus: String(reviewStatus) }
+    ...(status
+      ? { reviewStatus: status }
       : showArchived
         ? {}
         : { reviewStatus: { notIn: [...ARCHIVED_REVIEW_STATUSES] } }),
+    ...(onlyUpcoming
+      ? {
+          reviewStatus: status ?? 'scheduled',
+          scheduledPublishAt: { gte: new Date() },
+        }
+      : {}),
     ...(search
       ? {
           OR: [
@@ -126,10 +144,18 @@ videosRouter.get('/', async (req, res) => {
       : {}),
   };
 
+  const sortKey = typeof sort === 'string' ? sort : undefined;
+  const orderBy =
+    sortKey === 'scheduledPublishAt' || onlyUpcoming || status === 'scheduled'
+      ? { scheduledPublishAt: 'asc' as const }
+      : sortKey === 'createdAt_asc'
+        ? { createdAt: 'asc' as const }
+        : { createdAt: 'desc' as const };
+
   const [videos, total] = await Promise.all([
     prisma.video.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
+      orderBy,
       skip: pagination.skip,
       take: pagination.limit,
       include: {

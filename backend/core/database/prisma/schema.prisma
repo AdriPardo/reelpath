@@ -147,6 +147,15 @@ model IntegrationCredential {
   @@index([organizationId, provider])
 }
 
+/** Secretos de instancia (OAuth app YouTube, API keys de plataforma). Cifrados en `data`. */
+model PlatformSecret {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  data      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model Channel {
   id             String   @id @default(cuid())
   organizationId String

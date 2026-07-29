@@ -1,25 +1,18 @@
 /**
- * Product preference resolution: channel > org > env > code default.
- * Infra (FFmpeg, worker concurrency, auth, DB) stays in .env only.
+ * Product preference resolution: channel > org > code default.
+ * Infra (FFmpeg, worker concurrency, auth, DB, API keys) stays in .env only.
  */
 
-import type { OrgImageQuality } from './org-runtime.js';
+import { PRODUCT_DEFAULTS, type ProductImageQuality } from './product-defaults.js';
 
 export type ResolveMaxScenesLongInput = {
-  /** Channel.config.maxScenesLong */
   channelMaxScenesLong?: number | null;
-  /** Organization.maxScenesLong */
   orgMaxScenesLong?: number | null;
-  /** env PIPELINE_MAX_SCENES_LONG */
-  envMaxScenesLong: number;
-  /** Absolute platform override PIPELINE_MAX_SCENES (all formats). */
-  envPipelineMaxScenes?: number | null;
+  /** @deprecated ignored — use code default */
+  codeDefault?: number;
 };
 
 export function resolveMaxScenesLong(input: ResolveMaxScenesLongInput): number {
-  if (input.envPipelineMaxScenes != null && Number.isFinite(input.envPipelineMaxScenes)) {
-    return Math.max(1, Math.floor(input.envPipelineMaxScenes));
-  }
   const channel = input.channelMaxScenesLong;
   if (typeof channel === 'number' && Number.isFinite(channel) && channel > 0) {
     return Math.floor(channel);
@@ -28,24 +21,18 @@ export function resolveMaxScenesLong(input: ResolveMaxScenesLongInput): number {
   if (typeof org === 'number' && Number.isFinite(org) && org > 0) {
     return Math.floor(org);
   }
-  return Math.max(1, Math.floor(input.envMaxScenesLong));
+  return Math.max(1, Math.floor(input.codeDefault ?? PRODUCT_DEFAULTS.maxScenesLong));
 }
 
 export type ResolveGenerateAiImagesInput = {
-  /** Channel.config.generateAiImages — undefined = inherit */
   channelGenerateAiImages?: boolean | null;
-  /** Organization.generateAiImages */
   orgGenerateAiImages?: boolean | null;
-  /** env GENERATE_DALLE_IMAGES */
-  envGenerateAiImages: boolean;
-  /** env FORCE_AI_IMAGES_ON_PAID */
-  forceAiImagesOnPaid: boolean;
-  orgPlan?: string | null;
+  /** @deprecated ignored — use code default */
+  codeDefault?: boolean;
 };
 
 /**
  * Whether paid AI scene images may be used (before visualSourceMode / per-video caps).
- * Channel boolean wins when set; else org; else env (+ paid-plan force).
  */
 export function resolveGenerateAiImages(input: ResolveGenerateAiImagesInput): boolean {
   if (input.channelGenerateAiImages === true || input.channelGenerateAiImages === false) {
@@ -54,36 +41,100 @@ export function resolveGenerateAiImages(input: ResolveGenerateAiImagesInput): bo
   if (input.orgGenerateAiImages === true || input.orgGenerateAiImages === false) {
     return input.orgGenerateAiImages;
   }
-  if (input.envGenerateAiImages) return true;
-  if (!input.forceAiImagesOnPaid) return false;
-  return ['starter', 'pro', 'unlimited'].includes(input.orgPlan ?? '');
+  return input.codeDefault ?? PRODUCT_DEFAULTS.generateAiImages;
 }
 
 export type ResolveMaxAiImagesPerVideoInput = {
+  channelMaxAiImagesPerVideo?: number | null;
   orgMaxAiImagesPerVideo?: number | null;
-  envMaxAiImagesPerVideo: number;
+  codeDefault?: number;
 };
 
 /** 0 = unlimited. */
 export function resolveMaxAiImagesPerVideo(input: ResolveMaxAiImagesPerVideoInput): number {
+  const channel = input.channelMaxAiImagesPerVideo;
+  if (typeof channel === 'number' && Number.isFinite(channel) && channel >= 0) {
+    return Math.floor(channel);
+  }
   const org = input.orgMaxAiImagesPerVideo;
   if (typeof org === 'number' && Number.isFinite(org) && org >= 0) {
     return Math.floor(org);
   }
-  return Math.max(0, Math.floor(input.envMaxAiImagesPerVideo));
+  return Math.max(0, Math.floor(input.codeDefault ?? PRODUCT_DEFAULTS.maxAiImagesPerVideo));
 }
 
-const IMAGE_QUALITIES = new Set<OrgImageQuality>(['low', 'medium', 'high', 'auto']);
+const IMAGE_QUALITIES = new Set<ProductImageQuality>(['low', 'medium', 'high', 'auto']);
 
 export type ResolveImageQualityInput = {
+  channelOpenaiImageQuality?: string | null;
   orgOpenaiImageQuality?: string | null;
-  envOpenaiImageQuality: OrgImageQuality;
+  codeDefault?: ProductImageQuality;
 };
 
-export function resolveImageQuality(input: ResolveImageQualityInput): OrgImageQuality {
-  const org = input.orgOpenaiImageQuality?.trim();
-  if (org && IMAGE_QUALITIES.has(org as OrgImageQuality)) {
-    return org as OrgImageQuality;
+export function resolveImageQuality(input: ResolveImageQualityInput): ProductImageQuality {
+  const channel = input.channelOpenaiImageQuality?.trim();
+  if (channel && IMAGE_QUALITIES.has(channel as ProductImageQuality)) {
+    return channel as ProductImageQuality;
   }
-  return input.envOpenaiImageQuality;
+  const org = input.orgOpenaiImageQuality?.trim();
+  if (org && IMAGE_QUALITIES.has(org as ProductImageQuality)) {
+    return org as ProductImageQuality;
+  }
+  return input.codeDefault ?? PRODUCT_DEFAULTS.openaiImageQuality;
+}
+
+export type ResolveMinScenesLongInput = {
+  channelMinScenesLong?: number | null;
+  orgMinScenesLong?: number | null;
+  codeDefault?: number;
+};
+
+export function resolveMinScenesLong(input: ResolveMinScenesLongInput): number {
+  const channel = input.channelMinScenesLong;
+  if (typeof channel === 'number' && Number.isFinite(channel) && channel > 0) {
+    return Math.floor(channel);
+  }
+  const org = input.orgMinScenesLong;
+  if (typeof org === 'number' && Number.isFinite(org) && org > 0) {
+    return Math.floor(org);
+  }
+  return Math.max(1, Math.floor(input.codeDefault ?? PRODUCT_DEFAULTS.minScenesLong));
+}
+
+export type ResolveMaxScenesShortInput = {
+  channelMaxScenesShort?: number | null;
+  codeDefault?: number;
+};
+
+export function resolveMaxScenesShort(input: ResolveMaxScenesShortInput): number {
+  const channel = input.channelMaxScenesShort;
+  if (typeof channel === 'number' && Number.isFinite(channel) && channel > 0) {
+    return Math.floor(channel);
+  }
+  return Math.max(1, Math.floor(input.codeDefault ?? PRODUCT_DEFAULTS.maxScenesShort));
+}
+
+export type ResolveTtsProviderInput = {
+  channelTtsProvider?: string | null;
+  orgTtsProvider?: string | null;
+  codeDefault?: string;
+};
+
+const TTS_PROVIDERS = new Set(['auto', 'edge', 'elevenlabs', 'openai', 'mock']);
+
+export function resolveTtsProvider(
+  input: ResolveTtsProviderInput,
+): 'auto' | 'edge' | 'elevenlabs' | 'openai' | 'mock' {
+  const channel = input.channelTtsProvider?.trim();
+  if (channel && TTS_PROVIDERS.has(channel)) {
+    return channel as 'auto' | 'edge' | 'elevenlabs' | 'openai' | 'mock';
+  }
+  const org = input.orgTtsProvider?.trim();
+  if (org && TTS_PROVIDERS.has(org)) {
+    return org as 'auto' | 'edge' | 'elevenlabs' | 'openai' | 'mock';
+  }
+  const fallback = input.codeDefault ?? PRODUCT_DEFAULTS.ttsProvider;
+  return TTS_PROVIDERS.has(fallback)
+    ? (fallback as 'auto' | 'edge' | 'elevenlabs' | 'openai' | 'mock')
+    : 'auto';
 }

@@ -58,7 +58,9 @@ export default async function HomePage({ params }: Props) {
         serverApi<AuthSession>('/api/auth/me'),
         serverApi<Channel[]>('/api/channels?light=1'),
         serverApi<PaginatedResponse<Video>>('/api/videos?reviewStatus=pending&page=1&limit=10'),
-        serverApi<PaginatedResponse<Video>>('/api/videos?reviewStatus=scheduled&page=1&limit=10'),
+        serverApi<PaginatedResponse<Video>>(
+          '/api/videos?reviewStatus=scheduled&upcoming=true&page=1&limit=3',
+        ),
         serverApi<PaginatedResponse<PipelineRun>>('/api/pipelines?active=true&page=1&limit=20'),
       ]);
 
@@ -94,7 +96,7 @@ export default async function HomePage({ params }: Props) {
     activePipelinesTotal > 0;
   const activePipelines = pipelines;
   const pendingPreview = pendingVideos.slice(0, 3);
-  const scheduledPreview = scheduledVideos.slice(0, 3);
+  const scheduledPreview = scheduledVideos;
   const firstChannelId = channels[0]?.id;
   const onboardingIncomplete = !hasChannels || !hasIntegrations || !hasGenerations;
 
@@ -184,7 +186,7 @@ export default async function HomePage({ params }: Props) {
                 <div className="stat-label">{t('activePipelines')}</div>
               </div>
             </Link>
-            <Link href="/videos?reviewStatus=scheduled" className="stat stat-clickable">
+            <Link href="/videos?status=scheduled" className="stat stat-clickable">
               <div className="stat-body">
                 <div className="stat-value">{scheduledTotal}</div>
                 <div className="stat-label">{t('upcomingPublish')}</div>
@@ -260,7 +262,7 @@ export default async function HomePage({ params }: Props) {
             <section className="page-section">
               <div className="page-section-title">
                 <h2>{t('upcomingSection')}</h2>
-                <Link href="/videos?reviewStatus=scheduled" className="btn btn-ghost btn-sm">
+                <Link href="/videos?status=scheduled" className="btn btn-ghost btn-sm">
                   {tc('viewAll')}
                 </Link>
               </div>

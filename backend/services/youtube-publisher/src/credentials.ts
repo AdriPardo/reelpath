@@ -1,4 +1,4 @@
-import { decryptCredentialPayload, loadConfig } from '@autotube/config';
+import { decryptCredentialPayload, loadConfig, resolvePlatformYouTubeOAuthAppSync } from '@autotube/config';
 import { prisma } from '@autotube/database';
 
 export interface YouTubeCredentialData {
@@ -21,13 +21,14 @@ export interface ResolvedYouTubeCredentials {
 
 /**
  * Loads YouTube OAuth credentials for a channel.
- * Per-channel refresh tokens are stored in IntegrationCredential; client id/secret come from platform env.
- * Falls back to global YOUTUBE_REFRESH_TOKEN in .env only when the channel has no stored credential (dev convenience).
+ * Per-channel refresh tokens are stored in IntegrationCredential;
+ * client id/secret come from PlatformSecret (gestor de secretos), with legacy env fallback.
  */
 export async function resolveYouTubeCredentialsForChannel(
   channelId: string,
 ): Promise<ResolvedYouTubeCredentials | null> {
   const config = loadConfig();
+  const oauthApp = resolvePlatformYouTubeOAuthAppSync();
 
   const stored = await prisma.integrationCredential.findFirst({
     where: { channelId, provider: 'youtube' },
@@ -35,8 +36,8 @@ export async function resolveYouTubeCredentialsForChannel(
   const data = (decryptCredentialPayload(stored?.data) as YouTubeCredentialData | null) ?? null;
 
   if (data?.refreshToken) {
-    const clientId = data.clientId ?? config.YOUTUBE_CLIENT_ID;
-    const clientSecret = data.clientSecret ?? config.YOUTUBE_CLIENT_SECRET;
+    const clientId = data.clientId ?? oauthApp?.clientId;
+    const clientSecret = data.clientSecret ?? oauthApp?.clientSecret;
     if (!clientId || !clientSecret) return null;
     return {
       clientId,
@@ -49,10 +50,10 @@ export async function resolveYouTubeCredentialsForChannel(
     };
   }
 
-  if (config.YOUTUBE_CLIENT_ID && config.YOUTUBE_CLIENT_SECRET && config.YOUTUBE_REFRESH_TOKEN) {
+  if (oauthApp && config.YOUTUBE_REFRESH_TOKEN) {
     return {
-      clientId: config.YOUTUBE_CLIENT_ID,
-      clientSecret: config.YOUTUBE_CLIENT_SECRET,
+      clientId: oauthApp.clientId,
+      clientSecret: oauthApp.clientSecret,
       refreshToken: config.YOUTUBE_REFRESH_TOKEN,
       privacyStatus: config.YOUTUBE_PRIVACY_STATUS ?? 'private',
       source: 'env',

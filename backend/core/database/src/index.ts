@@ -31,3 +31,17 @@ export {
   upsertOrgOpenAiApiKey,
   type OrgPipelineSettings,
 } from './org-settings.js';
+export {
+  assertPlatformSecretKey,
+  deletePlatformSecret,
+  getPlatformSecretsStatus,
+  importPlatformSecretsFromEnvIfEmpty,
+  loadPlatformSecretsOverrides,
+  resolvePlatformApiKey,
+  resolvePlatformYouTubeOAuthApp,
+  upsertPlatformApiKey,
+  upsertPlatformYouTubeOAuthApp,
+  PLATFORM_SECRET_KEYS,
+  type PlatformSecretKey,
+  type PlatformSecretsStatus,
+} from './platform-secrets.js';

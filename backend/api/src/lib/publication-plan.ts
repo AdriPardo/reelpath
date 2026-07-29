@@ -9,6 +9,10 @@ import {
   type PublicationCalendar,
 } from '@autotube/shared';
 import { buildRetentionByPublishHour } from '@autotube/analytics';
+import {
+  publicationPlanVideoWhere,
+  reconcileOverdueYoutubeScheduledVideos,
+} from './video-schedule-reconcile.js';
 
 export { resolveAutoScheduledPublishAt };
 
@@ -56,11 +60,10 @@ export async function getChannelPublicationPlan(channelId: string): Promise<Publ
   const channel = await prisma.channel.findUniqueOrThrow({ where: { id: channelId } });
   const config = parseChannelConfig(channel.config);
 
+  await reconcileOverdueYoutubeScheduledVideos(channelId);
+
   const videos = await prisma.video.findMany({
-    where: {
-      channelId,
-      reviewStatus: { in: ['pending', 'approved', 'scheduled'] },
-    },
+    where: publicationPlanVideoWhere(channelId),
     orderBy: { createdAt: 'asc' },
     take: 200,
     select: {
@@ -123,12 +126,11 @@ export async function applyChannelPublicationPlan(channelId: string): Promise<{
     throw err;
   }
 
+  await reconcileOverdueYoutubeScheduledVideos(channelId);
+
   const now = Date.now();
   const videos = await prisma.video.findMany({
-    where: {
-      channelId,
-      reviewStatus: { in: ['pending', 'approved', 'scheduled'] },
-    },
+    where: publicationPlanVideoWhere(channelId),
     orderBy: { createdAt: 'asc' },
     take: 200,
     select: {

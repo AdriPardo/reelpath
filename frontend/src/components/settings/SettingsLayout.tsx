@@ -16,8 +16,17 @@ import { SettingsPreferencesPanel } from '@/components/settings/SettingsPreferen
 import { SettingsPublicationPanel } from '@/components/settings/SettingsPublicationPanel';
 import { SettingsTeamPanel } from '@/components/settings/SettingsTeamPanel';
 import { SettingsApiKeysPanel } from '@/components/settings/SettingsApiKeysPanel';
+import { SettingsPlatformSecretsPanel } from '@/components/settings/SettingsPlatformSecretsPanel';
 
-const SECTION_IDS = ['account', 'team', 'apikeys', 'plan', 'preferences', 'publication'] as const;
+const SECTION_IDS = [
+  'account',
+  'team',
+  'apikeys',
+  'platformSecrets',
+  'plan',
+  'preferences',
+  'publication',
+] as const;
 type SectionId = (typeof SECTION_IDS)[number];
 
 const TAB_ALIASES: Record<string, SectionId> = {
@@ -26,6 +35,9 @@ const TAB_ALIASES: Record<string, SectionId> = {
   equipo: 'team',
   apikeys: 'apikeys',
   api: 'apikeys',
+  platformSecrets: 'platformSecrets',
+  secrets: 'platformSecrets',
+  secretos: 'platformSecrets',
   plan: 'plan',
   planes: 'plan',
   preferences: 'preferences',
@@ -41,17 +53,22 @@ function profileInitial(name: string | null | undefined, email: string): string 
 
 function SettingsTabs({ plans }: { plans: PlanDefinition[] }) {
   const t = useTranslations('settings');
+  const { session } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const tabParam = searchParams?.get('tab')?.toLowerCase() ?? '';
-  const initial = TAB_ALIASES[tabParam] ?? 'account';
+  const isOwner = session?.role === 'owner';
+  const visibleSections = SECTION_IDS.filter((id) => id !== 'platformSecrets' || isOwner);
+  const initialRaw = TAB_ALIASES[tabParam] ?? 'account';
+  const initial =
+    initialRaw === 'platformSecrets' && !isOwner ? 'account' : initialRaw;
   const [activeSection, setActiveSection] = useState<SectionId>(initial);
 
   useEffect(() => {
     const next = TAB_ALIASES[tabParam];
-    if (next) setActiveSection(next);
-  }, [tabParam]);
+    if (next && (next !== 'platformSecrets' || isOwner)) setActiveSection(next);
+  }, [tabParam, isOwner]);
 
   function selectSection(id: SectionId) {
     setActiveSection(id);
@@ -64,7 +81,7 @@ function SettingsTabs({ plans }: { plans: PlanDefinition[] }) {
     <>
       <nav className="settings-nav" aria-label={t('sectionsNav')}>
         <div className="settings-nav-chips" role="tablist">
-          {SECTION_IDS.map((id) => {
+          {visibleSections.map((id) => {
             const label = t.has(`${id}.title`) ? t(`${id}.title`) : t(id);
             return (
               <button
@@ -82,7 +99,7 @@ function SettingsTabs({ plans }: { plans: PlanDefinition[] }) {
           })}
         </div>
         <ul className="settings-nav-sidebar">
-          {SECTION_IDS.map((id) => {
+          {visibleSections.map((id) => {
             const label = t.has(`${id}.title`) ? t(`${id}.title`) : t(id);
             return (
               <li key={id}>
@@ -107,6 +124,7 @@ function SettingsTabs({ plans }: { plans: PlanDefinition[] }) {
         {activeSection === 'account' && <SettingsAccountPanel />}
         {activeSection === 'team' && <SettingsTeamPanel />}
         {activeSection === 'apikeys' && <SettingsApiKeysPanel />}
+        {activeSection === 'platformSecrets' && <SettingsPlatformSecretsPanel />}
         {activeSection === 'plan' && <SettingsPlanPanel plans={plans} />}
         {activeSection === 'preferences' && <SettingsPreferencesPanel />}
         {activeSection === 'publication' && <SettingsPublicationPanel />}

@@ -1,4 +1,4 @@
-import { loadConfig } from '@autotube/config';
+import { loadConfig, resolvePlatformYouTubeOAuthAppSync } from '@autotube/config';
 import { SignJWT, jwtVerify } from 'jose';
 import { google } from 'googleapis';
 
@@ -25,24 +25,25 @@ export function getYouTubeOAuthRedirectUri(): string {
   if (process.env.YOUTUBE_OAUTH_REDIRECT_URI) {
     return process.env.YOUTUBE_OAUTH_REDIRECT_URI;
   }
+  if (process.env.DOMAIN?.trim()) {
+    const domain = process.env.DOMAIN.trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
+    return `https://${domain}/api/integrations/youtube/callback`;
+  }
   return `http://localhost:${config.API_PORT}/api/integrations/youtube/callback`;
 }
 
 export function hasYouTubeOAuthApp(): boolean {
-  const config = loadConfig();
-  return !!(config.YOUTUBE_CLIENT_ID && config.YOUTUBE_CLIENT_SECRET);
+  return resolvePlatformYouTubeOAuthAppSync() !== null;
 }
 
 export function createYouTubeOAuth2Client() {
-  const config = loadConfig();
-  if (!config.YOUTUBE_CLIENT_ID || !config.YOUTUBE_CLIENT_SECRET) {
-    throw new Error('YouTube OAuth no configurado en la plataforma');
+  const app = resolvePlatformYouTubeOAuthAppSync();
+  if (!app) {
+    throw new Error(
+      'YouTube OAuth no configurado. Añade Client ID y Secret en Ajustes → Secretos de plataforma.',
+    );
   }
-  return new google.auth.OAuth2(
-    config.YOUTUBE_CLIENT_ID,
-    config.YOUTUBE_CLIENT_SECRET,
-    getYouTubeOAuthRedirectUri(),
-  );
+  return new google.auth.OAuth2(app.clientId, app.clientSecret, getYouTubeOAuthRedirectUri());
 }
 
 export async function signYouTubeOAuthState(payload: YouTubeOAuthState): Promise<string> {

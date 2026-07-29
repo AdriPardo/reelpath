@@ -29,7 +29,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       default: t('appName'),
       template: `%s — ${PLATFORM.name}`,
     },
-    description: tl('taglinePart1') + ' ' + tl('taglinePart2'),
+    description: `${tl('heroOutcome')}. ${tl('heroSupport')}`,
     icons: {
       icon: [
         { url: '/favicon.svg', type: 'image/svg+xml' },

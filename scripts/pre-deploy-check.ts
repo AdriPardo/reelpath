@@ -180,8 +180,14 @@ function checkYouTube(): Check[] {
   const domain = env('DOMAIN');
 
   const results: Check[] = [
-    { name: 'YOUTUBE_CLIENT_ID', status: id ? 'ok' : 'fail', detail: id ? 'SET' : 'MISSING' },
-    { name: 'YOUTUBE_CLIENT_SECRET', status: secret ? 'ok' : 'fail', detail: secret ? 'SET' : 'MISSING' },
+    {
+      name: 'YOUTUBE_CLIENT_ID/SECRET',
+      status: id || secret ? 'warn' : 'ok',
+      detail:
+        id || secret
+          ? 'Legacy .env — migra a Ajustes → Secretos de plataforma (npm run secrets:import-from-env)'
+          : 'OK (configurar en UI Secretos de plataforma)',
+    },
   ];
 
   const expectedRedirect = domain
@@ -360,7 +366,13 @@ async function main() {
     varStatus('CREDENTIALS_ENCRYPTION_KEY', { required: strictProd }),
     varStatus('FRONTEND_URL', { required: strictProd }),
     varStatus('NEXT_PUBLIC_API_URL', { required: strictProd }),
-    varStatus('OPENAI_API_KEY', { prodOnly: true }),
+    {
+      name: 'OPENAI_API_KEY (legacy env)',
+      status: env('OPENAI_API_KEY') ? 'warn' : 'ok',
+      detail: env('OPENAI_API_KEY')
+        ? 'Legacy .env — preferir Ajustes → Secretos de plataforma'
+        : 'OK (UI Secretos de plataforma)',
+    },
     varStatus('DATABASE_URL'),
     varStatus('REDIS_URL'),
     {

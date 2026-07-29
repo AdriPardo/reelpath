@@ -80,7 +80,7 @@ La organización sigue siendo el aislamiento multi-tenant; los **canales** se cr
 
 Índice único `(channelId, provider)` — un registro por proveedor y canal.
 
-Para YouTube, solo se persiste el **refresh token por canal**; `YOUTUBE_CLIENT_ID` y `YOUTUBE_CLIENT_SECRET` son credenciales de la app OAuth a nivel plataforma (`.env` del servidor).
+Para YouTube, solo se persiste el **refresh token por canal**; `YOUTUBE_CLIENT_ID` y `YOUTUBE_CLIENT_SECRET` son credenciales de la app OAuth a nivel plataforma (**Ajustes → Secretos de plataforma**). El redirect URI sigue en `.env` / `DOMAIN`.
 
 ### API
 
@@ -107,16 +107,16 @@ El worker (`youtube-publisher`) lee credenciales del `channelId` del vídeo en r
 - `/channels/[id]` — pestañas General, Contenido, **Cuentas** (integraciones)
 - **Conectar YouTube** — OAuth con Google; **Desconectar** — borra el token del canal
 
-### Variables de plataforma (YouTube OAuth)
+### Secretos / variables de plataforma (YouTube OAuth)
 
-| Variable | Obligatoria | Descripción |
-|----------|-------------|-------------|
-| `YOUTUBE_CLIENT_ID` | Sí (para OAuth) | Client ID de la app Google Cloud |
-| `YOUTUBE_CLIENT_SECRET` | Sí (para OAuth) | Client secret |
-| `YOUTUBE_OAUTH_REDIRECT_URI` | No | Default: `http://localhost:4000/api/integrations/youtube/callback` |
-| `YOUTUBE_REFRESH_TOKEN` | No | Solo fallback dev; los usuarios conectan por canal en la UI |
+| Dónde | Obligatoria | Descripción |
+|-------|-------------|-------------|
+| **UI** Secretos de plataforma → Client ID | Sí (para OAuth) | App Google Cloud |
+| **UI** Secretos de plataforma → Client Secret | Sí (para OAuth) | App Google Cloud |
+| `.env` `YOUTUBE_OAUTH_REDIRECT_URI` | No | Default: `http://localhost:4000/api/integrations/youtube/callback` (o derivado de `DOMAIN`) |
+| `.env` `YOUTUBE_REFRESH_TOKEN` | No | Solo fallback dev; los usuarios conectan por canal en la UI |
 
-Registrar en Google Cloud → URIs de redirección autorizados: la URI anterior (y la de producción).
+Registrar en Google Cloud → URIs de redirección autorizados: la URI de redirect (y la de producción).
 
 ## Roadmap
 
@@ -151,30 +151,28 @@ Reinicia API y frontend. Los usuarios deben iniciar sesión; las rutas de sistem
 
 Con `AUTH_REQUIRED=false`, el desarrollo local funciona **sin login**. Con `AUTH_REQUIRED=true` (como ahora para pruebas), hay que entrar en `/login`.
 
-## Configuración: canal > organización > `.env`
+## Configuración: canal > organización > defaults de código
 
-Resolución de preferencias de **producto/coste**: **canal → organización → `.env` → default de código**.
+Resolución de preferencias de **producto/coste**: **canal → organización → defaults de código** (`PRODUCT_DEFAULTS`).
 
-Infraestructura y capacidad de máquina (`WORKER_*`, `FFMPEG_*`, DB, auth, Stripe, OAuth app) **solo viven en `.env`** (operador Atlas/VPS).
+Infraestructura vive en **`.env`**. Secretos de proveedores (API keys, YouTube Client ID/Secret) viven en **Ajustes → Secretos de plataforma** (`PlatformSecret`, cifrados). Preferencias de producto: **canal → organización → defaults de código**.
 
 | Qué | Dónde | Motivo |
 |-----|--------|--------|
 | `DATABASE_URL`, `REDIS_URL`, `STORAGE_PATH`, S3/CDN | **`.env`** | Infra de la instancia |
 | `AUTH_SECRET`, `AUTH_REQUIRED`, `CREDENTIALS_ENCRYPTION_KEY` | **`.env`** | Seguridad de plataforma |
-| `WORKER_CONCURRENCY`, `FFMPEG_*` | **`.env`** | Capacidad CPU compartida (Atlas) |
-| YouTube OAuth app (`CLIENT_ID` / `SECRET`) | **`.env`** | App Google de Reelpath |
+| `WORKER_CONCURRENCY`, `FFMPEG_THREADS` / `CONCURRENCY` / `PRESET` | **`.env`** | Capacidad CPU compartida (Atlas) |
+| `YOUTUBE_OAUTH_REDIRECT_URI` (o `DOMAIN`) | **`.env`** | Callback público de OAuth |
+| YouTube OAuth app (`CLIENT_ID` / `SECRET`) | **BD** `PlatformSecret` | Gestor de secretos (UI owner) |
+| API keys plataforma (OpenAI, DeepSeek, ElevenLabs, Pexels) | **BD** `PlatformSecret` | Fallback sin BYOK de cliente |
 | YouTube refresh token + `privacyStatus` | **BD** `IntegrationCredential` (por canal) | Cada canal publica en su cuenta |
-| LLM / TTS / BYOK / imágenes IA / tope escenas / calidad imagen / tope IA / **voces TTS** | **BD** `Organization` (+ UI Ajustes) | Coste/calidad del cliente |
-| Formato, tono, review, Shorts, planner, `visualSourceMode`, **voz TTS** | **BD** `Channel.config` | Preferencias por YouTube |
-| Overrides de canal: `maxScenesLong`, `generateAiImages`, voces TTS | **BD** `Channel.config` | Canal documental vs resumen; hereda org si vacío |
-| Defaults globales (`PIPELINE_MAX_SCENES_LONG`, `MAX_AI_IMAGES_PER_VIDEO`, …) | **`.env`** | Fallback de plataforma |
+| LLM / TTS / BYOK org / tope escenas / calidad / voces | **BD** `Organization` (+ UI Ajustes) | Defaults del cliente |
+| Formato, tono, review, Shorts, planner, TTS, escenas, IA | **BD** `Channel.config` | Preferencias por canal YouTube |
 | `MOCK_EXTERNAL_APIS` | **`.env`** | Solo desarrollo |
 
-**Hoy:** Ajustes → IA y generación gestiona org (proveedores, BYOK, tope escenas/imágenes, **voces TTS**). El canal puede sobreescribir escenas e imágenes IA. El worker aplica `channel > org > env`.
+**Hoy:** el owner configura secretos de plataforma en UI; cada org puede aportar BYOK; cada canal configura producto. El worker aplica `channel > org > código` y keys `BYOK org > PlatformSecret > env legacy`.
 
-**Phase 2 (pendiente):** modelos LLM por organización y BYOK Pexels.
-
-**Objetivo al vender:** el operador solo configura infra en `.env`; cada cliente elige coste/calidad en UI.
+**Objetivo al vender:** el operador configura infra en `.env` y secretos en la UI; cada cliente elige coste/calidad en UI.
 
 ## Coste por vídeo (APIs)
 
@@ -184,33 +182,29 @@ Objetivo típico con defaults cost-efficient: **€0.20–0.80 / vídeo largo** 
 |----------|------------|----------------|
 | Chat LLM (ideas + guion) | gpt-4o / gpt-4o-mini | **DeepSeek** `deepseek-v4-flash` (~10–50× más barato que gpt-4o) |
 | TTS | ElevenLabs (~€1–3 / 8 min) | **Edge TTS** (gratis) |
-| Imágenes | gpt-image high × 20 escenas | **Off** + Pexels/stock; tope `MAX_AI_IMAGES_PER_VIDEO=4` |
-| Escenas | 20 | **6–8** (`PIPELINE_MAX_SCENES_LONG=8`) |
+| Imágenes | gpt-image high × 20 escenas | **Off** + Pexels/stock; tope IA por canal/org (default 4) |
+| Escenas | 20 | **6–8** (default de código / override canal) |
 | Shorts | `dedicated` (regenera TTS/IA) | **`split`** (reusa audio/vídeo del long) |
 | FFmpeg | medium + todos los cores | **`veryfast` + `FFMPEG_THREADS=2` + concurrency 1** |
 
-### Variables clave
+### Variables clave (solo infra)
 
 ```bash
-LLM_PROVIDER=auto              # DeepSeek si hay DEEPSEEK_API_KEY
-DEEPSEEK_API_KEY=sk-...
-DEEPSEEK_MODEL=deepseek-v4-flash
-GENERATE_DALLE_IMAGES=false
-FORCE_AI_IMAGES_ON_PAID=false
-TTS_PROVIDER=auto              # Edge primero (gratis)
-PIPELINE_MAX_SCENES_LONG=8
 WORKER_CONCURRENCY=1
 FFMPEG_PRESET=veryfast
 FFMPEG_THREADS=2
 FFMPEG_CONCURRENCY=1
 FFMPEG_FORCE_CUT_TRANSITIONS=true
-PEXELS_API_KEY=...             # stock gratis
-MOCK_EXTERNAL_APIS=false       # producción
+YOUTUBE_OAUTH_REDIRECT_URI=https://app.tudominio.com/api/integrations/youtube/callback
+CREDENTIALS_ENCRYPTION_KEY=...   # openssl rand -hex 32
+MOCK_EXTERNAL_APIS=false         # producción
 ```
+
+API keys y YouTube Client ID/Secret: **Ajustes → Secretos de plataforma** (o `npm run secrets:import-from-env` una vez si migras desde `.env` legacy).
 
 **Qué usa DeepSeek:** ideas, guion/outline/chunks, títulos, descripciones, prompts de escena, teasers.
 **Qué sigue en OpenAI (si está activo):** imágenes DALL·E/gpt-image, TTS OpenAI (solo fallback).
-**TTS:** Edge por defecto; ElevenLabs solo con `TTS_PROVIDER=elevenlabs`.
+**TTS / escenas / IA:** se configuran en **canal** (y defaults de org en Ajustes), no en `.env`.
 
 Ahorro LLM estimado (guion long ~50–150k tokens totales entre llamadas): gpt-4o-mini ~$0.15–0.50 → DeepSeek flash ~$0.01–0.05.
 

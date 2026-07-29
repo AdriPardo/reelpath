@@ -78,19 +78,26 @@ export function ChannelSettingsForm({
   }, []);
 
   const orgProvider: OrgTtsProvider = orgTts?.ttsProvider ?? 'auto';
-  const voiceOptions = useMemo(() => voicesForProvider(orgProvider), [orgProvider]);
+  const effectiveProvider: OrgTtsProvider =
+    config.ttsProvider === 'auto' ||
+    config.ttsProvider === 'edge' ||
+    config.ttsProvider === 'elevenlabs' ||
+    config.ttsProvider === 'openai'
+      ? config.ttsProvider
+      : orgProvider;
+  const voiceOptions = useMemo(() => voicesForProvider(effectiveProvider), [effectiveProvider]);
   const activeChannelVoice =
-    orgProvider === 'elevenlabs'
+    effectiveProvider === 'elevenlabs'
       ? (config.elevenLabsVoiceId ?? '')
-      : orgProvider === 'openai'
+      : effectiveProvider === 'openai'
         ? (config.openaiTtsVoice ?? '')
         : (config.edgeTtsVoice ?? '');
   const inheritVoiceLabel =
-    orgProvider === 'elevenlabs'
+    effectiveProvider === 'elevenlabs'
       ? (orgTts?.elevenLabsVoiceId ||
           orgTts?.platformDefaults?.elevenLabsVoiceId ||
           'ElevenLabs')
-      : orgProvider === 'openai'
+      : effectiveProvider === 'openai'
         ? (orgTts?.openaiTtsVoice || orgTts?.platformDefaults?.openaiTtsVoice || 'nova')
         : (orgTts?.edgeTtsVoice ||
             orgTts?.platformDefaults?.edgeTtsVoice ||
@@ -98,9 +105,9 @@ export function ChannelSettingsForm({
 
   function setChannelVoice(value: string) {
     const next = value.trim() === '' ? null : value.trim();
-    if (orgProvider === 'elevenlabs') {
+    if (effectiveProvider === 'elevenlabs') {
       setField('elevenLabsVoiceId', next);
-    } else if (orgProvider === 'openai') {
+    } else if (effectiveProvider === 'openai') {
       setField('openaiTtsVoice', next);
     } else {
       setField('edgeTtsVoice', next);
@@ -115,9 +122,14 @@ export function ChannelSettingsForm({
       .map((t) => t.trim())
       .filter(Boolean);
     const payload: Record<string, unknown> = { ...config, forbiddenTopics };
-    // null = inherit org/env (explicit clear of channel override)
+    // null = inherit org/code (explicit clear of channel override)
     if (config.maxScenesLong == null) payload.maxScenesLong = null;
+    if (config.minScenesLong == null) payload.minScenesLong = null;
+    if (config.maxScenesShort == null) payload.maxScenesShort = null;
     if (config.generateAiImages == null) payload.generateAiImages = null;
+    if (config.maxAiImagesPerVideo == null) payload.maxAiImagesPerVideo = null;
+    if (config.openaiImageQuality == null) payload.openaiImageQuality = null;
+    if (config.ttsProvider == null) payload.ttsProvider = null;
     if (config.edgeTtsVoice == null) payload.edgeTtsVoice = null;
     if (config.elevenLabsVoiceId == null) payload.elevenLabsVoiceId = null;
     if (config.openaiTtsVoice == null) payload.openaiTtsVoice = null;
@@ -297,25 +309,63 @@ export function ChannelSettingsForm({
           />
         </label>
         {(config.videoFormat === 'long' || !config.videoFormat) && (
-          <label className="modal-field">
-            <span className="field-label-row">
-              <span>{t('maxScenesLongLabel')}</span>
-              <InfoTooltip content={t('maxScenesLongTooltip')} />
-            </span>
-            <input
-              type="number"
-              className="topic-input"
-              min={4}
-              max={40}
-              value={config.maxScenesLong ?? ''}
-              placeholder={t('maxScenesLongInherit')}
-              onChange={(e) => {
-                const v = e.target.value.trim();
-                setField('maxScenesLong', v === '' ? null : Number(v));
-              }}
-            />
-          </label>
+          <>
+            <label className="modal-field">
+              <span className="field-label-row">
+                <span>{t('maxScenesLongLabel')}</span>
+                <InfoTooltip content={t('maxScenesLongTooltip')} />
+              </span>
+              <input
+                type="number"
+                className="topic-input"
+                min={4}
+                max={40}
+                value={config.maxScenesLong ?? ''}
+                placeholder={t('maxScenesLongInherit')}
+                onChange={(e) => {
+                  const v = e.target.value.trim();
+                  setField('maxScenesLong', v === '' ? null : Number(v));
+                }}
+              />
+            </label>
+            <label className="modal-field">
+              <span className="field-label-row">
+                <span>{t('minScenesLongLabel')}</span>
+                <InfoTooltip content={t('minScenesLongTooltip')} />
+              </span>
+              <input
+                type="number"
+                className="topic-input"
+                min={2}
+                max={40}
+                value={config.minScenesLong ?? ''}
+                placeholder={t('minScenesLongInherit')}
+                onChange={(e) => {
+                  const v = e.target.value.trim();
+                  setField('minScenesLong', v === '' ? null : Number(v));
+                }}
+              />
+            </label>
+          </>
         )}
+        <label className="modal-field">
+          <span className="field-label-row">
+            <span>{t('maxScenesShortLabel')}</span>
+            <InfoTooltip content={t('maxScenesShortTooltip')} />
+          </span>
+          <input
+            type="number"
+            className="topic-input"
+            min={1}
+            max={12}
+            value={config.maxScenesShort ?? ''}
+            placeholder={t('maxScenesShortInherit')}
+            onChange={(e) => {
+              const v = e.target.value.trim();
+              setField('maxScenesShort', v === '' ? null : Number(v));
+            }}
+          />
+        </label>
         <label className="modal-field">
           <span className="field-label-row">
             <span>{t('generateAiImagesLabel')}</span>
@@ -339,6 +389,70 @@ export function ChannelSettingsForm({
             <option value="inherit">{t('generateAiImagesInherit')}</option>
             <option value="on">{t('generateAiImagesOn')}</option>
             <option value="off">{t('generateAiImagesOff')}</option>
+          </select>
+        </label>
+        <label className="modal-field">
+          <span className="field-label-row">
+            <span>{t('maxAiImagesLabel')}</span>
+            <InfoTooltip content={t('maxAiImagesTooltip')} />
+          </span>
+          <input
+            type="number"
+            className="topic-input"
+            min={0}
+            max={100}
+            value={config.maxAiImagesPerVideo ?? ''}
+            placeholder={t('maxAiImagesInherit')}
+            onChange={(e) => {
+              const v = e.target.value.trim();
+              setField('maxAiImagesPerVideo', v === '' ? null : Number(v));
+            }}
+          />
+        </label>
+        <label className="modal-field">
+          <span className="field-label-row">
+            <span>{t('imageQualityLabel')}</span>
+            <InfoTooltip content={t('imageQualityTooltip')} />
+          </span>
+          <select
+            className="topic-input"
+            value={config.openaiImageQuality ?? ''}
+            onChange={(e) => {
+              const v = e.target.value;
+              setField(
+                'openaiImageQuality',
+                v === '' ? null : (v as 'low' | 'medium' | 'high' | 'auto'),
+              );
+            }}
+          >
+            <option value="">{t('imageQualityInherit')}</option>
+            <option value="low">{t('imageQualityLow')}</option>
+            <option value="medium">{t('imageQualityMedium')}</option>
+            <option value="high">{t('imageQualityHigh')}</option>
+            <option value="auto">{t('imageQualityAuto')}</option>
+          </select>
+        </label>
+        <label className="modal-field">
+          <span className="field-label-row">
+            <span>{t('ttsProviderLabel')}</span>
+            <InfoTooltip content={t('ttsProviderTooltip')} />
+          </span>
+          <select
+            className="topic-input"
+            value={config.ttsProvider ?? ''}
+            onChange={(e) => {
+              const v = e.target.value;
+              setField(
+                'ttsProvider',
+                v === '' ? null : (v as 'auto' | 'edge' | 'elevenlabs' | 'openai'),
+              );
+            }}
+          >
+            <option value="">{t('ttsProviderInherit')}</option>
+            <option value="auto">{t('ttsProviderAuto')}</option>
+            <option value="edge">{t('ttsProviderEdge')}</option>
+            <option value="elevenlabs">{t('ttsProviderEleven')}</option>
+            <option value="openai">{t('ttsProviderOpenai')}</option>
           </select>
         </label>
         <label className="modal-field" htmlFor={voiceFieldId}>

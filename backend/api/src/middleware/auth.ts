@@ -123,6 +123,20 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction): v
   next();
 }
 
+/** Solo propietario de la organización (gestor de secretos de plataforma). */
+export function requireOwner(req: Request, res: Response, next: NextFunction): void {
+  const config = loadConfig();
+  if (!config.AUTH_REQUIRED && !req.auth) {
+    next();
+    return;
+  }
+  if (!req.auth || req.auth.role !== 'owner') {
+    res.status(403).json({ error: 'Solo el propietario puede gestionar secretos de plataforma' });
+    return;
+  }
+  next();
+}
+
 export function orgScope(req: Request): string | undefined {
   return req.auth?.organizationId;
 }

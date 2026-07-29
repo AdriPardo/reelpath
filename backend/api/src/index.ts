@@ -5,7 +5,11 @@ import express from 'express';
 import helmet from 'helmet';
 import pinoHttpImport from 'pino-http';
 import { loadConfig, isScriptDevMode } from '@autotube/config';
-import { prisma } from '@autotube/database';
+import {
+  importPlatformSecretsFromEnvIfEmpty,
+  loadPlatformSecretsOverrides,
+  prisma,
+} from '@autotube/database';
 import { enqueuePipeline, getPipelineQueue } from '@autotube/job-queue';
 import client from 'prom-client';
 import { initSentryForApi, installSentryErrorHandler, installSentryMiddleware, Sentry } from './lib/sentry.js';
@@ -21,6 +25,7 @@ import { systemRouter } from './routes/system.js';
 import { billingRouter } from './routes/billing.js';
 import { billingWebhookHandler } from './routes/billing-webhook.js';
 import { orgRouter } from './routes/org.js';
+import { platformRouter } from './routes/platform.js';
 
 const config = loadConfig();
 initSentryForApi();
@@ -117,6 +122,7 @@ app.use('/api/notifications', notificationsRouter);
 app.use('/api/system', systemRouter);
 app.use('/api/billing', billingRouter);
 app.use('/api/org', orgRouter);
+app.use('/api/platform', platformRouter);
 
 installSentryErrorHandler(app);
 app.use((err: Error & { statusCode?: number }, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
@@ -136,27 +142,52 @@ process.on('uncaughtException', (err) => {
 });
 
 const port = config.API_PORT;
-const server = app.listen(port, () => {
-  console.log(`AutoTube API listening on :${port}`);
-});
 
-let shuttingDown = false;
-
-async function shutdown(signal: string): Promise<void> {
-  if (shuttingDown) return;
-  shuttingDown = true;
-  console.log(`AutoTube API shutting down (${signal})...`);
-
-  const forceExit = setTimeout(() => process.exit(1), 5000);
-  forceExit.unref();
-
-  await new Promise<void>((resolve) => server.close(() => resolve()));
-  await prisma.$disconnect().catch(() => undefined);
-  clearTimeout(forceExit);
-  process.exit(0);
+async function bootPlatformSecrets(): Promise<void> {
+  try {
+    const { imported } = await importPlatformSecretsFromEnvIfEmpty({
+      YOUTUBE_CLIENT_ID: process.env.YOUTUBE_CLIENT_ID,
+      YOUTUBE_CLIENT_SECRET: process.env.YOUTUBE_CLIENT_SECRET,
+      OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+      DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY,
+      ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY,
+      PEXELS_API_KEY: process.env.PEXELS_API_KEY,
+    });
+    if (imported.length > 0) {
+      console.info(
+        `[api] Secretos de plataforma importados desde .env legacy: ${imported.join(', ')}. ` +
+          'Puedes quitar esas variables del .env; gestiona las keys en Ajustes → Secretos de plataforma.',
+      );
+    }
+    await loadPlatformSecretsOverrides();
+  } catch (err) {
+    console.warn('[api] No se pudieron cargar secretos de plataforma:', err);
+  }
 }
 
-process.on('SIGINT', () => void shutdown('SIGINT'));
-process.on('SIGTERM', () => void shutdown('SIGTERM'));
+void bootPlatformSecrets().then(() => {
+  const server = app.listen(port, () => {
+    console.log(`AutoTube API listening on :${port}`);
+  });
+
+  let shuttingDown = false;
+
+  async function shutdown(signal: string): Promise<void> {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(`AutoTube API shutting down (${signal})...`);
+
+    const forceExit = setTimeout(() => process.exit(1), 5000);
+    forceExit.unref();
+
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    await prisma.$disconnect().catch(() => undefined);
+    clearTimeout(forceExit);
+    process.exit(0);
+  }
+
+  process.on('SIGINT', () => void shutdown('SIGINT'));
+  process.on('SIGTERM', () => void shutdown('SIGTERM'));
+});
 
 export { enqueuePipeline };
