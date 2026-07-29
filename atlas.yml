@@ -1,0 +1,53 @@
+# Atlas project manifest (ADR-0014) — Reelpath on shared Traefik host
+apiVersion: atlas/v1alpha1
+kind: Project
+
+metadata:
+  name: reelpath
+
+runtime:
+  kind: compose
+  composeFile: docker-compose.atlas.yml
+
+# Desired projection; Compose file remains source of runtime detail (Traefik labels, volumes).
+services:
+  api:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.api
+    expose:
+      port: 4000
+      protocol: http
+    health:
+      path: /health
+      intervalSeconds: 15
+    dependsOn:
+      - db
+      - cache
+
+  worker:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.worker
+    dependsOn:
+      - db
+      - cache
+
+  frontend:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.frontend
+    expose:
+      port: 3000
+      protocol: http
+    dependsOn:
+      - api
+
+  db:
+    image: postgres:16-alpine
+
+  cache:
+    image: redis:7-alpine
+
+exposure:
+  default: public
