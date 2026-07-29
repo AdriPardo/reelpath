@@ -50,6 +50,7 @@ function requestHeaders(): Record<string, string> {
 export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
   return fetch(`${API_URL}${path}`, {
     ...init,
+    credentials: 'include',
     headers: {
       ...requestHeaders(),
       ...init?.headers,

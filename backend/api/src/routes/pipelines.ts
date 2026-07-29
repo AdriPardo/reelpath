@@ -31,12 +31,13 @@ pipelinesRouter.use(authMiddleware);
 
 async function scopedChannelFilter(req: Parameters<typeof orgChannelIds>[0]) {
   const ids = await orgChannelIds(req);
-  if (ids === null) return undefined;
+  // Fail-closed: sin org → filtro vacío (no listar todos los pipelines)
+  if (ids === null) return { channelId: { in: [] as string[] } };
   return { channelId: { in: ids } };
 }
 
 async function assertPipelineInOrg(pipelineId: string, orgId: string | undefined): Promise<boolean> {
-  if (!orgId) return true;
+  if (!orgId) return false;
   const run = await prisma.pipelineRun.findUnique({
     where: { id: pipelineId },
     include: { channel: { select: { organizationId: true } } },

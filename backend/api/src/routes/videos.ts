@@ -33,7 +33,7 @@ async function checkVideoAccess(videoId: string, orgId: string | undefined): Pro
     select: { id: true },
   });
   if (!video) return 'not_found';
-  if (!orgId) return 'allowed';
+  if (!orgId) return 'forbidden';
   return (await assertVideoInOrg(videoId, orgId)) ? 'allowed' : 'forbidden';
 }
 
@@ -90,8 +90,10 @@ const rescheduleVideoSchema = z.object({
 const ARCHIVED_REVIEW_STATUSES = ['cancelled', 'rejected'] as const;
 
 function orgChannelWhere(orgChannelIdList: string[] | null) {
-  if (orgChannelIdList === null) return {};
-  if (orgChannelIdList.length === 0) return { channelId: { in: [] as string[] } };
+  // null = sin org en sesión → ningún canal (fail-closed)
+  if (orgChannelIdList === null || orgChannelIdList.length === 0) {
+    return { channelId: { in: [] as string[] } };
+  }
   return { channelId: { in: orgChannelIdList } };
 }
 

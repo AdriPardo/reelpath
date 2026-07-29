@@ -14,7 +14,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { SkeletonHeader, SkeletonStats } from '@/components/ui/Skeleton';
 import { api } from '@/lib/api';
 import { parseApiError } from '@/lib/user-messages';
-import { clearToken, getToken, isAuthRequired, setToken } from '@/lib/auth';
+import { clearToken, isAuthRequired, setToken } from '@/lib/auth';
 import { isPublicPath } from '@/lib/public-paths';
 import type { AppLocale } from '@/i18n/routing';
 
@@ -70,15 +70,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const locale = useLocale() as AppLocale;
   const t = useTranslations('auth');
   const [session, setSession] = useState<AuthSession | null>(null);
-  const [loading, setLoading] = useState(isAuthRequired());
+  const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    const token = getToken();
-    if (!token) {
-      setSession(null);
-      setLoading(false);
-      return;
-    }
     try {
       const data = await api<AuthSession>('/api/auth/me');
       setSession(data);
@@ -106,6 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (email: string, password: string) => {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/auth/login`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
@@ -134,6 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/auth/register`,
         {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             email: data.email,
@@ -163,6 +159,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(() => {
+    void fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    }).catch(() => undefined);
     clearToken();
     setSession(null);
     router.push('/login');
@@ -198,7 +198,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isAuthRequired() || publicRoute) return;
-    if (!loading && !session && !getToken()) {
+    if (!loading && !session) {
       router.replace('/login');
     }
   }, [loading, session, router, publicRoute]);
@@ -216,7 +216,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
     );
   }
 
-  if (isAuthRequired() && !session && !getToken()) {
+  if (isAuthRequired() && !session) {
     return null;
   }
 

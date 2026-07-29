@@ -189,7 +189,20 @@ function validateProductionConfig(cfg: AppConfig): void {
     throw new Error('En producción se exige AUTH_REQUIRED=true');
   }
 
-  // Atlas shared-host / demo: allow mock + deferred YouTube/BYOK until secrets are set.
+  if (!cfg.AUTH_SECRET?.trim() || cfg.AUTH_SECRET.trim().length < 32) {
+    throw new Error('En producción se exige AUTH_SECRET de al menos 32 caracteres');
+  }
+
+  if (cfg.AUTH_SECRET.trim() === 'dev-insecure-auth-secret-change-me') {
+    throw new Error('AUTH_SECRET inseguro no permitido en producción');
+  }
+
+  // Cifrado de credenciales: obligatorio también en Atlas hosted.
+  if (!cfg.CREDENTIALS_ENCRYPTION_KEY?.trim()) {
+    throw new Error('En producción se exige CREDENTIALS_ENCRYPTION_KEY configurada');
+  }
+
+  // Atlas shared-host / demo: permite mocks hasta configurar secretos externos.
   const atlasHosted = process.env.ATLAS_HOSTED === 'true';
   if (atlasHosted) {
     return;
@@ -197,9 +210,6 @@ function validateProductionConfig(cfg: AppConfig): void {
 
   if (cfg.MOCK_EXTERNAL_APIS !== false) {
     throw new Error('En producción se exige MOCK_EXTERNAL_APIS=false');
-  }
-  if (!cfg.CREDENTIALS_ENCRYPTION_KEY?.trim()) {
-    throw new Error('En producción se exige CREDENTIALS_ENCRYPTION_KEY (BYOK) configurada');
   }
 
   // YouTube OAuth app: client/secret viven en PlatformSecret (BD), no en .env.

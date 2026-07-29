@@ -36,7 +36,14 @@ export function isEncryptedCredentialData(
 
 export function encryptCredentialPayload(data: Record<string, unknown>): object {
   const key = getEncryptionKey();
-  if (!key) return data;
+  if (!key) {
+    if (process.env.ALLOW_PLAINTEXT_CREDENTIALS !== 'true') {
+      throw new Error(
+        'CREDENTIALS_ENCRYPTION_KEY no configurada: no se permiten secretos en claro',
+      );
+    }
+    return data;
+  }
 
   const iv = crypto.randomBytes(IV_BYTES);
   const cipher = crypto.createCipheriv(ALGORITHM, key, iv);

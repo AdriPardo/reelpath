@@ -3,34 +3,39 @@ import { AUTH_COOKIE, LEGACY_AUTH_COOKIE } from './auth-constants';
 const TOKEN_KEY = AUTH_COOKIE;
 const LEGACY_TOKEN_KEY = LEGACY_AUTH_COOKIE;
 
-function readStoredToken(): string | null {
+/**
+ * Sesión vive en cookie HttpOnly del API (Set-Cookie).
+ * localStorage ya no guarda el JWT (mitiga robo vía XSS).
+ * getToken solo sirve legado / e2e Bearer opcional.
+ */
+function readLegacyStoredToken(): string | null {
   if (typeof window === 'undefined') return null;
   return localStorage.getItem(TOKEN_KEY) ?? localStorage.getItem(LEGACY_TOKEN_KEY);
 }
 
 export function getToken(): string | null {
-  return readStoredToken();
+  return readLegacyStoredToken();
 }
 
-function writeAuthCookie(name: string, value: string, maxAgeSeconds: number): void {
-  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${maxAgeSeconds}; SameSite=Lax`;
+function expireClientCookie(name: string): void {
+  document.cookie = `${name}=; path=/; max-age=0; SameSite=Lax`;
 }
 
-export function setToken(token: string): void {
+/** Tras login/register: limpia copias XSS-accesibles; la cookie HttpOnly la pone el API. */
+export function setToken(_token: string): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(TOKEN_KEY, token);
+  localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(LEGACY_TOKEN_KEY);
-  const maxAge = 7 * 24 * 60 * 60;
-  writeAuthCookie(AUTH_COOKIE, token, maxAge);
-  writeAuthCookie(LEGACY_AUTH_COOKIE, token, maxAge);
+  expireClientCookie(AUTH_COOKIE);
+  expireClientCookie(LEGACY_AUTH_COOKIE);
 }
 
 export function clearToken(): void {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(LEGACY_TOKEN_KEY);
-  writeAuthCookie(AUTH_COOKIE, '', 0);
-  writeAuthCookie(LEGACY_AUTH_COOKIE, '', 0);
+  expireClientCookie(AUTH_COOKIE);
+  expireClientCookie(LEGACY_AUTH_COOKIE);
 }
 
 export function isAuthRequired(): boolean {

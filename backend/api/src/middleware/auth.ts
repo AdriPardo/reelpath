@@ -1,5 +1,4 @@
 import type { NextFunction, Request, Response } from 'express';
-import { loadConfig } from '@autotube/config';
 import { prisma } from '@autotube/database';
 import { isAdminRole, verifyToken, type AuthContext } from '../lib/auth.js';
 import type { ApiLocale } from '../lib/i18n.js';
@@ -79,10 +78,12 @@ export async function attachUserLocaleMiddleware(
   next();
 }
 
+/**
+ * Fail-closed: las rutas bajo authMiddleware exigen sesión válida.
+ * AUTH_REQUIRED solo controla UI/registro público; la API no se abre sin auth.
+ */
 export function enforceAuthMiddleware(req: Request, res: Response, next: NextFunction): void {
-  const config = loadConfig();
-
-  if (config.AUTH_REQUIRED && !req.auth) {
+  if (!req.auth) {
     res.status(401).json({ error: 'Autenticación requerida' });
     return;
   }
@@ -111,11 +112,6 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
 }
 
 export function requireAdmin(req: Request, res: Response, next: NextFunction): void {
-  const config = loadConfig();
-  if (!config.AUTH_REQUIRED && !req.auth) {
-    next();
-    return;
-  }
   if (!req.auth || !isAdminRole(req.auth.role)) {
     res.status(403).json({ error: 'Se requiere rol de administrador' });
     return;
@@ -125,11 +121,6 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction): v
 
 /** Solo propietario de la organización (gestor de secretos de plataforma). */
 export function requireOwner(req: Request, res: Response, next: NextFunction): void {
-  const config = loadConfig();
-  if (!config.AUTH_REQUIRED && !req.auth) {
-    next();
-    return;
-  }
   if (!req.auth || req.auth.role !== 'owner') {
     res.status(403).json({ error: 'Solo el propietario puede gestionar secretos de plataforma' });
     return;

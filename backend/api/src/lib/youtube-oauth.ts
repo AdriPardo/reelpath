@@ -1,6 +1,7 @@
 import { loadConfig, resolvePlatformYouTubeOAuthAppSync } from '@autotube/config';
 import { SignJWT, jwtVerify } from 'jose';
 import { google } from 'googleapis';
+import { getAuthSecretKey } from './auth.js';
 
 export const YOUTUBE_OAUTH_SCOPES = [
   'https://www.googleapis.com/auth/youtube.upload',
@@ -13,10 +14,8 @@ export interface YouTubeOAuthState {
   organizationId: string;
 }
 
-function getSecretKey(): Uint8Array {
-  const config = loadConfig();
-  const secret = config.AUTH_SECRET ?? 'dev-insecure-auth-secret-change-me';
-  return new TextEncoder().encode(secret);
+function getOAuthStateKey(): Uint8Array {
+  return getAuthSecretKey();
 }
 
 /** Redirect URI registered in Google Cloud (single fixed path; channel id travels in state). */
@@ -51,12 +50,12 @@ export async function signYouTubeOAuthState(payload: YouTubeOAuthState): Promise
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('15m')
-    .sign(getSecretKey());
+    .sign(getOAuthStateKey());
 }
 
 export async function verifyYouTubeOAuthState(state: string): Promise<YouTubeOAuthState | null> {
   try {
-    const { payload } = await jwtVerify(state, getSecretKey());
+    const { payload } = await jwtVerify(state, getOAuthStateKey());
     const channelId = payload.channelId;
     const organizationId = payload.organizationId;
     if (typeof channelId !== 'string' || typeof organizationId !== 'string') {

@@ -49,6 +49,8 @@ jobs:
         env:
           DATABASE_URL: postgresql://autotube:autotube@localhost:5433/autotube
           E2E_TESTS: 'true'
+          AUTH_SECRET: e2e-ci-secret-at-least-32-characters-long
+          CREDENTIALS_ENCRYPTION_KEY: e2e-ci-credentials-encryption-key-32b
         run: |
           npm run migrate:deploy:ci -w @autotube/database
           npm run seed:ci -w @autotube/database
@@ -65,7 +67,9 @@ jobs:
           E2E_TESTS: 'true'
           MOCK_EXTERNAL_APIS: 'true'
           AUTH_REQUIRED: 'true'
-          AUTH_SECRET: e2e-ci-secret
+          AUTH_SECRET: e2e-ci-secret-at-least-32-characters-long
+          CREDENTIALS_ENCRYPTION_KEY: e2e-ci-credentials-encryption-key-32b
+          ALLOW_PLAINTEXT_CREDENTIALS: 'false'
           API_PORT: '4000'
           FRONTEND_URL: http://localhost:3000
           DATABASE_URL: postgresql://autotube:autotube@localhost:5433/autotube

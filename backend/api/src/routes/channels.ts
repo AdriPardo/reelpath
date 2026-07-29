@@ -79,7 +79,8 @@ channelsRouter.get('/', async (req, res) => {
   const orgId = orgScope(req);
   const pagination = parsePagination(req.query as Record<string, unknown>);
 
-  const where = orgId ? { organizationId: orgId } : undefined;
+  // Fail-closed: sin org no se listan canales de otros tenants
+  const where = orgId ? { organizationId: orgId } : { organizationId: '__none__' };
 
   const [channels, total] = await Promise.all([
     prisma.channel.findMany({

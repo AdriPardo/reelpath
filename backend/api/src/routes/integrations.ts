@@ -40,6 +40,16 @@ integrationsRouter.get('/youtube/callback', async (req, res) => {
 
   try {
     const tokens = await exchangeYouTubeAuthCode(code);
+    const channel = await prisma.channel.findUnique({
+      where: { id: payload.channelId },
+      select: { id: true, organizationId: true },
+    });
+    if (!channel || channel.organizationId !== payload.organizationId) {
+      return res.redirect(
+        `${redirectBase}&youtube=error&message=${encodeURIComponent('Canal no pertenece a la organización del state OAuth')}`,
+      );
+    }
+
     const existing = await prisma.integrationCredential.findFirst({
       where: { channelId: payload.channelId, provider: 'youtube' },
     });

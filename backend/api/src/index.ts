@@ -4,7 +4,7 @@ import cors from 'cors';
 import express from 'express';
 import helmet from 'helmet';
 import pinoHttpImport from 'pino-http';
-import { loadConfig, isScriptDevMode } from '@autotube/config';
+import { loadConfig } from '@autotube/config';
 import {
   importPlatformSecretsFromEnvIfEmpty,
   loadPlatformSecretsOverrides,
@@ -14,6 +14,7 @@ import { enqueuePipeline, getPipelineQueue } from '@autotube/job-queue';
 import client from 'prom-client';
 import { initSentryForApi, installSentryErrorHandler, installSentryMiddleware, Sentry } from './lib/sentry.js';
 import { getStorageStats } from './lib/storage-stats.js';
+import { requireObservabilityAccess } from './middleware/observability-auth.js';
 import { authRouter } from './routes/auth.js';
 import { channelsRouter } from './routes/channels.js';
 import { videosRouter } from './routes/videos.js';
@@ -34,7 +35,12 @@ const app = express();
 app.set('trust proxy', 1);
 
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
-app.use(cors({ origin: [config.FRONTEND_URL, 'http://localhost:3001'] }));
+app.use(
+  cors({
+    origin: [config.FRONTEND_URL, 'http://localhost:3001', 'http://localhost:3000'],
+    credentials: true,
+  }),
+);
 installSentryMiddleware(app);
 app.post(
   '/api/billing/webhook',
@@ -47,17 +53,13 @@ app.use((pinoHttpImport as unknown as () => express.RequestHandler)());
 client.collectDefaultMetrics();
 
 app.get('/health', (_req, res) => {
-  const cfg = loadConfig();
   res.json({
     status: 'ok',
     service: 'reelpath-api',
-    mockExternalApis: cfg.MOCK_EXTERNAL_APIS,
-    useMocks: cfg.useMocks,
-    scriptDevMode: isScriptDevMode(),
   });
 });
 
-app.get('/health/extended', async (_req, res) => {
+app.get('/health/extended', requireObservabilityAccess, async (_req, res) => {
   const cfg = loadConfig();
   const startedAt = Date.now();
 
@@ -107,7 +109,7 @@ app.get('/ready', async (_req, res) => {
   }
 });
 
-app.get('/metrics', async (_req, res) => {
+app.get('/metrics', requireObservabilityAccess, async (_req, res) => {
   res.setHeader('Content-Type', client.register.contentType);
   res.send(await client.register.metrics());
 });

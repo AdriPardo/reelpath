@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { buildWelcomeEmail, loadConfig, sendEmail } from '@autotube/config';
 import { prisma } from '@autotube/database';
 import { hashPassword, signToken, verifyPassword } from '../lib/auth.js';
+import { clearAuthCookies, setAuthCookies } from '../lib/auth-cookie.js';
 import { maybeSendTrialEndingEmail } from '../lib/billing-email.js';
 import { resolveLocale, type ApiLocale } from '../lib/i18n.js';
 import { parseAuthMiddleware, requireAuth } from '../middleware/auth.js';
@@ -85,12 +86,18 @@ authRouter.post('/login', authRateLimiter, async (req, res) => {
     email: user.email,
   });
 
+  setAuthCookies(res, token);
   res.json({
     token,
     user: serializeUser(user),
     organization: serializeOrganization(membership.organization),
     role: membership.role,
   });
+});
+
+authRouter.post('/logout', (_req, res) => {
+  clearAuthCookies(res);
+  res.json({ ok: true });
 });
 
 authRouter.get('/me', requireAuth, async (req, res) => {
@@ -306,6 +313,7 @@ authRouter.post('/register', authRateLimiter, async (req, res) => {
     console.warn('[auth/register] No se pudo enviar email de bienvenida:', err);
   });
 
+  setAuthCookies(res, token);
   res.status(201).json({
     token,
     user: serializeUser(result.user),

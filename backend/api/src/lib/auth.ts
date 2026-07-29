@@ -25,9 +25,23 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   return bcrypt.compare(password, hash);
 }
 
-function getSecretKey(): Uint8Array {
+const INSECURE_DEV_SECRET = 'dev-insecure-auth-secret-change-me';
+
+export function getAuthSecretKey(): Uint8Array {
   const config = loadConfig();
-  const secret = config.AUTH_SECRET ?? 'dev-insecure-auth-secret-change-me';
+  const secret = config.AUTH_SECRET?.trim();
+  if (!secret) {
+    if (config.NODE_ENV === 'production') {
+      throw new Error('AUTH_SECRET es obligatorio en producción');
+    }
+    return new TextEncoder().encode(INSECURE_DEV_SECRET);
+  }
+  if (secret === INSECURE_DEV_SECRET && config.NODE_ENV === 'production') {
+    throw new Error('AUTH_SECRET inseguro no permitido en producción');
+  }
+  if (secret.length < 32 && (config.NODE_ENV === 'production' || config.AUTH_REQUIRED)) {
+    throw new Error('AUTH_SECRET debe tener al menos 32 caracteres');
+  }
   return new TextEncoder().encode(secret);
 }
 
@@ -42,12 +56,12 @@ export async function signToken(payload: AuthContext): Promise<string> {
     .setSubject(payload.userId)
     .setIssuedAt()
     .setExpirationTime('7d')
-    .sign(getSecretKey());
+    .sign(getAuthSecretKey());
 }
 
 export async function verifyToken(token: string): Promise<AuthContext | null> {
   try {
-    const { payload } = await jwtVerify(token, getSecretKey());
+    const { payload } = await jwtVerify(token, getAuthSecretKey());
     const userId = payload.userId ?? payload.sub;
     const organizationId = payload.organizationId;
     const role = payload.role;

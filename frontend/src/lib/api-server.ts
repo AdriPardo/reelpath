@@ -14,6 +14,7 @@ export class ServerApiError extends Error {
 export async function serverApi<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     ...init,
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...(await authHeadersFromCookie()),

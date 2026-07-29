@@ -91,19 +91,39 @@ export async function setSessionToken(page: Page, token: string): Promise<void> 
   const context = page.context();
   const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000';
 
+  // Cookie HttpOnly en frontend (media proxy) y API (credentials include).
   await context.addCookies([
-    { name: AUTH_COOKIE, value: token, url: baseURL },
-    { name: LEGACY_AUTH_COOKIE, value: token, url: baseURL },
-  ]);
-
-  await page.addInitScript(
-    ([t, key1, key2]) => {
-      localStorage.setItem(key1, t);
-      localStorage.setItem(key2, t);
-      document.cookie = `${key1}=${encodeURIComponent(t)}; path=/; SameSite=Lax`;
-      document.cookie = `${key2}=${encodeURIComponent(t)}; path=/; SameSite=Lax`;
+    {
+      name: AUTH_COOKIE,
+      value: token,
+      url: baseURL,
+      httpOnly: true,
+      sameSite: 'Lax',
+      path: '/',
     },
-    [token, AUTH_COOKIE, LEGACY_AUTH_COOKIE],
-  );
+    {
+      name: LEGACY_AUTH_COOKIE,
+      value: token,
+      url: baseURL,
+      httpOnly: true,
+      sameSite: 'Lax',
+      path: '/',
+    },
+    {
+      name: AUTH_COOKIE,
+      value: token,
+      url: API_URL,
+      httpOnly: true,
+      sameSite: 'Lax',
+      path: '/',
+    },
+    {
+      name: LEGACY_AUTH_COOKIE,
+      value: token,
+      url: API_URL,
+      httpOnly: true,
+      sameSite: 'Lax',
+      path: '/',
+    },
+  ]);
 }
-

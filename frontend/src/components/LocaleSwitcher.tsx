@@ -6,7 +6,6 @@ import { usePathname, useRouter } from '@/i18n/navigation';
 import { routing, type AppLocale } from '@/i18n/routing';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
-import { getToken } from '@/lib/auth';
 
 interface LocaleSwitcherProps {
   variant?: 'nav' | 'settings';
@@ -18,14 +17,14 @@ export function LocaleSwitcher({ variant = 'nav', className }: LocaleSwitcherPro
   const tc = useTranslations('common');
   const router = useRouter();
   const pathname = usePathname();
-  const { refresh, setUserLocale } = useAuth();
+  const { refresh, setUserLocale, session } = useAuth();
   const [saving, setSaving] = useState(false);
 
   async function switchLocale(next: AppLocale) {
     if (next === locale || saving) return;
     setSaving(true);
     try {
-      if (getToken()) {
+      if (session) {
         setUserLocale(next);
         await api('/api/auth/me', {
           method: 'PATCH',
