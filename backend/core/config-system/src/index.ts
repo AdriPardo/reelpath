@@ -448,7 +448,7 @@ export function getLlmModel(options?: { orgOpenAiApiKey?: string | null }): stri
   const config = loadConfig();
   const provider = resolveLlmProvider(options);
   if (provider === 'deepseek') {
-    return config.DEEPSEEK_MODEL.trim() || 'deepseek-v4-flash';
+    return config.DEEPSEEK_MODEL.trim() || 'deepseek-v4-pro';
   }
   if (isScriptDevMode() && config.OPENAI_MODEL_DEV) {
     return config.OPENAI_MODEL_DEV;

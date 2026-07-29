@@ -33,7 +33,7 @@ export const PRODUCT_DEFAULTS = {
   elevenLabsStability: 0.45,
   elevenLabsSimilarity: 0.8,
   elevenLabsStyle: 0.15,
-  deepseekModel: 'deepseek-v4-flash',
+  deepseekModel: 'deepseek-v4-pro',
   openaiModel: 'gpt-4o-mini',
   openaiMaxTokens: 3000,
   openaiMaxTokensLong: 8000,

@@ -180,7 +180,7 @@ Objetivo típico con defaults cost-efficient: **€0.20–0.80 / vídeo largo** 
 
 | Concepto | Caro (~€5) | Cost-efficient |
 |----------|------------|----------------|
-| Chat LLM (ideas + guion) | gpt-4o / gpt-4o-mini | **DeepSeek** `deepseek-v4-flash` (~10–50× más barato que gpt-4o) |
+| Chat LLM (ideas + guion) | gpt-4o / gpt-4o-mini | **DeepSeek** `deepseek-v4-pro` (mejor calidad; flash sigue disponible vía `DEEPSEEK_MODEL`) |
 | TTS | ElevenLabs (~€1–3 / 8 min) | **Edge TTS** (gratis) |
 | Imágenes | gpt-image high × 20 escenas | **Off** + Pexels/stock; tope IA por canal/org (default 4) |
 | Escenas | 20 | **6–8** (default de código / override canal) |
@@ -206,7 +206,7 @@ API keys y YouTube Client ID/Secret: **Ajustes → Secretos de plataforma** (o `
 **Qué sigue en OpenAI (si está activo):** imágenes DALL·E/gpt-image, TTS OpenAI (solo fallback).
 **TTS / escenas / IA:** se configuran en **canal** (y defaults de org en Ajustes), no en `.env`.
 
-Ahorro LLM estimado (guion long ~50–150k tokens totales entre llamadas): gpt-4o-mini ~$0.15–0.50 → DeepSeek flash ~$0.01–0.05.
+Ahorro LLM estimado (guion long ~50–150k tokens totales entre llamadas): gpt-4o-mini ~$0.15–0.50 → DeepSeek Pro/Flash ~$0.02–0.15 (Pro más caro que Flash, sigue muy por debajo de GPT).
 
 ## Páginas legales públicas
 
