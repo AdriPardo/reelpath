@@ -91,7 +91,7 @@ export async function setSessionToken(page: Page, token: string): Promise<void> 
   const context = page.context();
   const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000';
 
-  // Cookie HttpOnly en frontend (media proxy) y API (credentials include).
+  // Solo `url` (no mezclar con path). HttpOnly en frontend + API.
   await context.addCookies([
     {
       name: AUTH_COOKIE,
@@ -99,7 +99,6 @@ export async function setSessionToken(page: Page, token: string): Promise<void> 
       url: baseURL,
       httpOnly: true,
       sameSite: 'Lax',
-      path: '/',
     },
     {
       name: LEGACY_AUTH_COOKIE,
@@ -107,7 +106,6 @@ export async function setSessionToken(page: Page, token: string): Promise<void> 
       url: baseURL,
       httpOnly: true,
       sameSite: 'Lax',
-      path: '/',
     },
     {
       name: AUTH_COOKIE,
@@ -115,7 +113,6 @@ export async function setSessionToken(page: Page, token: string): Promise<void> 
       url: API_URL,
       httpOnly: true,
       sameSite: 'Lax',
-      path: '/',
     },
     {
       name: LEGACY_AUTH_COOKIE,
@@ -123,7 +120,6 @@ export async function setSessionToken(page: Page, token: string): Promise<void> 
       url: API_URL,
       httpOnly: true,
       sameSite: 'Lax',
-      path: '/',
     },
   ]);
 }
