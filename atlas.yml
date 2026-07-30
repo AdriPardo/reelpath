@@ -8,6 +8,10 @@ metadata:
 runtime:
   kind: compose
   composeFile: docker-compose.atlas.yml
+  # Injected into workspace .env before compose up (survives new workspace seed from .env.atlas.example).
+  envFrom:
+    - secretRef: CREDENTIALS_ENCRYPTION_KEY
+    - secretRef: AUTH_SECRET
 
 # Desired projection; Compose file remains source of runtime detail (Traefik labels, volumes).
 services:

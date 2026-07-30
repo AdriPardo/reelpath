@@ -828,6 +828,18 @@ const CURIOSIDADES_HISTORIA_CONFIG = {
     'Escena 1 = pattern-interrupt brutal. Cierre con pregunta retórica, no despedida.',
 } as const;
 
+/** Create admin only if missing. Existing users keep password + name across redeploys/seeds. */
+async function ensureAdminUser(email: string, password: string) {
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing) {
+    return existing;
+  }
+  const passwordHash = await bcrypt.hash(password, 10);
+  return prisma.user.create({
+    data: { email, passwordHash, name: 'Admin' },
+  });
+}
+
 async function bindChannelPrompts(
   channelId: string,
   bindings: Record<string, string>,
@@ -1003,7 +1015,6 @@ async function main() {
   if (process.env.SEED_DEMO === 'false') {
     const adminEmail = (process.env.DEFAULT_ADMIN_EMAIL ?? 'admin@reelpath.local').toLowerCase();
     const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD ?? 'changeme';
-    const passwordHash = await bcrypt.hash(adminPassword, 10);
     const orgSlug = process.env.SEED_ORG_SLUG ?? 'main';
     const orgName = process.env.SEED_ORG_NAME ?? 'Mi organización';
 
@@ -1019,11 +1030,8 @@ async function main() {
       update: { name: orgName, isActive: true },
     });
 
-    const adminUser = await prisma.user.upsert({
-      where: { email: adminEmail },
-      create: { email: adminEmail, passwordHash, name: 'Admin' },
-      update: { passwordHash, name: 'Admin' },
-    });
+    // Never overwrite passwordHash on existing users — deploy/seed must not reset logins.
+    const adminUser = await ensureAdminUser(adminEmail, adminPassword);
 
     await prisma.organizationMember.upsert({
       where: {
@@ -1065,20 +1073,8 @@ async function main() {
 
   const adminEmail = (process.env.DEFAULT_ADMIN_EMAIL ?? 'admin@reelpath.local').toLowerCase();
   const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD ?? 'changeme';
-  const passwordHash = await bcrypt.hash(adminPassword, 10);
-
-  const adminUser = await prisma.user.upsert({
-    where: { email: adminEmail },
-    create: {
-      email: adminEmail,
-      passwordHash,
-      name: 'Admin',
-    },
-    update: {
-      passwordHash,
-      name: 'Admin',
-    },
-  });
+  // Never overwrite passwordHash on existing users — deploy/seed must not reset logins.
+  const adminUser = await ensureAdminUser(adminEmail, adminPassword);
 
   await prisma.organizationMember.upsert({
     where: {
