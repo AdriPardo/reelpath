@@ -6549,12 +6549,20 @@ th { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; }
   margin-top: 1rem;
 }
 
-.video-edit-form,
-.channel-settings-form {
+.video-edit-form {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
   max-width: 40rem;
+}
+
+.channel-settings-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: 1rem;
+  width: 100%;
+  max-width: none;
+  align-items: start;
 }
 
 .channel-settings-form .field-effective-hint {
@@ -6793,8 +6801,12 @@ th { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; }
 
 .channel-settings-form {
   margin-top: var(--space-2);
-  gap: 1rem;
-  max-width: 40rem;
+}
+
+.channel-settings-form > .btn,
+.channel-settings-form > button {
+  grid-column: 1 / -1;
+  justify-self: start;
 }
 
 .settings-fieldset {
@@ -6803,8 +6815,18 @@ th { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; }
   padding: 1.1rem 1.25rem 1.2rem;
   margin: 0;
   display: grid;
-  gap: 0.9rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: 0.9rem 1rem;
+  align-content: start;
+  min-width: 0;
   background: color-mix(in srgb, var(--panel) 82%, transparent);
+}
+
+.settings-fieldset > .modal-field:has(textarea),
+.settings-fieldset > .modal-checkbox,
+.settings-fieldset > .channel-profile-grid,
+.settings-fieldset > .settings-field-full {
+  grid-column: 1 / -1;
 }
 
 .settings-fieldset legend {
@@ -6817,12 +6839,13 @@ th { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; }
 
 .channel-settings-form .modal-field {
   gap: 0.45rem;
+  min-width: 0;
 }
 
 .channel-settings-form .topic-input,
 .channel-settings-form .modal-field select {
   width: 100%;
-  max-width: 28rem;
+  max-width: none;
   min-height: 2.75rem;
   padding: 0.72rem 0.9rem;
   border-radius: 12px;
@@ -6864,6 +6887,7 @@ th { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; }
 
 .channel-profile-grid {
   display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
   gap: 0.9rem 1rem;
 }
 
@@ -6983,12 +7007,7 @@ th { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; }
   transform: translateX(-50%) translateY(0);
 }
 
-@media (min-width: 900px) {
-  .channel-profile-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    align-items: start;
-  }
-}
+/* channel-profile-grid uses auto-fit; no fixed breakpoint needed */
 
 @media (prefers-reduced-motion: reduce) {
   *,
