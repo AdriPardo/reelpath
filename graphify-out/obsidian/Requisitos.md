@@ -1,0 +1,17 @@
+---
+source_file: "README.md"
+type: "document"
+community: "Quick Start (desarrollo local)"
+location: "L36"
+tags:
+  - graphify/document
+  - graphify/EXTRACTED
+  - community/Quick_Start_desarrollo_local
+---
+
+# Requisitos
+
+## Connections
+- [[Quick Start (desarrollo local)]] - `contains` [EXTRACTED]
+
+#graphify/document #graphify/EXTRACTED #community/Quick_Start_desarrollo_local

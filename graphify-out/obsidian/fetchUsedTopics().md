@@ -1,0 +1,21 @@
+---
+source_file: "backend/services/idea-generator/src/used-topics.ts"
+type: "code"
+community: "idea-generator/src/index.ts"
+location: "L4"
+tags:
+  - graphify/code
+  - graphify/EXTRACTED
+  - community/idea-generator/src/indexts
+---
+
+# fetchUsedTopics()
+
+## Connections
+- [[ensureSelectedIdea()]] - `calls` [EXTRACTED]
+- [[generateIdeas()]] - `calls` [EXTRACTED]
+- [[idea-generatorsrcindex.ts]] - `imports` [EXTRACTED]
+- [[normalizeTopicKey()]] - `calls` [EXTRACTED]
+- [[used-topics.ts]] - `contains` [EXTRACTED]
+
+#graphify/code #graphify/EXTRACTED #community/idea-generator/src/indexts

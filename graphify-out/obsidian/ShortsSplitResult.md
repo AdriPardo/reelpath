@@ -1,0 +1,18 @@
+---
+source_file: "backend/services/video-renderer/src/shorts-split.ts"
+type: "code"
+community: "video-renderer/src/index.ts"
+location: "L160"
+tags:
+  - graphify/code
+  - graphify/EXTRACTED
+  - community/video-renderer/src/indexts
+---
+
+# ShortsSplitResult
+
+## Connections
+- [[shorts-split.ts]] - `contains` [EXTRACTED]
+- [[video-renderersrcindex.ts]] - `re_exports` [EXTRACTED]
+
+#graphify/code #graphify/EXTRACTED #community/video-renderer/src/indexts

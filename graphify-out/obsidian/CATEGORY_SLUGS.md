@@ -1,0 +1,18 @@
+---
+source_file: "frontend/src/lib/help/help-content.ts"
+type: "code"
+community: "help-content.ts"
+location: "L25"
+tags:
+  - graphify/code
+  - graphify/EXTRACTED
+  - community/help-contentts
+---
+
+# CATEGORY_SLUGS
+
+## Connections
+- [[buildHelpHome()]] - `references` [EXTRACTED]
+- [[help-content.ts]] - `contains` [EXTRACTED]
+
+#graphify/code #graphify/EXTRACTED #community/help-contentts

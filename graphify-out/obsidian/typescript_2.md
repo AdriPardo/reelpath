@@ -1,0 +1,18 @@
+---
+source_file: "backend/core/config-system/package.json"
+type: "code"
+community: "config-system/package.json"
+location: "L20"
+tags:
+  - graphify/code
+  - graphify/EXTRACTED
+  - community/config-system/packagejson
+---
+
+# typescript
+
+## Connections
+- [[devDependencies_1]] - `contains` [EXTRACTED]
+- [[typescript_3]] - `imports` [EXTRACTED]
+
+#graphify/code #graphify/EXTRACTED #community/config-system/packagejson

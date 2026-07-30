@@ -1,0 +1,33 @@
+# Dependencies & build
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+.next/
+**/.next/
+coverage/
+.turbo/
+storage/
+uploads/
+playwright-report/
+test-results/
+
+# Local secrets / env
+.env
+.env.*
+
+# Cursor / local skill caches (not product source)
+.cursor/skills/
+.cursor/.impeccable-skill-head
+.cursor/.taste-skill-head
+.skills/
+**/.emil-skill-head
+**/.flutter-ai-rules-head
+
+# Graphify own output (avoid self-ingestion)
+graphify-out/
+
+# Misc
+*.log
+.DS_Store
+*.tsbuildinfo
