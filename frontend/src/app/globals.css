@@ -8555,3 +8555,260 @@ th { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; }
   }
 }
 
+/* ── Voice picker (ElevenLabs-style) ─────────────────────── */
+
+.voice-picker {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+.voice-picker-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 88%, white 12%);
+  background: color-mix(in srgb, var(--panel) 92%, white 8%);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
+}
+
+.voice-picker-trigger:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--border) 70%, var(--accent) 30%);
+}
+
+.voice-picker.is-open .voice-picker-trigger,
+.voice-picker-trigger:focus-visible {
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent) 48%, var(--border) 52%);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.voice-picker-trigger:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.voice-picker-trigger-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.voice-picker-trigger-name {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.voice-picker-trigger-meta {
+  font-size: 0.75rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.voice-picker-chevron {
+  color: var(--muted);
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+.voice-picker-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 999px;
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+
+.voice-picker-avatar-sm {
+  width: 1.75rem;
+  height: 1.75rem;
+  font-size: 0.65rem;
+}
+
+.voice-picker-avatar-md {
+  width: 2.25rem;
+  height: 2.25rem;
+  font-size: 0.72rem;
+}
+
+.voice-picker-avatar-inherit {
+  background: color-mix(in srgb, var(--muted) 35%, var(--panel)) !important;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.voice-picker-panel {
+  position: absolute;
+  z-index: 40;
+  left: 0;
+  right: 0;
+  top: calc(100% + 0.35rem);
+  display: flex;
+  flex-direction: column;
+  max-height: min(22rem, 60vh);
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel) 96%, black 4%);
+  box-shadow: 0 18px 40px -24px rgba(0, 0, 0, 0.65);
+  overflow: hidden;
+}
+
+.voice-picker-search {
+  display: block;
+  padding: 0.65rem 0.75rem 0.45rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.voice-picker-search input {
+  width: 100%;
+  min-height: 2.35rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.voice-picker-search input:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent) 48%, var(--border) 52%);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.voice-picker-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.35rem;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.voice-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  width: 100%;
+  border-radius: 10px;
+  transition: background-color 120ms ease;
+}
+
+.voice-picker-row:hover,
+.voice-picker-row.is-selected {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.voice-picker-row-main,
+.voice-picker-row > button.voice-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+  padding: 0.55rem 0.55rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.voice-picker-row-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.voice-picker-row-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.voice-picker-row-desc {
+  font-size: 0.75rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.voice-picker-play {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  margin-right: 0.35rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel) 80%, white 8%);
+  color: var(--text);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease,
+    color 140ms ease,
+    transform 140ms ease;
+}
+
+.voice-picker-play:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
+  color: var(--accent);
+}
+
+.voice-picker-play.is-playing {
+  background: var(--accent-subtle);
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
+.voice-picker-play:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.voice-picker-empty {
+  padding: 1rem 0.75rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.channel-settings-form .voice-picker,
+.settings-panel .voice-picker {
+  max-width: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voice-picker-trigger,
+  .voice-picker-row,
+  .voice-picker-play {
+    transition: none;
+  }
+}
+
+

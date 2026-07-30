@@ -12,6 +12,7 @@ import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
 import { Button } from '@/components/ui/Button';
+import { VoicePicker } from '@/components/ui/VoicePicker';
 
 type LlmProvider = 'auto' | 'deepseek' | 'openai';
 type TtsProvider = 'auto' | 'edge' | 'elevenlabs' | 'openai';
@@ -250,35 +251,36 @@ export function SettingsApiKeysPanel() {
               </select>
             </div>
 
-            <label className="modal-field" htmlFor={voiceId}>
-              {ts('apikeysVoiceLabel')}
-              <select
+            <div className="modal-field" id={`${voiceId}-wrap`}>
+              <span className="field-label-row">
+                <span>{ts('apikeysVoiceLabel')}</span>
+              </span>
+              <VoicePicker
                 id={voiceId}
-                className="topic-input"
+                voices={
+                  activeVoiceValue && !voiceOptions.some((v) => v.id === activeVoiceValue)
+                    ? [
+                        ...voiceOptions,
+                        {
+                          id: activeVoiceValue,
+                          label: ts('apikeysVoiceCustom', { id: activeVoiceValue }),
+                          locale: 'custom',
+                          description: activeVoiceValue,
+                        },
+                      ]
+                    : voiceOptions
+                }
                 value={activeVoiceValue}
-                onChange={(e) => setActiveVoice(e.target.value)}
-                aria-label={ts('apikeysVoiceLabel')}
-              >
-                <option value="">{ts('apikeysVoiceInherit', { default: platformVoiceDefault })}</option>
-                {voiceOptions.map((voice) => (
-                  <option key={voice.id} value={voice.id}>
-                    {voice.label}
-                    {voice.gender ? ` · ${voice.gender}` : ''}
-                  </option>
-                ))}
-                {activeVoiceValue &&
-                  !voiceOptions.some((v) => v.id === activeVoiceValue) && (
-                    <option value={activeVoiceValue}>
-                      {ts('apikeysVoiceCustom', { id: activeVoiceValue })}
-                    </option>
-                  )}
-              </select>
+                onChange={setActiveVoice}
+                inheritLabel={ts('apikeysVoiceInherit', { default: platformVoiceDefault })}
+                provider={ttsProvider === 'auto' ? 'edge' : ttsProvider}
+              />
               <span className="text-muted text-sm">
                 {ttsProvider === 'auto'
                   ? ts('apikeysVoiceHintAuto')
                   : ts('apikeysVoiceHint')}
               </span>
-            </label>
+            </div>
 
             <div className="settings-divider" />
 

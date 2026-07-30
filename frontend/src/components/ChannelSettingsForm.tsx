@@ -15,6 +15,7 @@ import { api } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
 import { Button } from '@/components/ui/Button';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
+import { VoicePicker } from '@/components/ui/VoicePicker';
 
 type FormConfig = Partial<ChannelConfig>;
 type OrgTtsProvider = 'auto' | 'edge' | 'elevenlabs' | 'openai';
@@ -528,33 +529,34 @@ export function ChannelSettingsForm({
             <option value="openai">{t('ttsProviderOpenai')}</option>
           </select>
         </label>
-        <label className="modal-field" htmlFor={voiceFieldId}>
-          <span className="field-label-row">
+        <div className="modal-field settings-field-full">
+          <span className="field-label-row" id={`${voiceFieldId}-label`}>
             <span>{t('ttsVoiceLabel')}</span>
             <InfoTooltip content={t('ttsVoiceTooltip')} />
           </span>
-          <select
+          <VoicePicker
             id={voiceFieldId}
-            className="topic-input"
-            value={typeof activeChannelVoice === 'string' ? activeChannelVoice : ''}
-            onChange={(e) => setChannelVoice(e.target.value)}
-          >
-            <option value="">{t('ttsVoiceInherit', { default: inheritVoiceLabel })}</option>
-            {voiceOptions.map((voice) => (
-              <option key={voice.id} value={voice.id}>
-                {voice.label}
-                {voice.gender ? ` · ${voice.gender}` : ''}
-              </option>
-            ))}
-            {typeof activeChannelVoice === 'string' &&
+            voices={
+              typeof activeChannelVoice === 'string' &&
               activeChannelVoice &&
-              !voiceOptions.some((v) => v.id === activeChannelVoice) && (
-                <option value={activeChannelVoice}>
-                  {t('ttsVoiceCustom', { id: activeChannelVoice })}
-                </option>
-              )}
-          </select>
-        </label>
+              !voiceOptions.some((v) => v.id === activeChannelVoice)
+                ? [
+                    ...voiceOptions,
+                    {
+                      id: activeChannelVoice,
+                      label: t('ttsVoiceCustom', { id: activeChannelVoice }),
+                      locale: 'custom',
+                      description: activeChannelVoice,
+                    },
+                  ]
+                : voiceOptions
+            }
+            value={typeof activeChannelVoice === 'string' ? activeChannelVoice : ''}
+            onChange={setChannelVoice}
+            inheritLabel={t('ttsVoiceInherit', { default: inheritVoiceLabel })}
+            provider={effectiveProvider}
+          />
+        </div>
       </fieldset>
 
       {(config.videoFormat === 'long' || !config.videoFormat) && (

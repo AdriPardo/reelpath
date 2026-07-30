@@ -13,10 +13,13 @@ import {
   deleteOrgOpenAiApiKey,
   getOrgPipelineSettings,
   prisma,
+  resolveOrgElevenLabsApiKey,
+  resolvePlatformApiKey,
   upsertOrgDeepseekApiKey,
   upsertOrgElevenLabsApiKey,
   upsertOrgOpenAiApiKey,
 } from '@autotube/database';
+import { ELEVENLABS_TTS_VOICES, getTtsVoicesForProvider } from '@autotube/shared';
 import type { MemberRole } from '../lib/auth.js';
 import { deleteChannelWithCleanup } from '../lib/channel-deletion.js';
 import { authMiddleware, orgScope, requireAdmin, requireAuth } from '../middleware/auth.js';
@@ -24,6 +27,81 @@ import { authMiddleware, orgScope, requireAdmin, requireAuth } from '../middlewa
 export const orgRouter = Router();
 
 orgRouter.use(authMiddleware, requireAuth);
+
+type VoicePreviewCache = { at: number; map: Record<string, string> };
+let elevenLabsPreviewCache: VoicePreviewCache | null = null;
+const PREVIEW_CACHE_MS = 60 * 60 * 1000;
+
+async function resolveElevenLabsKey(orgId: string): Promise<string | null> {
+  const orgKey = await resolveOrgElevenLabsApiKey(orgId);
+  if (orgKey) return orgKey;
+  const platformKey = await resolvePlatformApiKey('elevenlabs');
+  if (platformKey) return platformKey;
+  return loadConfig().ELEVENLABS_API_KEY?.trim() || null;
+}
+
+async function loadElevenLabsPreviewMap(apiKey: string): Promise<Record<string, string>> {
+  if (elevenLabsPreviewCache && Date.now() - elevenLabsPreviewCache.at < PREVIEW_CACHE_MS) {
+    return elevenLabsPreviewCache.map;
+  }
+  const res = await fetch('https://api.elevenlabs.io/v1/voices', {
+    headers: { 'xi-api-key': apiKey, Accept: 'application/json' },
+  });
+  if (!res.ok) {
+    throw new Error(`ElevenLabs voices failed (${res.status})`);
+  }
+  const data = (await res.json()) as {
+    voices?: Array<{ voice_id?: string; preview_url?: string | null }>;
+  };
+  const map: Record<string, string> = {};
+  for (const voice of data.voices ?? []) {
+    if (voice.voice_id && voice.preview_url) {
+      map[voice.voice_id] = voice.preview_url;
+    }
+  }
+  elevenLabsPreviewCache = { at: Date.now(), map };
+  return map;
+}
+
+/** Curated voices + ElevenLabs preview URLs when a key is available. */
+orgRouter.get('/tts/voices', async (req, res) => {
+  const orgId = orgScope(req);
+  if (!orgId) {
+    return res.status(400).json({ error: 'Organización no definida' });
+  }
+
+  const providerRaw = String(req.query.provider ?? 'elevenlabs');
+  const provider =
+    providerRaw === 'edge' || providerRaw === 'openai' || providerRaw === 'elevenlabs'
+      ? providerRaw
+      : 'elevenlabs';
+
+  const curated =
+    provider === 'elevenlabs' ? ELEVENLABS_TTS_VOICES : getTtsVoicesForProvider(provider);
+
+  let previewMap: Record<string, string> = {};
+  let previewsAvailable = false;
+  if (provider === 'elevenlabs') {
+    try {
+      const apiKey = await resolveElevenLabsKey(orgId);
+      if (apiKey) {
+        previewMap = await loadElevenLabsPreviewMap(apiKey);
+        previewsAvailable = Object.keys(previewMap).length > 0;
+      }
+    } catch (err) {
+      console.warn('[org/tts/voices] preview map failed', err);
+    }
+  }
+
+  res.json({
+    provider,
+    previewsAvailable,
+    voices: curated.map((v) => ({
+      ...v,
+      previewUrl: v.previewUrl ?? previewMap[v.id] ?? null,
+    })),
+  });
+});
 
 const inviteSchema = z.object({
   email: z.string().email(),

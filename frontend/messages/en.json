@@ -1908,5 +1908,17 @@
     "markPublishedError": "Could not mark as published",
     "youtubeIdOptional": "YouTube ID (optional)",
     "youtubeIdPlaceholder": "abc123 or Short URL"
+  },
+  "voicePicker": {
+    "placeholder": "Select a voice",
+    "search": "Search voices",
+    "searchPlaceholder": "Search by name, accent, or style…",
+    "listAria": "Available voices",
+    "inheritHint": "Use the inherited value",
+    "preview": "Play sample",
+    "previewUnavailable": "Preview unavailable",
+    "playPreview": "Play sample of {name}",
+    "stopPreview": "Stop sample of {name}",
+    "empty": "No voices match your search"
   }
 }

@@ -1908,5 +1908,17 @@
     "markPublishedError": "No se pudo marcar como publicado",
     "youtubeIdOptional": "ID de YouTube (opcional)",
     "youtubeIdPlaceholder": "abc123 o URL del Short"
+  },
+  "voicePicker": {
+    "placeholder": "Seleccionar voz",
+    "search": "Buscar voz",
+    "searchPlaceholder": "Buscar por nombre, acento o estilo…",
+    "listAria": "Voces disponibles",
+    "inheritHint": "Usar el valor heredado",
+    "preview": "Escuchar muestra",
+    "previewUnavailable": "Vista previa no disponible",
+    "playPreview": "Reproducir muestra de {name}",
+    "stopPreview": "Detener muestra de {name}",
+    "empty": "Ninguna voz coincide con la búsqueda"
   }
 }
