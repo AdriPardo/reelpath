@@ -1,12 +1,40 @@
 'use client';
 
+import { useEffect, useRef, type RefObject } from 'react';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { DEMO_CHANNEL, LEGAL_URLS, PLATFORM } from '@/lib/site-brand';
 
+function useHomeMotion(rootRef: RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      root.querySelectorAll('.home-reveal').forEach((el) => el.classList.add('is-visible'));
+      return;
+    }
+
+    const targets = root.querySelectorAll<HTMLElement>('.home-reveal');
+    const obs = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          entry.target.classList.add('is-visible');
+          obs.unobserve(entry.target);
+        }
+      },
+      { rootMargin: '0px 0px -8% 0px', threshold: 0.12 },
+    );
+    targets.forEach((el) => obs.observe(el));
+    return () => obs.disconnect();
+  }, [rootRef]);
+}
+
 export function MarketingHome() {
   const t = useTranslations('landing');
   const tc = useTranslations('common');
+  const rootRef = useRef<HTMLDivElement>(null);
+  useHomeMotion(rootRef);
 
   const STEPS = [
     { num: '01', title: t('stepProduction'), desc: t('stepProductionDesc') },
@@ -23,6 +51,19 @@ export function MarketingHome() {
   ];
 
   const DEMO_FEATURES = [t('demoFeature1'), t('demoFeature2'), t('demoFeature3')];
+
+  const CAPABILITIES = [
+    { title: t('capScriptTitle'), desc: t('capScriptDesc') },
+    { title: t('capMediaTitle'), desc: t('capMediaDesc') },
+    { title: t('capReviewTitle'), desc: t('capReviewDesc') },
+    { title: t('capPublishTitle'), desc: t('capPublishDesc') },
+  ];
+
+  const AUDIENCE = [
+    { title: t('audienceEduTitle'), desc: t('audienceEduDesc') },
+    { title: t('audienceSoloTitle'), desc: t('audienceSoloDesc') },
+    { title: t('audienceStudioTitle'), desc: t('audienceStudioDesc') },
+  ];
 
   const PLANS = [
     {
@@ -65,50 +106,100 @@ export function MarketingHome() {
   const demoVideoId = DEMO_CHANNEL.demoYoutubeVideoId.trim();
 
   return (
-    <div className="home">
-      <section className="home-hero">
+    <div className="home" ref={rootRef}>
+      <section className="home-hero home-bleed">
         <div className="home-hero-glow" aria-hidden="true" />
-        <h1 className="home-title">
-          {PLATFORM.name}
-          <span className="home-title-accent"> — {t('heroOutcome')}</span>
-        </h1>
-        <p className="home-tagline">{t('heroSupport')}</p>
-        <div className="home-actions">
-          <Link href="/register" className="btn btn-primary btn-lg">
-            {t('startTrial')}
-          </Link>
-          <Link href="/login" className="home-login-link">
-            {t('login')}
-          </Link>
+        <div className="home-hero-grid" aria-hidden="true" />
+        <div className="home-shell home-hero-inner">
+          <p className="home-brand-mark home-hero-enter" style={{ ['--home-delay' as string]: '0ms' }}>
+            {PLATFORM.name}
+          </p>
+          <h1 className="home-title home-hero-enter" style={{ ['--home-delay' as string]: '80ms' }}>
+            <span className="home-title-accent">{t('heroOutcome')}</span>
+          </h1>
+          <p className="home-tagline home-hero-enter" style={{ ['--home-delay' as string]: '160ms' }}>
+            {t('heroSupport')}
+          </p>
+          <div className="home-actions home-hero-enter" style={{ ['--home-delay' as string]: '240ms' }}>
+            <Link href="/register" className="btn btn-primary btn-lg">
+              {t('startTrial')}
+            </Link>
+            <Link href="/login" className="home-login-link">
+              {t('login')}
+            </Link>
+          </div>
+          <p className="home-trust-line home-hero-enter" style={{ ['--home-delay' as string]: '320ms' }}>
+            <span>{t('trustTrial')}</span>
+            <span aria-hidden="true">·</span>
+            <a href={DEMO_CHANNEL.youtubeUrl} target="_blank" rel="noopener noreferrer">
+              {t('trustChannel')}
+            </a>
+          </p>
         </div>
-        <p className="home-trust-line">
-          <span>{t('trustTrial')}</span>
-          <span aria-hidden="true">·</span>
-          <a href={DEMO_CHANNEL.youtubeUrl} target="_blank" rel="noopener noreferrer">
-            {t('trustChannel')}
-          </a>
-        </p>
       </section>
 
-      <section className="home-section" aria-labelledby="home-how">
-        <h2 id="home-how" className="home-section-title">
-          {t('workflow')}
-        </h2>
-        <ol className="home-steps">
-          {STEPS.map((step) => (
-            <li key={step.num} className="home-step">
-              <span className="home-step-num" aria-hidden="true">
-                {step.num}
-              </span>
-              <h3>{step.title}</h3>
-              <p>{step.desc}</p>
-            </li>
-          ))}
-        </ol>
+      <section className="home-section home-bleed home-band" aria-labelledby="home-problem">
+        <div className="home-shell home-reveal">
+          <h2 id="home-problem" className="home-section-title">
+            {t('problemTitle')}
+          </h2>
+          <p className="home-section-lead">{t('problemLead')}</p>
+          <div className="home-problem-grid">
+            <p>{t('problemPain1')}</p>
+            <p>{t('problemPain2')}</p>
+            <p>{t('problemPain3')}</p>
+          </div>
+        </div>
       </section>
 
-      <section className="home-section home-proof-section" aria-labelledby="home-proof">
-        <div className="home-section-heading">
+      <section className="home-section home-shell" aria-labelledby="home-how">
+        <div className="home-reveal">
+          <h2 id="home-how" className="home-section-title">
+            {t('workflow')}
+          </h2>
+          <ol className="home-steps">
+            {STEPS.map((step, i) => (
+              <li
+                key={step.num}
+                className="home-step home-reveal"
+                style={{ ['--home-delay' as string]: `${i * 90}ms` }}
+              >
+                <span className="home-step-num" aria-hidden="true">
+                  {step.num}
+                </span>
+                <h3>{step.title}</h3>
+                <p>{step.desc}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      <section className="home-section home-bleed home-band" aria-labelledby="home-caps">
+        <div className="home-shell home-reveal">
+          <div className="home-section-heading">
+            <h2 id="home-caps" className="home-section-title">
+              {t('capabilitiesTitle')}
+            </h2>
+            <p className="home-section-copy">{t('capabilitiesCopy')}</p>
+          </div>
+          <ul className="home-capability-grid">
+            {CAPABILITIES.map((item, i) => (
+              <li
+                key={item.title}
+                className="home-capability home-reveal"
+                style={{ ['--home-delay' as string]: `${i * 70}ms` }}
+              >
+                <h3>{item.title}</h3>
+                <p>{item.desc}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      <section className="home-section home-shell home-proof-section" aria-labelledby="home-proof">
+        <div className="home-section-heading home-reveal">
           <h2 id="home-proof" className="home-section-title">
             {t('proofTitle', { appName: PLATFORM.name })}
           </h2>
@@ -117,7 +208,7 @@ export function MarketingHome() {
           </p>
         </div>
 
-        <div className="home-proof-layout">
+        <div className="home-proof-layout home-reveal">
           <div className="home-proof-visual">
             {demoVideoId ? (
               <div className="home-demo-embed">
@@ -172,15 +263,35 @@ export function MarketingHome() {
         </div>
       </section>
 
-      <section className="home-section" aria-labelledby="home-pricing">
-        <div className="home-section-heading">
+      <section className="home-section home-bleed home-band" aria-labelledby="home-audience">
+        <div className="home-shell home-reveal">
+          <h2 id="home-audience" className="home-section-title">
+            {t('audienceTitle')}
+          </h2>
+          <ul className="home-audience-grid">
+            {AUDIENCE.map((item, i) => (
+              <li
+                key={item.title}
+                className="home-audience-item home-reveal"
+                style={{ ['--home-delay' as string]: `${i * 80}ms` }}
+              >
+                <h3>{item.title}</h3>
+                <p>{item.desc}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      <section className="home-section home-shell" aria-labelledby="home-pricing">
+        <div className="home-section-heading home-reveal">
           <h2 id="home-pricing" className="home-section-title">
             {t('pricing')}
           </h2>
           <p className="home-section-copy">{t('pricingCopy')}</p>
         </div>
 
-        <div className="home-pricing-block">
+        <div className="home-pricing-block home-reveal">
           <div className="home-pricing-label">{t('monthlySubscription')}</div>
           <div className="home-pricing-grid home-pricing-grid-plans">
             {PLANS.map((plan) => (
@@ -212,14 +323,14 @@ export function MarketingHome() {
           </div>
         </div>
 
-        <p className="home-pricing-aside">{t('pricingAside')}</p>
+        <p className="home-pricing-aside home-reveal">{t('pricingAside')}</p>
       </section>
 
-      <section className="home-section" aria-labelledby="home-faq">
-        <h2 id="home-faq" className="home-section-title">
+      <section className="home-section home-shell" aria-labelledby="home-faq">
+        <h2 id="home-faq" className="home-section-title home-reveal">
           {t('faq')}
         </h2>
-        <div className="home-faq-list">
+        <div className="home-faq-list home-reveal">
           {FAQ.map((item) => (
             <details key={item.q} className="home-faq-item">
               <summary>{item.q}</summary>
@@ -229,15 +340,17 @@ export function MarketingHome() {
         </div>
       </section>
 
-      <section className="home-final-cta" aria-labelledby="home-final">
-        <h2 id="home-final">{t('finalCtaTitle')}</h2>
-        <p>{t('finalCtaCopy')}</p>
-        <Link href="/register" className="btn btn-primary btn-lg">
-          {t('startTrial')}
-        </Link>
+      <section className="home-final-cta home-bleed" aria-labelledby="home-final">
+        <div className="home-shell home-reveal">
+          <h2 id="home-final">{t('finalCtaTitle')}</h2>
+          <p>{t('finalCtaCopy')}</p>
+          <Link href="/register" className="btn btn-primary btn-lg">
+            {t('startTrial')}
+          </Link>
+        </div>
       </section>
 
-      <footer className="landing-footer">
+      <footer className="landing-footer home-shell">
         <Link href={LEGAL_URLS.terms}>{tc('termsOfService')}</Link>
         <span aria-hidden="true">·</span>
         <Link href={LEGAL_URLS.privacy}>{tc('privacyPolicy')}</Link>

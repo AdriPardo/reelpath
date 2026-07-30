@@ -1806,49 +1806,94 @@ h3 { font-size: var(--text-lg); font-weight: 600; letter-spacing: -0.01em; line-
 .container:has(.home) {
   width: 100%;
   max-width: none;
-  padding-left: clamp(1.25rem, 5vw, 4.5rem);
-  padding-right: clamp(1.25rem, 5vw, 4.5rem);
-  padding-top: clamp(0.5rem, 1.5vw, 1.25rem);
-  padding-bottom: clamp(2rem, 4vw, 3.5rem);
+  padding-left: 0;
+  padding-right: 0;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 .home {
   width: 100%;
-  max-width: min(1120px, 100%);
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
 }
 
-@media (min-width: 1400px) {
-  .home {
-    max-width: min(1320px, 100%);
-  }
+.home-shell {
+  width: 100%;
+  max-width: none;
+  padding-left: clamp(1.25rem, 4vw, 3.5rem);
+  padding-right: clamp(1.25rem, 4vw, 3.5rem);
 }
 
-@media (min-width: 1800px) {
-  .home {
-    max-width: min(1480px, 100%);
-  }
+.home-bleed {
+  width: 100%;
+}
+
+.home-band {
+  padding-block: clamp(2.5rem, 6vw, 4.5rem);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--surface) 70%, transparent) 0%,
+      color-mix(in srgb, var(--accent) 4%, var(--bg)) 100%
+    );
+  border-block: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
 }
 
 .home-hero {
   position: relative;
   text-align: left;
-  padding: clamp(2.5rem, 7vw, 5.5rem) 0 clamp(2rem, 5vw, 3.75rem);
-  border-bottom: 1px solid var(--border);
+  padding: clamp(3rem, 8vw, 6.5rem) 0 clamp(2.5rem, 6vw, 4.5rem);
   overflow: hidden;
   isolation: isolate;
+  min-height: min(78vh, 46rem);
+  display: flex;
+  align-items: flex-end;
+  background:
+    radial-gradient(ellipse 70% 55% at 85% -10%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 60%),
+    radial-gradient(ellipse 50% 40% at 10% 80%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 55%),
+    var(--bg);
+}
+
+.home-hero-inner {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: min(72rem, 100%);
 }
 
 .home-hero-glow {
   display: block;
   position: absolute;
-  inset: -25% -30% auto;
-  height: min(34rem, 55vw);
+  inset: -20% -10% auto;
+  height: min(40rem, 70vw);
   background:
-    radial-gradient(ellipse 55% 50% at 18% 40%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%),
-    radial-gradient(ellipse 45% 55% at 78% 20%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 68%);
+    radial-gradient(ellipse 55% 50% at 18% 40%, color-mix(in srgb, var(--accent) 26%, transparent), transparent 70%),
+    radial-gradient(ellipse 45% 55% at 78% 20%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 68%);
   pointer-events: none;
   z-index: 0;
+  animation: home-glow-breathe 8s ease-in-out infinite alternate;
+}
+
+.home-hero-grid {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.35;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--border) 55%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--border) 55%, transparent) 1px, transparent 1px);
+  background-size: 4.5rem 4.5rem;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.55), transparent 85%);
+}
+
+.home-brand-mark {
+  font-size: clamp(1.75rem, 3.2vw, 2.75rem);
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  color: var(--text);
+  margin: 0 0 1rem;
 }
 
 .home-brand,
@@ -1877,12 +1922,12 @@ h3 { font-size: var(--text-lg); font-weight: 600; letter-spacing: -0.01em; line-
 }
 
 .home-title {
-  font-size: clamp(2.25rem, 4.2vw, 4rem);
+  font-size: clamp(2.35rem, 5.2vw, 4.35rem);
   font-weight: 600;
   font-style: normal;
   letter-spacing: -0.04em;
   line-height: 1.05;
-  max-width: min(22ch, 100%);
+  max-width: min(28ch, 100%);
   margin: 0 0 1.25rem;
 }
 
@@ -1893,9 +1938,9 @@ h3 { font-size: var(--text-lg); font-weight: 600; letter-spacing: -0.01em; line-
 
 .home-tagline {
   color: var(--muted);
-  font-size: clamp(1rem, 1.6vw, 1.25rem);
+  font-size: clamp(1.05rem, 1.8vw, 1.3rem);
   line-height: 1.6;
-  max-width: min(48ch, 100%);
+  max-width: min(52ch, 100%);
   margin: 0 0 2rem;
 }
 
@@ -1939,6 +1984,7 @@ h3 { font-size: var(--text-lg); font-weight: 600; letter-spacing: -0.01em; line-
   color: var(--text);
   text-decoration: none;
   border-bottom: 1px solid var(--border);
+  transition: border-color 0.15s ease;
 }
 
 .home-trust-line a:hover {
@@ -1946,7 +1992,13 @@ h3 { font-size: var(--text-lg); font-weight: 600; letter-spacing: -0.01em; line-
 }
 
 .home-section {
-  margin-top: clamp(2rem, 5vw, 3.5rem);
+  margin-top: clamp(2.5rem, 6vw, 4.5rem);
+  margin-bottom: clamp(1rem, 3vw, 2rem);
+}
+
+.home-section.home-band {
+  margin-top: 0;
+  margin-bottom: 0;
 }
 
 .home-section-heading {
@@ -1955,13 +2007,21 @@ h3 { font-size: var(--text-lg); font-weight: 600; letter-spacing: -0.01em; line-
 
 .home-section-title {
   text-align: left;
-  font-size: clamp(1.2rem, 3vw, 1.45rem);
+  font-size: clamp(1.35rem, 3.2vw, 1.85rem);
   font-weight: 600;
   letter-spacing: -0.03em;
   max-width: none;
-  margin: 0 0 var(--space-4);
+  margin: 0 0 var(--space-3);
   padding-bottom: var(--space-2);
   border-bottom: 1px solid var(--border);
+}
+
+.home-section-lead {
+  margin: 0 0 1.75rem;
+  max-width: 62ch;
+  font-size: clamp(1.05rem, 1.8vw, 1.25rem);
+  line-height: 1.55;
+  color: var(--text);
 }
 
 .home-section-copy {
@@ -1971,11 +2031,51 @@ h3 { font-size: var(--text-lg); font-weight: 600; letter-spacing: -0.01em; line-
   line-height: 1.6;
 }
 
+.home-problem-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: 1rem 1.5rem;
+}
+
+.home-problem-grid p {
+  margin: 0;
+  padding: 1rem 0 0;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  line-height: 1.55;
+  font-size: 0.95rem;
+}
+
+.home-capability-grid,
+.home-audience-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: 1.25rem 1.5rem;
+}
+
+.home-capability h3,
+.home-audience-item h3 {
+  margin: 0 0 0.45rem;
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+}
+
+.home-capability p,
+.home-audience-item p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+  font-size: 0.9rem;
+}
+
 .home-steps {
   list-style: none;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: var(--space-4) var(--space-3);
   padding: 0;
   margin: 0;
 }
@@ -2017,17 +2117,20 @@ h3 { font-size: var(--text-lg); font-weight: 600; letter-spacing: -0.01em; line-
 
 .home-final-cta {
   margin-top: clamp(2.5rem, 6vw, 4rem);
-  padding: clamp(1.75rem, 4vw, 2.5rem) 0;
+  padding: clamp(2.5rem, 7vw, 5rem) 0;
   border-top: 1px solid var(--border);
   text-align: left;
+  background:
+    radial-gradient(ellipse 60% 80% at 0% 50%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 60%),
+    var(--bg);
 }
 
 .home-final-cta h2 {
-  font-size: clamp(1.35rem, 3vw, 1.75rem);
+  font-size: clamp(1.5rem, 3.5vw, 2.15rem);
   font-weight: 600;
   letter-spacing: -0.03em;
   margin: 0 0 0.75rem;
-  max-width: 20ch;
+  max-width: 22ch;
 }
 
 .home-final-cta p {
@@ -2052,18 +2155,27 @@ h3 { font-size: var(--text-lg); font-weight: 600; letter-spacing: -0.01em; line-
 
 .home-pricing-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
   gap: var(--space-3);
 }
 
 .home-pricing-grid-plans {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
 }
 
 .home-pricing-card {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  transition:
+    border-color 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.home-pricing-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
 }
 
 .home-pricing-card-featured {
@@ -2140,13 +2252,49 @@ h3 { font-size: var(--text-lg); font-weight: 600; letter-spacing: -0.01em; line-
   background: var(--accent);
 }
 
-@media (max-width: 720px) {
-  .home-steps,
-  .home-pricing-grid,
-  .home-pricing-grid-plans {
-    grid-template-columns: 1fr;
-  }
+/* Motion: hero entrance + scroll reveals */
+.home-hero-enter {
+  opacity: 0;
+  transform: translateY(0.85rem);
+  filter: blur(6px);
+  animation: home-hero-in 700ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: var(--home-delay, 0ms);
+}
 
+.home-reveal {
+  opacity: 0;
+  transform: translateY(1.1rem);
+  transition:
+    opacity 600ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 600ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: var(--home-delay, 0ms);
+}
+
+.home-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@keyframes home-hero-in {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes home-glow-breathe {
+  from {
+    opacity: 0.75;
+    transform: scale(1);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+
+@media (max-width: 720px) {
   .home-actions .btn {
     flex: 1 1 auto;
   }
@@ -2159,20 +2307,44 @@ h3 { font-size: var(--text-lg); font-weight: 600; letter-spacing: -0.01em; line-
   .home-pipeline-connector {
     display: none;
   }
+
+  .home-hero {
+    min-height: auto;
+    align-items: flex-start;
+  }
 }
 
 .landing-footer {
-  margin-top: 3rem;
-  padding-top: 1.5rem;
+  margin-top: 0;
+  padding: 1.5rem clamp(1.25rem, 4vw, 3.5rem) 2.5rem;
   border-top: 1px solid var(--border);
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 0.75rem;
   flex-wrap: wrap;
   font-size: 0.875rem;
 }
 .landing-footer a { color: var(--muted); text-decoration: none; }
 .landing-footer a:hover { color: var(--text); }
+
+@media (prefers-reduced-motion: reduce) {
+  .home-hero-glow {
+    animation: none;
+  }
+
+  .home-hero-enter,
+  .home-reveal {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    animation: none;
+    transition: none;
+  }
+
+  .home-pricing-card:hover {
+    transform: none;
+  }
+}
 
 table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
 th, td { text-align: left; padding: 0.75rem; border-bottom: 1px solid var(--border); }
