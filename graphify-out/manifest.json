@@ -2348,5 +2348,15 @@
     "mtime": 1783396551.391211,
     "ast_hash": "3c905b765dac15e75d4fe3ce968c05cf",
     "semantic_hash": ""
+  },
+  "scripts/graphify-export-obsidian.sh": {
+    "mtime": 1785384852.7218852,
+    "ast_hash": "4eaeae5f1e3d59d1457100fa00550baf",
+    "semantic_hash": ""
+  },
+  "docs/GRAPHIFY.md": {
+    "mtime": 1785384878.0241895,
+    "ast_hash": "1e15fb3edd5af6c34582c0250d4d4459",
+    "semantic_hash": ""
   }
 }
