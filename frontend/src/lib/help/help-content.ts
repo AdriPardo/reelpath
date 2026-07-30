@@ -46,7 +46,15 @@ const SLUG_TO_CATEGORY: Record<string, HelpCategorySlug> = {
 
 function docsRoot(locale: AppLocale) {
   const folder = locale === 'en' ? 'AYUDA-en' : 'AYUDA';
-  return path.resolve(process.cwd(), '..', 'docs', folder);
+  const candidates = [
+    path.resolve(process.cwd(), '..', 'docs', folder),
+    path.resolve(process.cwd(), 'docs', folder),
+    path.resolve('/app/docs', folder),
+  ];
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return candidates[0]!;
 }
 
 function readFileSafe(filePath: string) {

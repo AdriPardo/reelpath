@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 type SearchHit = {
   href: string;
@@ -23,6 +23,7 @@ function useDebounced<T>(value: T, delayMs: number) {
 
 export function HelpSearch() {
   const t = useTranslations('help');
+  const locale = useLocale();
   const router = useRouter();
   const [query, setQuery] = useState('');
   const debounced = useDebounced(query, 120);
@@ -49,7 +50,10 @@ export function HelpSearch() {
     abortRef.current = controller;
 
     setLoading(true);
-    fetch(`/api/ayuda/search?q=${encodeURIComponent(trimmed)}`, { signal: controller.signal })
+    fetch(
+      `/api/ayuda/search?q=${encodeURIComponent(trimmed)}&locale=${encodeURIComponent(locale)}`,
+      { signal: controller.signal },
+    )
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error('search_failed'))))
       .then((data: { hits: SearchHit[] }) => {
         setHits(Array.isArray(data.hits) ? data.hits : []);
@@ -60,7 +64,7 @@ export function HelpSearch() {
         setHits([]);
       })
       .finally(() => setLoading(false));
-  }, [trimmed, canSearch]);
+  }, [trimmed, canSearch, locale]);
 
   useEffect(() => {
     if (!open) return;

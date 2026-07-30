@@ -12,6 +12,8 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_AUTH_REQUIRED=$NEXT_PUBLIC_AUTH_REQUIRED
 COPY packages/shared ./packages/shared
 COPY frontend ./frontend
+# Help center reads markdown from ../docs/AYUDA* at runtime (cwd = /app/frontend).
+COPY docs ./docs
 RUN npm run build -w @autotube/shared
 WORKDIR /app/frontend
 RUN npx next build
@@ -24,6 +26,7 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./
 COPY --from=build /app/packages ./packages
 COPY --from=build /app/frontend ./frontend
+COPY --from=build /app/docs ./docs
 WORKDIR /app/frontend
 EXPOSE 3000
 ENV HOSTNAME=0.0.0.0
