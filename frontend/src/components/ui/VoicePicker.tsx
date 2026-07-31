@@ -4,12 +4,15 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type KeyboardEvent,
   type MouseEvent,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import type { TtsVoiceOption } from '@autotube/shared';
 import { apiFetch } from '@/lib/api';
@@ -35,13 +38,22 @@ function hashHue(id: string): number {
   return h % 360;
 }
 
-function VoiceAvatar({ voice, size = 'md' }: { voice: VoicePickerOption | null; size?: 'sm' | 'md' }) {
-  const label = voice?.label?.trim() || '?';
-  const initials = label
+function voiceInitials(label: string): string {
+  const parts = label
+    .replace(/[()[\]{}]/g, ' ')
     .split(/\s+/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .filter((p) => /^[\p{L}\p{N}]/u.test(p));
+  return parts
     .slice(0, 2)
     .map((p) => p[0]?.toUpperCase() ?? '')
     .join('');
+}
+
+function VoiceAvatar({ voice, size = 'md' }: { voice: VoicePickerOption | null; size?: 'sm' | 'md' }) {
+  const label = voice?.label?.trim() || '?';
+  const initials = voiceInitials(label);
   const hue = voice ? hashHue(voice.id) : 160;
   return (
     <span
@@ -84,11 +96,18 @@ export function VoicePicker({
   const listboxId = `${autoId}-listbox`;
   const searchId = `${autoId}-search`;
   const rootRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [enriched, setEnriched] = useState<VoicePickerOption[]>(voices);
+  const [panelStyle, setPanelStyle] = useState<CSSProperties>({});
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     setEnriched(voices);
@@ -119,10 +138,45 @@ export function VoicePicker({
     };
   }, [provider, voices]);
 
+  const updatePanelPosition = useCallback(() => {
+    const trigger = rootRef.current;
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    const gap = 6;
+    const maxHeight = Math.min(22 * 16, window.innerHeight * 0.6);
+    const spaceBelow = window.innerHeight - rect.bottom - gap - 8;
+    const spaceAbove = rect.top - gap - 8;
+    const openUp = spaceBelow < Math.min(maxHeight, 280) && spaceAbove > spaceBelow;
+    const height = Math.min(maxHeight, openUp ? spaceAbove : spaceBelow);
+    setPanelStyle({
+      position: 'fixed',
+      left: Math.max(8, Math.min(rect.left, window.innerWidth - rect.width - 8)),
+      width: rect.width,
+      maxHeight: Math.max(160, height),
+      zIndex: 10050,
+      ...(openUp
+        ? { bottom: window.innerHeight - rect.top + gap, top: 'auto' }
+        : { top: rect.bottom + gap, bottom: 'auto' }),
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    updatePanelPosition();
+    window.addEventListener('resize', updatePanelPosition);
+    window.addEventListener('scroll', updatePanelPosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePanelPosition);
+      window.removeEventListener('scroll', updatePanelPosition, true);
+    };
+  }, [open, updatePanelPosition]);
+
   useEffect(() => {
     if (!open) return;
     function onDoc(e: Event) {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (rootRef.current?.contains(target) || panelRef.current?.contains(target)) return;
+      setOpen(false);
     }
     function onKey(e: Event) {
       if ((e as globalThis.KeyboardEvent).key === 'Escape') setOpen(false);
@@ -209,6 +263,82 @@ export function VoicePicker({
       ? inheritLabel
       : t('placeholder');
 
+  const panel = open ? (
+    <div className="voice-picker-panel" role="presentation" ref={panelRef} style={panelStyle}>
+      <label className="voice-picker-search" htmlFor={searchId}>
+        <span className="sr-only">{t('search')}</span>
+        <input
+          id={searchId}
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t('searchPlaceholder')}
+          autoFocus
+        />
+      </label>
+
+      <ul id={listboxId} className="voice-picker-list" role="listbox" aria-label={t('listAria')}>
+        {inheritLabel ? (
+          <li role="option" aria-selected={!value}>
+            <button
+              type="button"
+              className={`voice-picker-row${!value ? ' is-selected' : ''}`}
+              onClick={() => selectVoice('')}
+            >
+              <span className="voice-picker-avatar voice-picker-avatar-md voice-picker-avatar-inherit">
+                ∞
+              </span>
+              <span className="voice-picker-row-body">
+                <span className="voice-picker-row-name">{inheritLabel}</span>
+                <span className="voice-picker-row-desc">{t('inheritHint')}</span>
+              </span>
+            </button>
+          </li>
+        ) : null}
+
+        {filtered.map((voice) => {
+          const selectedRow = value === voice.id;
+          const canPreview = Boolean(voice.previewUrl);
+          return (
+            <li key={voice.id} role="option" aria-selected={selectedRow}>
+              <div className={`voice-picker-row${selectedRow ? ' is-selected' : ''}`}>
+                <button
+                  type="button"
+                  className="voice-picker-row-main"
+                  onClick={() => selectVoice(voice.id)}
+                >
+                  <VoiceAvatar voice={voice} />
+                  <span className="voice-picker-row-body">
+                    <span className="voice-picker-row-name">{voice.label}</span>
+                    <span className="voice-picker-row-desc">
+                      {[voice.accent, voice.gender, voice.description].filter(Boolean).join(' · ')}
+                    </span>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className={`voice-picker-play${playingId === voice.id ? ' is-playing' : ''}`}
+                  disabled={!canPreview}
+                  title={canPreview ? t('preview') : t('previewUnavailable')}
+                  aria-label={
+                    playingId === voice.id
+                      ? t('stopPreview', { name: voice.label })
+                      : t('playPreview', { name: voice.label })
+                  }
+                  onClick={(e) => togglePreview(voice, e)}
+                >
+                  <PlayIcon playing={playingId === voice.id} />
+                </button>
+              </div>
+            </li>
+          );
+        })}
+
+        {filtered.length === 0 ? <li className="voice-picker-empty">{t('empty')}</li> : null}
+      </ul>
+    </div>
+  ) : null;
+
   return (
     <div
       className={`voice-picker${className ? ` ${className}` : ''}${open ? ' is-open' : ''}`}
@@ -241,85 +371,7 @@ export function VoicePicker({
         </span>
       </button>
 
-      {open ? (
-        <div className="voice-picker-panel" role="presentation">
-          <label className="voice-picker-search" htmlFor={searchId}>
-            <span className="sr-only">{t('search')}</span>
-            <input
-              id={searchId}
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={t('searchPlaceholder')}
-              autoFocus
-            />
-          </label>
-
-          <ul id={listboxId} className="voice-picker-list" role="listbox" aria-label={t('listAria')}>
-            {inheritLabel ? (
-              <li role="option" aria-selected={!value}>
-                <button
-                  type="button"
-                  className={`voice-picker-row${!value ? ' is-selected' : ''}`}
-                  onClick={() => selectVoice('')}
-                >
-                  <span className="voice-picker-avatar voice-picker-avatar-md voice-picker-avatar-inherit">
-                    ∞
-                  </span>
-                  <span className="voice-picker-row-body">
-                    <span className="voice-picker-row-name">{inheritLabel}</span>
-                    <span className="voice-picker-row-desc">{t('inheritHint')}</span>
-                  </span>
-                </button>
-              </li>
-            ) : null}
-
-            {filtered.map((voice) => {
-              const selectedRow = value === voice.id;
-              const canPreview = Boolean(voice.previewUrl);
-              return (
-                <li key={voice.id} role="option" aria-selected={selectedRow}>
-                  <div className={`voice-picker-row${selectedRow ? ' is-selected' : ''}`}>
-                    <button
-                      type="button"
-                      className="voice-picker-row-main"
-                      onClick={() => selectVoice(voice.id)}
-                    >
-                      <VoiceAvatar voice={voice} />
-                      <span className="voice-picker-row-body">
-                        <span className="voice-picker-row-name">{voice.label}</span>
-                        <span className="voice-picker-row-desc">
-                          {[voice.accent, voice.gender, voice.description]
-                            .filter(Boolean)
-                            .join(' · ')}
-                        </span>
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      className={`voice-picker-play${playingId === voice.id ? ' is-playing' : ''}`}
-                      disabled={!canPreview}
-                      title={canPreview ? t('preview') : t('previewUnavailable')}
-                      aria-label={
-                        playingId === voice.id
-                          ? t('stopPreview', { name: voice.label })
-                          : t('playPreview', { name: voice.label })
-                      }
-                      onClick={(e) => togglePreview(voice, e)}
-                    >
-                      <PlayIcon playing={playingId === voice.id} />
-                    </button>
-                  </div>
-                </li>
-              );
-            })}
-
-            {filtered.length === 0 ? (
-              <li className="voice-picker-empty">{t('empty')}</li>
-            ) : null}
-          </ul>
-        </div>
-      ) : null}
+      {mounted && panel ? createPortal(panel, document.body) : null}
     </div>
   );
 }
