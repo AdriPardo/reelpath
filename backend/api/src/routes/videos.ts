@@ -110,15 +110,11 @@ videosRouter.get('/', async (req, res) => {
     return res.status(404).json({ error: 'Channel not found' });
   }
 
-  // Vídeos ya vivos en YouTube tras un publishAt vencido dejan de figurar como scheduled.
-  if (onlyUpcoming || status === 'scheduled') {
-    const { reconcileOverdueYoutubeScheduledVideos } = await import(
-      '../lib/video-schedule-reconcile.js'
-    );
-    await reconcileOverdueYoutubeScheduledVideos(
-      channelId ? String(channelId) : undefined,
-    );
-  }
+  // YouTube ya publicó tras publishAt vencido; sincroniza reviewStatus en cualquier listado.
+  const { reconcileOverdueYoutubeScheduledVideos } = await import(
+    '../lib/video-schedule-reconcile.js'
+  );
+  await reconcileOverdueYoutubeScheduledVideos(channelId ? String(channelId) : undefined);
 
   const pagination = parsePagination(req.query as Record<string, unknown>);
 
@@ -228,6 +224,17 @@ videosRouter.get('/:id/clips', async (req, res) => {
     rejectVideoAccess(res, access);
     return;
   }
+  const video = await prisma.video.findUnique({
+    where: { id: req.params.id },
+    select: { channelId: true },
+  });
+  if (!video) return res.status(404).json({ error: 'Video not found' });
+
+  const { reconcileOverdueYoutubeScheduledVideos } = await import(
+    '../lib/video-schedule-reconcile.js'
+  );
+  await reconcileOverdueYoutubeScheduledVideos(video.channelId);
+
   const clips = await prisma.videoClip.findMany({
     where: { videoId: req.params.id },
     orderBy: { partIndex: 'asc' },
@@ -299,6 +306,18 @@ videosRouter.get('/:id', async (req, res) => {
     rejectVideoAccess(res, access);
     return;
   }
+
+  const channelRef = await prisma.video.findUnique({
+    where: { id: req.params.id },
+    select: { channelId: true },
+  });
+  if (!channelRef) return res.status(404).json({ error: 'Video not found' });
+
+  const { reconcileOverdueYoutubeScheduledVideos } = await import(
+    '../lib/video-schedule-reconcile.js'
+  );
+  await reconcileOverdueYoutubeScheduledVideos(channelRef.channelId);
+
   const video = await prisma.video.findUnique({
     where: { id: req.params.id },
     include: {

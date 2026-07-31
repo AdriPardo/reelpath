@@ -24,7 +24,10 @@ export async function reconcileOverdueYoutubeScheduledVideos(
     take: 500,
   });
 
-  if (overdue.length === 0) return 0;
+  if (overdue.length === 0) {
+    await reconcileOverdueScheduledShorts(channelId);
+    return 0;
+  }
 
   await prisma.$transaction(
     overdue.map((v) =>
@@ -39,6 +42,37 @@ export async function reconcileOverdueYoutubeScheduledVideos(
     ),
   );
 
+  await reconcileOverdueScheduledShorts(channelId);
+  return overdue.length;
+}
+
+/** Shorts con publishAt vencido en YouTube → publishStatus published. */
+async function reconcileOverdueScheduledShorts(channelId?: string): Promise<number> {
+  const now = new Date();
+  const overdue = await prisma.videoClip.findMany({
+    where: {
+      platform: 'youtube_shorts',
+      publishStatus: 'scheduled',
+      externalId: { not: null },
+      scheduledPublishAt: { lte: now },
+      ...(channelId ? { video: { channelId } } : {}),
+    },
+    select: { id: true, scheduledPublishAt: true },
+    take: 500,
+  });
+  if (overdue.length === 0) return 0;
+
+  await prisma.$transaction(
+    overdue.map((c) =>
+      prisma.videoClip.update({
+        where: { id: c.id },
+        data: {
+          publishStatus: 'published',
+          publishedAt: c.scheduledPublishAt ?? now,
+        },
+      }),
+    ),
+  );
   return overdue.length;
 }
 

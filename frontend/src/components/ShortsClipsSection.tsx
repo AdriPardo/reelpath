@@ -103,7 +103,16 @@ export function ShortsClipsSection({
           {sourceClips.map((clip) => {
             const published = publishedByPart.get(clip.partIndex);
             const url = published ? shortUrl(published) : null;
-            const status = published?.publishStatus ?? 'pending';
+            let status = published?.publishStatus ?? 'pending';
+            if (
+              status === 'scheduled' &&
+              published?.scheduledPublishAt &&
+              new Date(published.scheduledPublishAt).getTime() <= Date.now() &&
+              published.externalId &&
+              !published.externalId.startsWith('mock_')
+            ) {
+              status = 'published';
+            }
             const scheduledAt =
               published?.scheduledPublishAt &&
               (status === 'scheduled' || status === 'failed' || status === 'pending')

@@ -26,13 +26,21 @@ export function VideoStatusBadge({
   const tv = useTranslations('videos.status');
   const timezone = resolveChannelTimezone(channel);
 
-  if ((reviewStatus === 'published' || youtubeVideoId) && publishedAt) {
-    const when = formatPublishDateShort(publishedAt, timezone);
+  const scheduleDue =
+    !!youtubeVideoId &&
+    !!scheduledPublishAt &&
+    new Date(scheduledPublishAt).getTime() <= Date.now();
+  const effectivePublishedAt = publishedAt ?? (scheduleDue ? scheduledPublishAt : null);
+  const looksPublished =
+    reviewStatus === 'published' || (Boolean(youtubeVideoId) && Boolean(effectivePublishedAt));
+
+  if (looksPublished && effectivePublishedAt) {
+    const when = formatPublishDateShort(effectivePublishedAt, timezone);
     return (
       <Chip
         variant="success"
         className="chip-wrap chip-stacked"
-        title={tc('publishedOn', { date: formatPublishDate(publishedAt, timezone) })}
+        title={tc('publishedOn', { date: formatPublishDate(effectivePublishedAt, timezone) })}
       >
         <span className="chip-primary">{tv('published')}</span>
         <span className="chip-secondary">{when}</span>

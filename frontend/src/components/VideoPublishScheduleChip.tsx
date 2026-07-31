@@ -27,9 +27,15 @@ export function VideoPublishScheduleChip({
   const locale = useLocale();
   const timezone = resolveChannelTimezone(channel);
 
-  if ((reviewStatus === 'published' || youtubeVideoId) && publishedAt) {
-    const when = formatPublishDateShort(publishedAt, timezone, locale);
-    const fullDate = formatPublishDate(publishedAt, timezone, locale);
+  const scheduleDue =
+    !!youtubeVideoId &&
+    !!scheduledPublishAt &&
+    new Date(scheduledPublishAt).getTime() <= Date.now();
+  const effectivePublishedAt = publishedAt ?? (scheduleDue ? scheduledPublishAt : null);
+
+  if ((reviewStatus === 'published' || youtubeVideoId) && effectivePublishedAt) {
+    const when = formatPublishDateShort(effectivePublishedAt, timezone, locale);
+    const fullDate = formatPublishDate(effectivePublishedAt, timezone, locale);
     return (
       <Chip
         variant="success"
