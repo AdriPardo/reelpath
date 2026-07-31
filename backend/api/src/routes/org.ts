@@ -8,17 +8,11 @@ import {
   sendEmail,
 } from '@autotube/config';
 import {
-  deleteOrgDeepseekApiKey,
-  deleteOrgElevenLabsApiKey,
-  deleteOrgOpenAiApiKey,
   getOrgPipelineSettings,
   getPlatformSecretsStatus,
   prisma,
   resolveOrgElevenLabsApiKey,
   resolvePlatformApiKey,
-  upsertOrgDeepseekApiKey,
-  upsertOrgElevenLabsApiKey,
-  upsertOrgOpenAiApiKey,
 } from '@autotube/database';
 import { ELEVENLABS_TTS_VOICES, getTtsVoicesForProvider } from '@autotube/shared';
 import type { MemberRole } from '../lib/auth.js';
@@ -109,7 +103,6 @@ const inviteSchema = z.object({
   role: z.enum(['admin', 'member']).default('member'),
 });
 
-const optionalApiKey = z.union([z.string().min(10), z.null()]).optional();
 const optionalVoiceId = z.union([z.string().min(2).max(120), z.null()]).optional();
 
 const orgSettingsPatchSchema = z
@@ -125,9 +118,10 @@ const orgSettingsPatchSchema = z
     edgeTtsVoice: optionalVoiceId,
     elevenLabsVoiceId: optionalVoiceId,
     openaiTtsVoice: optionalVoiceId,
-    openaiApiKey: optionalApiKey,
-    deepseekApiKey: optionalApiKey,
-    elevenLabsApiKey: optionalApiKey,
+    // Legacy BYOK fields: rejected below (claves IA = plataforma).
+    openaiApiKey: z.unknown().optional(),
+    deepseekApiKey: z.unknown().optional(),
+    elevenLabsApiKey: z.unknown().optional(),
   })
   .refine((body) => Object.keys(body).length > 0, {
     message: 'No hay campos para actualizar',
@@ -386,6 +380,18 @@ orgRouter.patch('/settings', requireAdmin, async (req, res) => {
   const orgId = orgScope(req)!;
   const body = orgSettingsPatchSchema.parse(req.body);
 
+  if (
+    body.openaiApiKey !== undefined ||
+    body.deepseekApiKey !== undefined ||
+    body.elevenLabsApiKey !== undefined
+  ) {
+    return res.status(400).json({
+      error:
+        'Las claves de IA las gestiona la plataforma (Admin → Secretos). ' +
+        'La organización solo configura preferencias de generación.',
+    });
+  }
+
   const data: {
     llmProvider?: string;
     ttsProvider?: string;
@@ -413,19 +419,6 @@ orgRouter.patch('/settings', requireAdmin, async (req, res) => {
       where: { id: orgId },
       data,
     });
-  }
-
-  if (body.openaiApiKey !== undefined) {
-    if (body.openaiApiKey === null) await deleteOrgOpenAiApiKey(orgId);
-    else await upsertOrgOpenAiApiKey(orgId, body.openaiApiKey);
-  }
-  if (body.deepseekApiKey !== undefined) {
-    if (body.deepseekApiKey === null) await deleteOrgDeepseekApiKey(orgId);
-    else await upsertOrgDeepseekApiKey(orgId, body.deepseekApiKey);
-  }
-  if (body.elevenLabsApiKey !== undefined) {
-    if (body.elevenLabsApiKey === null) await deleteOrgElevenLabsApiKey(orgId);
-    else await upsertOrgElevenLabsApiKey(orgId, body.elevenLabsApiKey);
   }
 
   const settings = await getOrgPipelineSettings(orgId);

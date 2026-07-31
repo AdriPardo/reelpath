@@ -1100,7 +1100,7 @@
   },
   "admin": {
     "title": "Platform admin",
-    "subtitle": "Usage, organizations, users, and billing",
+    "subtitle": "Secrets, usage, organizations, users, and billing",
     "sectionsNav": "Admin sections",
     "loginRequired": "Sign in to access the platform admin panel.",
     "forbidden": "You do not have platform operator access.",
@@ -1173,7 +1173,11 @@
     },
     "infra": {
       "title": "Infra",
-      "description": "Platform secrets and storage statistics."
+      "description": "Storage and instance health."
+    },
+    "secrets": {
+      "title": "Secrets",
+      "description": "AI keys, YouTube OAuth, and platform APIs. Paid and managed by the operator — not each organization."
     }
   },
   "settings": {
@@ -1955,7 +1959,7 @@
   "settingsExt": {
     "publicationDesc": "YouTube is linked per channel, each with its own account.",
     "publicationManage": "Manage YouTube integration from each channel.",
-    "apikeysDesc": "Choose AI and voice providers for your organization. Without your own keys (BYOK), platform secrets are used. Changes apply to new generations.",
+    "apikeysDesc": "Generation preferences for your organization (model, voice, images). API keys are managed by the platform in Admin → Secrets.",
     "apikeysStatus": "Status:",
     "apikeysOwn": "Custom key configured",
     "apikeysServer": "Using platform key",
@@ -2003,6 +2007,7 @@
     "apikeysQuality_auto": "Auto",
     "apikeysByokTitle": "Bring your own keys (BYOK)",
     "apikeysByokHint": "Optional. Fields stay empty on purpose (keys are never shown). If empty, platform secrets are used. Only fill to override with org BYOK.",
+    "apikeysPlatformKeysNote": "OpenAI, DeepSeek, and ElevenLabs keys are set by the operator in Admin → Secrets. The platform pays for them today; later they can be local models without changing your workflow.",
     "devSummary": "Developer info",
     "devBackendUrl": "Backend URL",
     "devEnvVar": "Environment variable",

@@ -1100,7 +1100,7 @@
   },
   "admin": {
     "title": "Admin de plataforma",
-    "subtitle": "Uso, organizaciones, usuarios y facturación",
+    "subtitle": "Secretos, uso, organizaciones, usuarios y facturación",
     "sectionsNav": "Secciones de administración",
     "loginRequired": "Inicia sesión para acceder al panel de plataforma.",
     "forbidden": "No tienes acceso de operador de plataforma.",
@@ -1173,7 +1173,11 @@
     },
     "infra": {
       "title": "Infra",
-      "description": "Secretos de plataforma y estadísticas de almacenamiento."
+      "description": "Almacenamiento y salud de la instancia."
+    },
+    "secrets": {
+      "title": "Secretos",
+      "description": "Claves de IA, YouTube OAuth y APIs de la plataforma. Las pagan y gestiona el operador — no cada organización."
     }
   },
   "settings": {
@@ -1955,7 +1959,7 @@
   "settingsExt": {
     "publicationDesc": "YouTube se vincula por canal, cada uno con su propia cuenta.",
     "publicationManage": "Gestiona la integración de YouTube desde cada canal.",
-    "apikeysDesc": "Elige proveedores de IA y voz para tu organización. Si no configuras claves propias (BYOK), se usan las del gestor de secretos de plataforma. Los cambios afectan a las nuevas generaciones.",
+    "apikeysDesc": "Preferencias de generación de tu organización (modelo, voz, imágenes). Las claves de API las gestiona la plataforma en Admin → Secretos.",
     "apikeysStatus": "Estado:",
     "apikeysOwn": "Clave propia configurada",
     "apikeysServer": "Usando clave de plataforma",
@@ -2003,6 +2007,7 @@
     "apikeysQuality_auto": "Auto",
     "apikeysByokTitle": "Claves propias (BYOK)",
     "apikeysByokHint": "Opcional. Los campos van vacíos a propósito (nunca se muestran las claves). Si están vacíos, se usan Secretos de plataforma. Solo rellena para override BYOK de esta organización.",
+    "apikeysPlatformKeysNote": "Las claves de OpenAI, DeepSeek y ElevenLabs las configura el operador en Admin → Secretos. Hoy las paga la plataforma; mañana pueden ser modelos locales sin cambiar tu flujo.",
     "devSummary": "Info para desarrolladores",
     "devBackendUrl": "URL del backend",
     "devEnvVar": "Variable de entorno",

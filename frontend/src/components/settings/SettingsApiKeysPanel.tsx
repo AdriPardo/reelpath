@@ -28,14 +28,6 @@ type OrgSettings = {
   edgeTtsVoice: string | null;
   elevenLabsVoiceId: string | null;
   openaiTtsVoice: string | null;
-  hasOpenaiKey: boolean;
-  hasDeepseekKey: boolean;
-  hasElevenLabsKey: boolean;
-  platformKeys?: {
-    openai: boolean;
-    deepseek: boolean;
-    elevenlabs: boolean;
-  };
   platformDefaults?: {
     llmProvider: string;
     ttsProvider: string;
@@ -53,16 +45,6 @@ const LLM_OPTIONS: LlmProvider[] = ['auto', 'deepseek', 'openai'];
 const TTS_OPTIONS: TtsProvider[] = ['auto', 'edge', 'elevenlabs', 'openai'];
 const IMAGE_QUALITY_OPTIONS: ImageQuality[] = ['low', 'medium', 'high', 'auto'];
 
-function byokStatusLabel(
-  hasOwn: boolean,
-  platformHas: boolean | undefined,
-  ts: ReturnType<typeof useTranslations>,
-): string {
-  if (hasOwn) return ts('apikeysOwn');
-  if (platformHas) return ts('apikeysServer');
-  return ts('apikeysMissing');
-}
-
 function voicesForProvider(provider: TtsProvider): TtsVoiceOption[] {
   if (provider === 'elevenlabs') return ELEVENLABS_TTS_VOICES;
   if (provider === 'openai') return OPENAI_TTS_VOICES;
@@ -76,9 +58,6 @@ export function SettingsApiKeysPanel() {
   const { session } = useAuth();
   const { toast } = useToast();
 
-  const openaiId = useId();
-  const deepseekId = useId();
-  const elevenId = useId();
   const scenesId = useId();
   const maxAiId = useId();
   const qualityId = useId();
@@ -97,9 +76,6 @@ export function SettingsApiKeysPanel() {
   const [edgeTtsVoice, setEdgeTtsVoice] = useState('');
   const [elevenLabsVoiceId, setElevenLabsVoiceId] = useState('');
   const [openaiTtsVoice, setOpenaiTtsVoice] = useState('');
-  const [openaiKey, setOpenaiKey] = useState('');
-  const [deepseekKey, setDeepseekKey] = useState('');
-  const [elevenLabsKey, setElevenLabsKey] = useState('');
 
   const isAdmin = session?.role === 'owner' || session?.role === 'admin';
 
@@ -168,44 +144,15 @@ export function SettingsApiKeysPanel() {
         elevenLabsVoiceId: elevenLabsVoiceId.trim() === '' ? null : elevenLabsVoiceId.trim(),
         openaiTtsVoice: openaiTtsVoice.trim() === '' ? null : openaiTtsVoice.trim(),
       };
-      if (openaiKey.trim()) body.openaiApiKey = openaiKey.trim();
-      if (deepseekKey.trim()) body.deepseekApiKey = deepseekKey.trim();
-      if (elevenLabsKey.trim()) body.elevenLabsApiKey = elevenLabsKey.trim();
 
       const result = await api<OrgSettings & { message: string }>('/api/org/settings', {
         method: 'PATCH',
         body: JSON.stringify(body),
       });
       applySettings(result);
-      setOpenaiKey('');
-      setDeepseekKey('');
-      setElevenLabsKey('');
       toast(result.message || ts('apikeysSaved'), 'success');
     } catch (err) {
       toast(err instanceof Error ? err.message : ts('apikeysSaveError'), 'error');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function removeKey(provider: 'openai' | 'deepseek' | 'elevenlabs') {
-    if (!isAdmin) return;
-    setSaving(true);
-    try {
-      const payload =
-        provider === 'openai'
-          ? { openaiApiKey: null }
-          : provider === 'deepseek'
-            ? { deepseekApiKey: null }
-            : { elevenLabsApiKey: null };
-      const result = await api<OrgSettings & { message: string }>('/api/org/settings', {
-        method: 'PATCH',
-        body: JSON.stringify(payload),
-      });
-      setSettings(result);
-      toast(ts('apikeysRemoved'), 'success');
-    } catch (err) {
-      toast(err instanceof Error ? err.message : ts('apikeysRemoveError'), 'error');
     } finally {
       setSaving(false);
     }
@@ -373,85 +320,7 @@ export function SettingsApiKeysPanel() {
 
             <div className="settings-divider" />
 
-            <h3>{ts('apikeysByokTitle')}</h3>
-            <p className="text-muted text-sm" style={{ marginBottom: '1rem' }}>
-              {ts('apikeysByokHint')}
-            </p>
-
-            <label className="modal-field" htmlFor={openaiId}>
-              {ts('apikeysKeyLabel')}
-              <span className="text-muted text-sm">
-                {byokStatusLabel(!!settings?.hasOpenaiKey, settings?.platformKeys?.openai, ts)}
-              </span>
-              <input
-                id={openaiId}
-                type="password"
-                className="topic-input"
-                value={openaiKey}
-                onChange={(e) => setOpenaiKey(e.target.value)}
-                placeholder={settings?.hasOpenaiKey ? '••••••••••••' : 'sk-...'}
-                autoComplete="off"
-              />
-              {settings?.hasOpenaiKey && isAdmin && (
-                <Button type="button" variant="ghost" size="sm" disabled={saving} onClick={() => removeKey('openai')}>
-                  {ts('apikeysRemove')}
-                </Button>
-              )}
-            </label>
-
-            <label className="modal-field" htmlFor={deepseekId}>
-              {ts('apikeysDeepseekLabel')}
-              <span className="text-muted text-sm">
-                {byokStatusLabel(!!settings?.hasDeepseekKey, settings?.platformKeys?.deepseek, ts)}
-              </span>
-              <input
-                id={deepseekId}
-                type="password"
-                className="topic-input"
-                value={deepseekKey}
-                onChange={(e) => setDeepseekKey(e.target.value)}
-                placeholder={settings?.hasDeepseekKey ? '••••••••••••' : 'sk-...'}
-                autoComplete="off"
-              />
-              {settings?.hasDeepseekKey && isAdmin && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  disabled={saving}
-                  onClick={() => removeKey('deepseek')}
-                >
-                  {ts('apikeysRemove')}
-                </Button>
-              )}
-            </label>
-
-            <label className="modal-field" htmlFor={elevenId}>
-              {ts('apikeysElevenLabel')}
-              <span className="text-muted text-sm">
-                {byokStatusLabel(!!settings?.hasElevenLabsKey, settings?.platformKeys?.elevenlabs, ts)}
-              </span>
-              <input
-                id={elevenId}
-                type="password"
-                className="topic-input"
-                value={elevenLabsKey}
-                onChange={(e) => setElevenLabsKey(e.target.value)}
-                placeholder={settings?.hasElevenLabsKey ? '••••••••••••' : 'xi-...'}
-                autoComplete="off"
-              />
-              {settings?.hasElevenLabsKey && isAdmin && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  disabled={saving}
-                  onClick={() => removeKey('elevenlabs')}
-                >
-                  {ts('apikeysRemove')}
-                </Button>
-              )}
-            </label>
+            <p className="text-muted text-sm">{ts('apikeysPlatformKeysNote')}</p>
           </fieldset>
 
           {isAdmin ? (

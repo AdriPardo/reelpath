@@ -1,11 +1,10 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { StorageStatsPanel } from '@/components/StorageStatsPanel';
-import type { StorageStats } from '@/lib/api';
+import { SettingsPlatformSecretsPanel } from '@/components/settings/SettingsPlatformSecretsPanel';
 
-export function AdminInfra({ storage }: { storage: StorageStats | null }) {
-  const t = useTranslations('admin.infra');
+export function AdminSecrets() {
+  const t = useTranslations('admin.secrets');
 
   return (
     <div className="settings-section">
@@ -13,7 +12,7 @@ export function AdminInfra({ storage }: { storage: StorageStats | null }) {
         <h2>{t('title')}</h2>
         <p className="settings-section-desc">{t('description')}</p>
       </header>
-      <StorageStatsPanel initial={storage} />
+      <SettingsPlatformSecretsPanel />
     </div>
   );
 }

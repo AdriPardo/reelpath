@@ -11,14 +11,17 @@ import { AdminOrgs } from '@/components/admin/AdminOrgs';
 import { AdminUsers } from '@/components/admin/AdminUsers';
 import { AdminBilling } from '@/components/admin/AdminBilling';
 import { AdminInfra } from '@/components/admin/AdminInfra';
+import { AdminSecrets } from '@/components/admin/AdminSecrets';
 import type { StorageStats } from '@/lib/api';
 
-const SECTION_IDS = ['overview', 'organizations', 'users', 'billing', 'infra'] as const;
+const SECTION_IDS = ['overview', 'secrets', 'organizations', 'users', 'billing', 'infra'] as const;
 type SectionId = (typeof SECTION_IDS)[number];
 
 const TAB_ALIASES: Record<string, SectionId> = {
   overview: 'overview',
   resumen: 'overview',
+  secrets: 'secrets',
+  secretos: 'secrets',
   organizations: 'organizations',
   orgs: 'organizations',
   organizaciones: 'organizations',
@@ -94,6 +97,7 @@ function AdminTabs({ storage }: { storage: StorageStats | null }) {
 
       <div className="settings-content" role="tabpanel">
         {activeSection === 'overview' && <AdminOverview />}
+        {activeSection === 'secrets' && <AdminSecrets />}
         {activeSection === 'organizations' && (
           <AdminOrgs
             selectedOrgId={selectedOrgId}
