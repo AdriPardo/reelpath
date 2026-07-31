@@ -4,6 +4,7 @@ import type { ChannelConfig } from '@autotube/shared';
 import {
   buildLongDurationHint,
   buildOutlineSceneCountHint,
+  clampYouTubeTitle,
   exampleOutlineSectionCounts,
   formatDurationRange,
   getMinScriptWords,
@@ -11,6 +12,8 @@ import {
   getTargetDurationMaxSec,
   getTargetScriptWords,
   LONG_HOOK_MAX_WORDS,
+  youtubeLongTitleMaxForShortParts,
+  YOUTUBE_TITLE_MAX_CHARS,
 } from '@autotube/shared';
 import type { ScriptOutline, ScriptOutlineSection } from './types.js';
 import { normalizeOutline, fixOutlineProgrammatic } from './normalize-outline.js';
@@ -82,6 +85,11 @@ function buildOutlinePrompt(
       `  Ejemplo válido en summary de última sección: "Cierre reflexivo + ¿Y si la respuesta estuviera en un detalle que todos ignoraron?"\n`
     : '';
 
+  const titleMax =
+    config.publishYoutubeShorts === true
+      ? youtubeLongTitleMaxForShortParts()
+      : YOUTUBE_TITLE_MAX_CHARS;
+
   return (
     `Planifica la ESTRUCTURA (outline) de un guion documental largo. NO generes narraciones completas todavía.\n\n` +
     `Tema: ${idea.title}\n` +
@@ -98,6 +106,7 @@ function buildOutlinePrompt(
     `- hookA: pregunta directa que contradiga creencias (≤${LONG_HOOK_MAX_WORDS} palabras). Ej: "¿Y si el imperio cayó por un error de traducción?"\n` +
     `- hookB: afirmación impactante con dato concreto (≤${LONG_HOOK_MAX_WORDS} palabras). Ej: "Nadie sabe que este tratado se firmó tres días después de la muerte del rey."\n` +
     `- hookVisualPrompt: descripción visual concreta en inglés para escena 1 (NO genérico)\n` +
+    `- title del vídeo: frase completa ≤${titleMax} caracteres (límite YouTube; no cortes a medias)\n` +
     `- Cada summary debe incluir nombres, fechas o cifras verificables — no generalidades\n` +
     `- Cada sección: title, sceneCount (≥2), summary (qué cubre el bloque), transitionToNext (frase puente; omitir en última sección)\n` +
     `- transitionToNext debe conectar emocionalmente con el summary de la siguiente sección\n` +
@@ -133,7 +142,7 @@ function parseOutline(raw: Record<string, unknown>): ScriptOutline {
   }));
 
   return {
-    title: String(raw.title ?? 'Sin título'),
+    title: clampYouTubeTitle(String(raw.title ?? 'Sin título')),
     description: String(raw.description ?? ''),
     tags: Array.isArray(raw.tags) ? raw.tags.map(String) : [],
     hookA: String(raw.hookA ?? raw.hook_a ?? raw.hook ?? ''),

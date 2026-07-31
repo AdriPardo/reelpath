@@ -14,3 +14,4 @@ export * from './visual-source.js';
 export * from './visual-origin.js';
 export * from './billing-plans.js';
 export * from './tts-voices.js';
+export * from './youtube-title.js';

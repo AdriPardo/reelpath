@@ -12,6 +12,10 @@ import {
   applyVisualSourceToScenes,
   getStockVisualScriptHints,
   resolveVisualSourceMode,
+  clampYouTubeTitle,
+  formatYouTubeShortTitle,
+  youtubeLongTitleMaxForShortParts,
+  youtubeShortsTitleBudget,
 } from '@autotube/shared';
 import { buildHookScene } from './assemble.js';
 import { generateChunkedScript } from './chunked.js';
@@ -25,6 +29,15 @@ import {
 } from './fix-teaser-hook.js';
 import { generateMonolithicScript } from './monolithic.js';
 import { countWords, normalizeScenes, parseRawScenes, resolveScriptGenerationMode, sceneOptions } from './utils.js';
+
+function finalizeGeneratedTitle(title: string, format: VideoFormat, config: ChannelConfig): string {
+  if (format === 'shorts') return formatYouTubeShortTitle(title);
+  // Con Shorts desde el largo: título corto para que «… — Parte N/M #Shorts» quepa entero.
+  if (config.publishYoutubeShorts === true) {
+    return clampYouTubeTitle(title, 'Sin título', youtubeLongTitleMaxForShortParts());
+  }
+  return clampYouTubeTitle(title);
+}
 
 function limitScenes(scenes: ScriptScene[], format: VideoFormat, config: ChannelConfig): ScriptScene[] {
   return normalizeScenes(scenes).slice(0, getMaxScenes(format, sceneOptions(config)));
@@ -213,6 +226,11 @@ export async function generateScript(params: {
     };
   }
 
+  scriptData = {
+    ...scriptData,
+    title: finalizeGeneratedTitle(scriptData.title, format, params.config),
+  };
+
   const variantA = toVariant('A', scriptData.variantA, format, params.config);
   const variantB = toVariant('B', scriptData.variantB, format, params.config);
   const selectedVariant = abPick === 'A' ? variantA : variantB;
@@ -301,7 +319,7 @@ function buildMockTeaserScript(longVideo: {
     scenes,
     estimatedDurationSec: scenes.reduce((s, sc) => s + sc.durationSec, 0),
   };
-  const shortTitle = `${longVideo.title} — Teaser #Shorts`;
+  const shortTitle = formatYouTubeShortTitle(`${longVideo.title} — Teaser`);
   return {
     title: shortTitle,
     description: `${longVideo.description.slice(0, 200)}\n\n#Shorts`,
@@ -360,7 +378,7 @@ function finalizeTeaserResult(
     estimatedDurationSec: withVisualSource.reduce((s, sc) => s + sc.durationSec, 0),
   };
 
-  const shortTitle = parsed.title.includes('#Shorts') ? parsed.title : `${parsed.title} #Shorts`;
+  const shortTitle = formatYouTubeShortTitle(parsed.title);
   const shortDescription = parsed.description.includes('#Shorts')
     ? parsed.description
     : `${parsed.description}\n\n#Shorts`;
@@ -408,7 +426,7 @@ export async function generateTeaserScript(params: {
     variationLine +
     buildChannelPromptContext(config) +
     getStockVisualScriptHints(resolveVisualSourceMode(config)) +
-    `\n\nResponde JSON con: title (título corto del Short, distinto del largo), description, tags[], hook, scenes[{narration, visualPrompt, durationSec}].`;
+    `\n\nResponde JSON con: title (título corto y completo del Short, distinto del largo, máx ${youtubeShortsTitleBudget()} caracteres, sin cortar palabras a medias), description, tags[], hook, scenes[{narration, visualPrompt, durationSec}].`;
 
   let lastError: string | null = null;
   let lastParsed: ReturnType<typeof extractScriptResponse> | null = null;

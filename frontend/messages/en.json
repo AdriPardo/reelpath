@@ -861,6 +861,12 @@
       "error": "Republish error",
       "queued": "Queued for YouTube"
     },
+    "republishShorts": {
+      "retry": "Republish pending Shorts",
+      "sending": "Sending…",
+      "error": "Could not republish Shorts",
+      "queued": "Shorts queued (schedule preserved)"
+    },
     "detail": {
       "generation": "Generation",
       "youtube": "YouTube",

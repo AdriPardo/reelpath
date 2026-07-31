@@ -6,7 +6,8 @@ import {
   type ResolvedYouTubeCredentials,
 } from './credentials.js';
 import { uploadThumbnailToYouTubeApi, uploadToYouTubeApi, setYouTubeVideoPrivacy } from './upload.js';
-import { formatYouTubeShortMetadata, publishYouTubeShortsClips } from './shorts.js';
+import { formatYouTubeShortMetadata } from './metadata.js';
+import { publishYouTubeShortsClips } from './shorts.js';
 
 export { uploadThumbnailToYouTubeApi, setYouTubeVideoPrivacy } from './upload.js';
 export {
@@ -21,7 +22,13 @@ export {
   hasYouTubeCredentialsForChannel,
   type ResolvedYouTubeCredentials,
 } from './credentials.js';
-export { formatYouTubeShortMetadata, publishYouTubeShortsClips } from './shorts.js';
+export {
+  clampYouTubeTitle,
+  formatYouTubeShortTitle,
+  formatYouTubeShortMetadata,
+  YOUTUBE_TITLE_MAX_CHARS,
+} from './metadata.js';
+export { publishYouTubeShortsClips } from './shorts.js';
 export type { YouTubeShortsPublishSummary } from './shorts.js';
 
 async function tryUploadThumbnail(

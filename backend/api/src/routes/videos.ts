@@ -10,7 +10,7 @@ import { streamVideoFile } from '../lib/video-file.js';
 import { deletePipelineRunCompletely, deleteVideoLocalFilesOnly } from '../lib/pipeline-cleanup.js';
 import { resolveChannelAutoPublishAt } from '../lib/publication-plan.js';
 import { assertOrgCanPublish, PlanLimitError, planLimitErrorBody } from '../lib/plan-limits.js';
-import { queueVideoYouTubePublish, retryVideoYouTubePublish } from '../lib/video-publish.js';
+import { queueVideoYouTubePublish, retryVideoYouTubePublish, retryVideoYouTubeShorts } from '../lib/video-publish.js';
 import {
   deleteSceneAssets,
   enqueueSceneRerender,
@@ -78,7 +78,7 @@ const approveVideoSchema = z.object({
 });
 
 const updateVideoSchema = z.object({
-  title: z.string().min(1).max(200).optional(),
+  title: z.string().min(1).max(100).optional(),
   description: z.string().max(5000).optional(),
   tags: z.array(z.string().min(1).max(50)).max(30).optional(),
 });
@@ -340,6 +340,37 @@ videosRouter.post('/:id/retry-publish', async (req, res) => {
     return;
   }
   await respondRetryYouTubePublish(req.params.id, orgScope(req), res);
+});
+
+videosRouter.post('/:id/republish-shorts', async (req, res) => {
+  const access = await checkVideoAccess(req.params.id, orgScope(req));
+  if (access !== 'allowed') {
+    rejectVideoAccess(res, access);
+    return;
+  }
+  try {
+    const orgId = orgScope(req);
+    if (orgId) await assertOrgCanPublish(orgId);
+    const result = await retryVideoYouTubeShorts(req.params.id);
+    const video = await prisma.video.findUniqueOrThrow({ where: { id: req.params.id } });
+    res.json({ ...video, ...result });
+  } catch (err) {
+    if (err instanceof PlanLimitError) {
+      res.status(err.statusCode).json(planLimitErrorBody(err));
+      return;
+    }
+    const message = err instanceof Error ? err.message : 'No se pudo republicar los Shorts';
+    const status =
+      message === 'Video not found'
+        ? 404
+        : message.includes('archivado') ||
+            message.includes('Aprueba') ||
+            message.includes('No hay Shorts') ||
+            message.includes('ya están publicados')
+          ? 400
+          : 500;
+    res.status(status).json({ error: message });
+  }
 });
 
 videosRouter.post('/:id/approve', async (req, res) => {

@@ -1,5 +1,6 @@
 import { ShortClipActions } from '@/components/ShortClipActions';
 import { MarkClipPublishedButton } from '@/components/MarkClipPublishedButton';
+import { RepublishShortsButton } from '@/components/RepublishShortsButton';
 import { clipKindLabel, shortsSectionTitle } from '@/lib/clip-labels';
 import { formatDurationCompact } from '@/lib/format-duration';
 import { translate, type AppLocale } from '@/lib/i18n';
@@ -57,6 +58,14 @@ export function ShortsClipsSection({
     (c) => c.publishStatus === 'published' || c.publishStatus === 'scheduled',
   ).length;
 
+  const needsShortsRepublish = sourceClips.some((clip) => {
+    const published = publishedByPart.get(clip.partIndex);
+    if (!published) return true;
+    if (published.publishStatus === 'failed' || published.publishStatus === 'pending') return true;
+    if (published.externalId?.startsWith('mock_')) return true;
+    return false;
+  });
+
   const defaultSubtitle =
     shortsMode === 'mixed'
       ? translate(loc, 'videos.clips.mixedDesc')
@@ -79,6 +88,11 @@ export function ShortsClipsSection({
         {publishedSuffix}
       </h3>
       <p className="text-muted text-sm">{subtitle ?? defaultSubtitle}</p>
+      {needsShortsRepublish && sourceClips.length > 0 && (
+        <div className="clip-actions-row" style={{ marginTop: '0.75rem' }}>
+          <RepublishShortsButton videoId={videoId} compact />
+        </div>
+      )}
 
       {sourceClips.length === 0 ? (
         <p className="text-muted text-sm" style={{ marginTop: '0.75rem' }}>
@@ -91,7 +105,8 @@ export function ShortsClipsSection({
             const url = published ? shortUrl(published) : null;
             const status = published?.publishStatus ?? 'pending';
             const scheduledAt =
-              status === 'scheduled' && published?.scheduledPublishAt
+              published?.scheduledPublishAt &&
+              (status === 'scheduled' || status === 'failed' || status === 'pending')
                 ? published.scheduledPublishAt
                 : null;
             const badgeClass =

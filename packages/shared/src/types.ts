@@ -264,6 +264,8 @@ export interface PipelineJobPayload {
   youtubeOnly?: boolean;
   /** Generar clips verticales para Shorts antes de la revisión, sin publicar. */
   splitOnly?: boolean;
+  /** Solo reintentar subida de YouTube Shorts (respeta scheduledPublishAt de cada clip). */
+  shortsOnly?: boolean;
 }
 
 export const QUEUE_NAMES = {

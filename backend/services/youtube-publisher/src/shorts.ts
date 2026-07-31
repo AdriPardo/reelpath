@@ -1,6 +1,7 @@
 import { loadConfig } from '@autotube/config';
 import { prisma } from '@autotube/database';
 import { resolveYouTubeCredentialsForChannel } from './credentials.js';
+import { formatYouTubeShortMetadata } from './metadata.js';
 import { uploadToYouTubeApi } from './upload.js';
 
 // YouTube admite Shorts de hasta 3 minutos (180s) desde octubre 2024.
@@ -29,16 +30,19 @@ export interface PublishYouTubeShortsOptions {
   intervalDays?: number;
   /** Horarios precalculados por orderIndex (planificador); anula intervalDays si se proporciona. */
   scheduledSlots?: Date[];
+  /**
+   * Si true, reutiliza `scheduledPublishAt` ya guardado en el clip youtube_shorts
+   * (p. ej. republicar fallidos con la programación que les tocaba).
+   */
+  preferExistingSchedule?: boolean;
 }
 
-export function formatYouTubeShortMetadata(title: string, description: string, tags: string[]) {
-  const shortTitle = title.includes('#Shorts') ? title : `${title} #Shorts`;
-  const shortDescription = description.includes('#Shorts')
-    ? description
-    : `${description}\n\n#Shorts`;
-  const shortTags = tags.includes('Shorts') ? tags : [...tags, 'Shorts'];
-  return { title: shortTitle, description: shortDescription, tags: shortTags };
-}
+export {
+  clampYouTubeTitle,
+  formatYouTubeShortTitle,
+  formatYouTubeShortMetadata,
+  YOUTUBE_TITLE_MAX_CHARS,
+} from './metadata.js';
 
 function isMockExternalId(externalId: string | null | undefined): boolean {
   return !!externalId?.startsWith('mock_');
@@ -82,8 +86,6 @@ export async function publishYouTubeShortsClips(
       ?? (intervalDays > 0
         ? new Date(baseTime.getTime() + orderIndex * intervalDays * MS_PER_DAY)
         : null);
-    const scheduledPublishAt =
-      publishAtCandidate && publishAtCandidate.getTime() > Date.now() ? publishAtCandidate : null;
 
     if (source.durationSec > YOUTUBE_SHORTS_MAX_SEC) {
       console.warn(
@@ -126,6 +128,15 @@ export async function publishYouTubeShortsClips(
       });
       continue;
     }
+
+    // República fallidos: respeta la franja que ya tenía el clip; si no, la candidata nueva.
+    const preferExisting = options?.preferExistingSchedule === true;
+    const existingSlot =
+      preferExisting && ytClip.scheduledPublishAt ? ytClip.scheduledPublishAt : null;
+    const slot = existingSlot ?? publishAtCandidate;
+    const scheduledPublishAt = slot && slot.getTime() > Date.now() ? slot : null;
+    // Guardamos la franja prevista aunque ya haya pasado (para UI / siguiente retry).
+    const intendedSchedule = slot ?? null;
 
     const meta = formatYouTubeShortMetadata(source.title, video.description, video.tags);
 
@@ -174,7 +185,12 @@ export async function publishYouTubeShortsClips(
       const message = err instanceof Error ? err.message : String(err);
       await prisma.videoClip.update({
         where: { id: ytClip.id },
-        data: { publishStatus: 'failed', error: message },
+        data: {
+          publishStatus: 'failed',
+          error: message,
+          // Conserva la programación prevista para poder republicar en la misma franja.
+          ...(intendedSchedule ? { scheduledPublishAt: intendedSchedule } : {}),
+        },
       });
       results.failed++;
       console.error(`[youtube/shorts] Part ${source.partIndex + 1} failed:`, message);

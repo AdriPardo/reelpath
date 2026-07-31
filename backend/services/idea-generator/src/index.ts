@@ -5,6 +5,7 @@ import { getViralHookGuidelines, rankIdeas, selectTopIdea } from '@autotube/cont
 import type { ContentScoreBreakdown } from '@autotube/shared';
 import {
   buildChannelPromptContext,
+  clampYouTubeTitle,
   formatDurationRange,
   getHistoryViralTopicAngles,
   getMinScriptWords,
@@ -164,7 +165,7 @@ export async function generateIdeas(params: {
 
   let ranked = rankIdeas(
     ideaItems.map((i) => ({
-      title: String(i.title),
+      title: clampYouTubeTitle(String(i.title)),
       hook: String(i.hook),
       angle: String(i.angle),
       targetAudience: String(i.targetAudience),

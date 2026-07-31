@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import { google } from 'googleapis';
+import { clampYouTubeTitle } from '@autotube/shared';
 import type { ResolvedYouTubeCredentials } from './credentials.js';
 import { createYouTubeOAuthFromCredentials, formatYouTubeAuthError } from './auth.js';
 
@@ -67,7 +68,7 @@ export async function uploadToYouTubeApi(
       part: ['snippet', 'status'],
       requestBody: {
         snippet: {
-          title: video.title,
+          title: clampYouTubeTitle(video.title),
           description: video.description,
           tags: video.tags,
           categoryId: '27',

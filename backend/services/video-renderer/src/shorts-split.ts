@@ -3,6 +3,7 @@ import path from 'node:path';
 import { getStoragePath, loadConfig } from '@autotube/config';
 import { prisma } from '@autotube/database';
 import { runFfmpeg } from '@autotube/shared/ffmpeg-runner';
+import { formatYouTubePartTitle, formatYouTubeShortTitle } from '@autotube/shared';
 import { applyClipOverlay } from './clip-overlay.js';
 import { burnSubtitlesIntoClip, loadPipelineSrt, subClipPath } from './clip-subtitles.js';
 import { assertValidVideoFile, buildLanczosScaleCrop, ffmpegH264EncodeArgs, getVideoDuration } from './ffmpeg-utils.js';
@@ -271,7 +272,7 @@ export async function splitVideoForShorts(
         videoId: video.id,
         pipelineRunId: video.pipelineRunId,
         partIndex: i,
-        title: `${video.title} — Parte ${i + 1}/${effectiveDurations.length}`,
+        title: formatYouTubePartTitle(video.title, i + 1, effectiveDurations.length),
         filePath,
         thumbnailPath: savedThumb,
         durationSec: partDuration,
@@ -364,7 +365,7 @@ async function createSingleShortClip(
       videoId: video.id,
       pipelineRunId: video.pipelineRunId,
       partIndex: 0,
-      title: video.title,
+      title: formatYouTubeShortTitle(video.title, { ensureShortsTag: false }),
       filePath: outPath,
       thumbnailPath: savedThumb,
       durationSec: partDuration,

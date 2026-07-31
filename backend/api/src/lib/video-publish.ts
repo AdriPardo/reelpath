@@ -118,3 +118,62 @@ export async function retryVideoYouTubePublish(videoId: string): Promise<QueueVi
     message,
   };
 }
+
+/** Reintenta solo Shorts fallidos/pendientes, respetando la programación de cada clip. */
+export async function retryVideoYouTubeShorts(videoId: string): Promise<QueueVideoPublishResult> {
+  const video = await prisma.video.findUnique({ where: { id: videoId } });
+  if (!video) {
+    throw new Error('Video not found');
+  }
+  if (video.reviewStatus === 'rejected' || video.reviewStatus === 'cancelled') {
+    throw new Error('Vídeo archivado; no se pueden republicar Shorts');
+  }
+  if (video.reviewStatus === 'pending') {
+    throw new Error('Aprueba el vídeo antes de publicar los Shorts');
+  }
+
+  const sourceCount = await prisma.videoClip.count({
+    where: { videoId: video.id, platform: 'short_source' },
+  });
+  if (sourceCount === 0) {
+    throw new Error('No hay Shorts generados para este vídeo');
+  }
+
+  const needsRetry = await prisma.videoClip.count({
+    where: {
+      videoId: video.id,
+      platform: 'youtube_shorts',
+      OR: [
+        { publishStatus: 'failed' },
+        { publishStatus: 'pending' },
+        { externalId: { startsWith: 'mock_' } },
+      ],
+    },
+  });
+  // También si nunca se crearon filas youtube_shorts (solo short_source).
+  const ytCount = await prisma.videoClip.count({
+    where: { videoId: video.id, platform: 'youtube_shorts' },
+  });
+  if (needsRetry === 0 && ytCount > 0) {
+    throw new Error('Todos los Shorts ya están publicados o programados');
+  }
+
+  await removePipelineStepJob(video.pipelineRunId, 'publish_youtube_shorts');
+  await enqueuePipelineStep(
+    {
+      pipelineRunId: video.pipelineRunId,
+      channelId: video.channelId,
+      shortsOnly: true,
+    },
+    'publish_youtube_shorts',
+    { replace: true },
+  );
+
+  await resetPublishPipelineRun(video.pipelineRunId);
+
+  return {
+    reviewStatus: video.reviewStatus,
+    scheduledPublishAt: video.scheduledPublishAt,
+    message: 'Reintentando publicación de Shorts (se respeta la programación de cada uno)',
+  };
+}

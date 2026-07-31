@@ -125,7 +125,14 @@ async function enqueueAfterClipSplit(
 }
 
 export async function processPipelineJob(job: Job<PipelineJobPayload>): Promise<void> {
-  const { pipelineRunId, channelId, step = 'generate_ideas', youtubeOnly, splitOnly } = job.data;
+  const {
+    pipelineRunId,
+    channelId,
+    step = 'generate_ideas',
+    youtubeOnly,
+    splitOnly,
+    shortsOnly,
+  } = job.data;
 
   const run = await prisma.pipelineRun.findUniqueOrThrow({
     where: { id: pipelineRunId },
@@ -156,7 +163,14 @@ export async function processPipelineJob(job: Job<PipelineJobPayload>): Promise<
   );
 
   try {
-    await runPipelineStep(job, run, { pipelineRunId, channelId, step, youtubeOnly, splitOnly });
+    await runPipelineStep(job, run, {
+      pipelineRunId,
+      channelId,
+      step,
+      youtubeOnly,
+      splitOnly,
+      shortsOnly,
+    });
   } finally {
     clearOrgPipelineOverrides();
     clearOrgOpenAiApiKey();
@@ -173,9 +187,10 @@ async function runPipelineStep(
     step: string;
     youtubeOnly?: boolean;
     splitOnly?: boolean;
+    shortsOnly?: boolean;
   },
 ): Promise<void> {
-  const { pipelineRunId, channelId, step, youtubeOnly, splitOnly } = ctx;
+  const { pipelineRunId, channelId, step, youtubeOnly, splitOnly, shortsOnly } = ctx;
 
   const config = parseChannelConfig(run.channel.config);
 
@@ -502,14 +517,22 @@ async function runPipelineStep(
         const video = await requireApprovedVideo(pipelineRunId);
         // baseTime = fecha programada del vídeo largo si la hubiera; si no, ahora (al aprobar).
         // El Short 0 sale con el vídeo largo y los siguientes se escalonan cada intervalDays.
-        const scheduledAt = (
-          await prisma.video.findUnique({
-            where: { id: video.id },
-            select: { scheduledPublishAt: true },
-          })
-        )?.scheduledPublishAt;
+        // En republicación (shortsOnly): ancla al schedule/publish original para recalcular
+        // las mismas franjas si el clip no guardó scheduledPublishAt.
+        const videoTimes = await prisma.video.findUnique({
+          where: { id: video.id },
+          select: { scheduledPublishAt: true, publishedAt: true },
+        });
+        const scheduledAt = videoTimes?.scheduledPublishAt;
+        const publishedAt = videoTimes?.publishedAt;
         const baseTime =
-          scheduledAt && scheduledAt.getTime() > Date.now() ? scheduledAt : new Date();
+          scheduledAt && scheduledAt.getTime() > Date.now()
+            ? scheduledAt
+            : shortsOnly && publishedAt
+              ? publishedAt
+              : scheduledAt && shortsOnly
+                ? scheduledAt
+                : new Date();
 
         const planner = resolvePlannerConfig(config);
         const sourceClipCount = await prisma.videoClip.count({
@@ -525,6 +548,7 @@ async function runPipelineStep(
           baseTime,
           intervalDays: config.shortsPublishIntervalDays ?? 1,
           scheduledSlots,
+          preferExistingSchedule: shortsOnly === true,
         });
         await enqueuePipelineStep({ pipelineRunId, channelId }, 'sync_analytics');
         break;

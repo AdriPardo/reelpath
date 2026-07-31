@@ -861,6 +861,12 @@
       "error": "Error al republicar",
       "queued": "En cola para YouTube"
     },
+    "republishShorts": {
+      "retry": "Republicar Shorts pendientes",
+      "sending": "Enviando…",
+      "error": "No se pudieron republicar los Shorts",
+      "queued": "Shorts en cola (se respeta la programación)"
+    },
     "detail": {
       "generation": "Generación",
       "youtube": "YouTube",
