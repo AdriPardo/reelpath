@@ -1,8 +1,8 @@
 # Shared Atlas / Traefik host (atlasops.dev). Producción: sin mocks, auth obligatoria.
 # Deploy: docker compose -f docker-compose.atlas.yml up -d --build
 #
-# Required in .env (see .env.atlas.example):
-#   DOMAIN, POSTGRES_PASSWORD, AUTH_SECRET, CREDENTIALS_ENCRYPTION_KEY, PLATFORM_ADMIN_EMAILS
+# .env (seed .env.atlas.example): DOMAIN, POSTGRES_PASSWORD, PLATFORM_ADMIN_EMAILS
+# Atlas envFrom: AUTH_SECRET, CREDENTIALS_ENCRYPTION_KEY (y opcional POSTGRES_PASSWORD)
 # LLM / TTS / YouTube app → Ajustes → Secretos de plataforma (BD), no .env.
 
 name: reelpath
@@ -12,7 +12,7 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: autotube
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-autotube}
       POSTGRES_DB: autotube
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -43,10 +43,10 @@ services:
     command: ["sh", "-c", "npm run migrate:deploy:ci -w @autotube/database && npm run start -w backend-api"]
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://autotube:${POSTGRES_PASSWORD}@db:5432/autotube
+      DATABASE_URL: postgresql://autotube:${POSTGRES_PASSWORD:-autotube}@db:5432/autotube
       REDIS_URL: redis://cache:6379
       API_PORT: 4000
-      FRONTEND_URL: https://${DOMAIN:?set DOMAIN in .env}
+      FRONTEND_URL: https://${DOMAIN:-reelpath.atlasops.dev}
       STORAGE_PATH: /app/storage
       MOCK_EXTERNAL_APIS: "false"
       ATLAS_HOSTED: "true"
@@ -55,7 +55,7 @@ services:
       PLATFORM_ADMIN_EMAILS: ${PLATFORM_ADMIN_EMAILS:-}
       CREDENTIALS_ENCRYPTION_KEY: ${CREDENTIALS_ENCRYPTION_KEY:?set CREDENTIALS_ENCRYPTION_KEY in .env}
       NEXT_PUBLIC_AUTH_REQUIRED: "true"
-      YOUTUBE_OAUTH_REDIRECT_URI: https://${DOMAIN}/api/integrations/youtube/callback
+      YOUTUBE_OAUTH_REDIRECT_URI: https://${DOMAIN:-reelpath.atlasops.dev}/api/integrations/youtube/callback
     volumes:
       - storage_data:/app/storage
     depends_on:
@@ -74,14 +74,14 @@ services:
       # Must outrank PathPrefix(`/api`) or Express returns HTML 404 (no /api/media mount).
       - "traefik.http.middlewares.reelpath-media-strip.replacepathregex.regex=^/api/media/(.*)"
       - "traefik.http.middlewares.reelpath-media-strip.replacepathregex.replacement=/api/$$1"
-      - "traefik.http.routers.reelpath-media.rule=Host(`${DOMAIN}`) && PathPrefix(`/api/media`)"
+      - "traefik.http.routers.reelpath-media.rule=Host(`${DOMAIN:-reelpath.atlasops.dev}`) && PathPrefix(`/api/media`)"
       - "traefik.http.routers.reelpath-media.entrypoints=websecure"
       - "traefik.http.routers.reelpath-media.tls=true"
       - "traefik.http.routers.reelpath-media.tls.certresolver=cloudflare"
       - "traefik.http.routers.reelpath-media.priority=200"
       - "traefik.http.routers.reelpath-media.middlewares=reelpath-media-strip"
       - "traefik.http.routers.reelpath-media.service=reelpath-api"
-      - "traefik.http.routers.reelpath-api.rule=Host(`${DOMAIN}`) && ((PathPrefix(`/api`) && !PathPrefix(`/api/media`)) || Path(`/health`) || Path(`/health/extended`) || Path(`/ready`) || Path(`/metrics`))"
+      - "traefik.http.routers.reelpath-api.rule=Host(`${DOMAIN:-reelpath.atlasops.dev}`) && ((PathPrefix(`/api`) && !PathPrefix(`/api/media`)) || Path(`/health`) || Path(`/health/extended`) || Path(`/ready`) || Path(`/metrics`))"
       - "traefik.http.routers.reelpath-api.entrypoints=websecure"
       - "traefik.http.routers.reelpath-api.tls=true"
       - "traefik.http.routers.reelpath-api.tls.certresolver=cloudflare"
@@ -94,7 +94,7 @@ services:
       dockerfile: infrastructure/docker/Dockerfile.worker
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://autotube:${POSTGRES_PASSWORD}@db:5432/autotube
+      DATABASE_URL: postgresql://autotube:${POSTGRES_PASSWORD:-autotube}@db:5432/autotube
       REDIS_URL: redis://cache:6379
       STORAGE_PATH: /app/storage
       MOCK_EXTERNAL_APIS: "false"
@@ -119,7 +119,7 @@ services:
       context: .
       dockerfile: infrastructure/docker/Dockerfile.frontend
       args:
-        NEXT_PUBLIC_API_URL: https://${DOMAIN:?set DOMAIN in .env}
+        NEXT_PUBLIC_API_URL: https://${DOMAIN:-reelpath.atlasops.dev}
         NEXT_PUBLIC_AUTH_REQUIRED: "true"
     environment:
       NODE_ENV: production
@@ -132,7 +132,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=atlas-public"
-      - "traefik.http.routers.reelpath.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.reelpath.rule=Host(`${DOMAIN:-reelpath.atlasops.dev}`)"
       - "traefik.http.routers.reelpath.entrypoints=websecure"
       - "traefik.http.routers.reelpath.tls=true"
       - "traefik.http.routers.reelpath.tls.certresolver=cloudflare"
