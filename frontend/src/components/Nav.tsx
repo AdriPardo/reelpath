@@ -72,6 +72,15 @@ function IconSettings({ className }: { className?: string }) {
   );
 }
 
+function IconAdmin({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 3 4 6v5c0 5 3.4 8.4 8 10 4.6-1.6 8-5 8-10V6l-8-3z" />
+      <path d="M9.5 12.5 11 14l3.5-3.5" />
+    </svg>
+  );
+}
+
 function IconHelp({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -84,7 +93,13 @@ function IconHelp({ className }: { className?: string }) {
 
 type NavEntry =
   | { type: 'separator' }
-  | { type: 'link'; href: string; labelKey: 'home' | 'pipelines' | 'review' | 'videos' | 'channels' | 'help' | 'settings'; icon: NavIcon; showBadge?: boolean };
+  | {
+      type: 'link';
+      href: string;
+      labelKey: 'home' | 'pipelines' | 'review' | 'videos' | 'channels' | 'help' | 'settings' | 'admin';
+      icon: NavIcon;
+      showBadge?: boolean;
+    };
 
 const NAV_ITEMS: NavEntry[] = [
   { type: 'link', href: '/', labelKey: 'home', icon: IconHome },
@@ -184,7 +199,22 @@ export function Nav() {
         </div>
 
         <nav className="sidebar-nav">
-          {NAV_ITEMS.map((item, index) => {
+          {(
+            [
+              ...NAV_ITEMS,
+              ...(session?.isPlatformAdmin
+                ? ([
+                    { type: 'separator' },
+                    {
+                      type: 'link',
+                      href: '/admin',
+                      labelKey: 'admin',
+                      icon: IconAdmin,
+                    },
+                  ] as NavEntry[])
+                : []),
+            ] as NavEntry[]
+          ).map((item, index) => {
             if (item.type === 'separator') {
               return <div key={`sep-${index}`} className="sidebar-separator" role="separator" />;
             }

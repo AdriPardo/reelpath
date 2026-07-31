@@ -9,12 +9,12 @@ import {
   upsertPlatformYouTubeOAuthApp,
 } from '@autotube/database';
 import { getYouTubeOAuthRedirectUri } from '../lib/youtube-oauth.js';
-import { authMiddleware, requireOwner } from '../middleware/auth.js';
+import { authMiddleware, requirePlatformAdmin } from '../middleware/auth.js';
 
 export const platformRouter = Router();
 
 platformRouter.use(authMiddleware);
-platformRouter.use(requireOwner);
+platformRouter.use(requirePlatformAdmin);
 
 const patchSchema = z
   .object({

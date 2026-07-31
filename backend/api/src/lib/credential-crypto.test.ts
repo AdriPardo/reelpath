@@ -3,6 +3,7 @@ import {
   decryptCredentialPayload,
   encryptCredentialPayload,
   isEncryptedCredentialData,
+  type EncryptedCredentialEnvelope,
 } from '@autotube/config';
 
 describe('credential-crypto', () => {
@@ -31,6 +32,24 @@ describe('credential-crypto', () => {
     const stored = encryptCredentialPayload(data);
     expect(isEncryptedCredentialData(stored)).toBe(true);
     expect(decryptCredentialPayload(stored)).toEqual(data);
+  });
+
+  it('recupera envelope cifrado por error al actualizar privacyStatus', () => {
+    process.env.CREDENTIALS_ENCRYPTION_KEY = 'test-secret-key-for-unit-tests';
+    delete process.env.ALLOW_PLAINTEXT_CREDENTIALS;
+    const real = { refreshToken: 'secret-token', privacyStatus: 'private' };
+    const innerEnvelope = encryptCredentialPayload(real) as EncryptedCredentialEnvelope & {
+      privacyStatus?: string;
+    };
+    // Simula el bug: merge de privacy sobre el envelope y re-cifrado
+    const corrupted = encryptCredentialPayload({
+      ...innerEnvelope,
+      privacyStatus: 'public',
+    });
+    expect(decryptCredentialPayload(corrupted)).toEqual({
+      refreshToken: 'secret-token',
+      privacyStatus: 'public',
+    });
   });
 
   afterEach(() => {

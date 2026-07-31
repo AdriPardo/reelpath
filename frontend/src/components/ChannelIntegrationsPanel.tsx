@@ -160,6 +160,10 @@ function IntegrationCard({
   const [showUnavailableModal, setShowUnavailableModal] = useState(false);
   const [privacy, setPrivacy] = useState(safeStatus.privacyStatus ?? 'private');
 
+  useEffect(() => {
+    if (safeStatus.privacyStatus) setPrivacy(safeStatus.privacyStatus);
+  }, [safeStatus.privacyStatus]);
+
   const clientIdId = useId();
   const clientSecretId = useId();
   const refreshTokenId = useId();
@@ -177,10 +181,13 @@ function IntegrationCard({
   async function patch(body: Record<string, unknown>, successMessage?: string) {
     setLoading(true);
     try {
-      await api<ChannelIntegrationsResponse>(
+      const updated = await api<ChannelIntegrationsResponse>(
         `/api/channels/${channelId}/integrations/youtube`,
         { method: 'PATCH', body: JSON.stringify(body) },
       );
+      if (updated.youtube.privacyStatus) {
+        setPrivacy(updated.youtube.privacyStatus);
+      }
       toast(successMessage ?? t('changesSaved'), 'success');
       router.refresh();
     } catch (err) {

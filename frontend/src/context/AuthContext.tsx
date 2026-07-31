@@ -42,6 +42,7 @@ export interface AuthSession {
   user: AuthUser;
   organization: AuthOrganization;
   role: string;
+  isPlatformAdmin?: boolean;
 }
 
 interface AuthContextValue {
@@ -111,7 +112,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       const data = (await res.json()) as { token: string } & AuthSession;
       setToken(data.token);
-      setSession({ user: data.user, organization: data.organization, role: data.role });
+      setSession({
+        user: data.user,
+        organization: data.organization,
+        role: data.role,
+        isPlatformAdmin: data.isPlatformAdmin === true,
+      });
       const userLocale = normalizeUserLocale(data.user.locale);
       router.push('/', { locale: userLocale });
       router.refresh();
@@ -150,6 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user: result.user,
         organization: result.organization,
         role: result.role,
+        isPlatformAdmin: result.isPlatformAdmin === true,
       });
       const userLocale = normalizeUserLocale(result.user.locale);
       router.push('/', { locale: userLocale });

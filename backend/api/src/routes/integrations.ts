@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { decryptCredentialPayload, loadConfig } from '@autotube/config';
+import { decryptCredentialPayload, loadConfig, resolvePlatformYouTubeOAuthAppSync } from '@autotube/config';
 import { prisma } from '@autotube/database';
 import { google } from 'googleapis';
 import {
@@ -54,9 +54,20 @@ integrationsRouter.get('/youtube/callback', async (req, res) => {
       where: { channelId: payload.channelId, provider: 'youtube' },
     });
     const current = (decryptCredentialPayload(existing?.data) as YouTubeCredentialData) ?? {};
+    const oauthApp = resolvePlatformYouTubeOAuthAppSync();
+    if (!oauthApp) {
+      return res.redirect(
+        `${redirectBase}&youtube=error&message=${encodeURIComponent(
+          'YouTube OAuth no configurado en secretos de plataforma',
+        )}`,
+      );
+    }
 
+    // Siempre la app de plataforma: el refresh_token lo emite ese Client ID.
+    // No reutilizar clientId/secret viejos del canal (manual/corrupción) → invalid_grant.
     await upsertChannelCredential(payload.organizationId, payload.channelId, 'youtube', {
-      ...current,
+      clientId: oauthApp.clientId,
+      clientSecret: oauthApp.clientSecret,
       refreshToken: tokens.refreshToken,
       privacyStatus: current.privacyStatus ?? config.YOUTUBE_PRIVACY_STATUS ?? 'private',
       linkedFromEnv: false,

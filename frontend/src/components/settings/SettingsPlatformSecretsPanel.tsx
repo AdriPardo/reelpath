@@ -40,7 +40,7 @@ export function SettingsPlatformSecretsPanel() {
   const [elevenLabsKey, setElevenLabsKey] = useState('');
   const [pexelsKey, setPexelsKey] = useState('');
 
-  const isOwner = session?.role === 'owner';
+  const isPlatformAdmin = session?.isPlatformAdmin === true;
 
   async function load() {
     setLoading(true);
@@ -55,10 +55,10 @@ export function SettingsPlatformSecretsPanel() {
   }
 
   useEffect(() => {
-    if (isOwner) void load();
+    if (isPlatformAdmin) void load();
     else setLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- load once when role known
-  }, [isOwner]);
+  }, [isPlatformAdmin]);
 
   async function save() {
     setSaving(true);
@@ -120,11 +120,11 @@ export function SettingsPlatformSecretsPanel() {
     }
   }
 
-  if (!isOwner) {
+  if (!isPlatformAdmin) {
     return (
       <section className="settings-section">
         <h2>{t('title')}</h2>
-        <p className="text-muted">{t('ownerOnly')}</p>
+        <p className="text-muted">{t('platformAdminOnly')}</p>
       </section>
     );
   }

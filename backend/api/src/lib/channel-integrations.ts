@@ -12,7 +12,8 @@ import { cacheDel, cacheGet, cacheSet } from './redis-cache.js';
 const YT_INTEGRATION_CACHE_TTL_SEC = 10 * 60; // 10 min (rango 5–15 min acordado)
 
 function ytIntegrationCacheKey(channelId: string): string {
-  return `yt:integration:${channelId}`;
+  // v2: prefer platform OAuth client; no cachear status roto por clientId stale
+  return `yt:integration:v2:${channelId}`;
 }
 
 export async function invalidateChannelIntegrationsCache(channelId: string): Promise<void> {
@@ -71,8 +72,10 @@ export function resolveYouTubeCredentials(
   const oauthApp = resolvePlatformYouTubeOAuthAppSync();
 
   if (stored?.refreshToken) {
-    const clientId = stored.clientId ?? oauthApp?.clientId;
-    const clientSecret = stored.clientSecret ?? oauthApp?.clientSecret;
+    // Preferir app de plataforma: los tokens OAuth se emiten con ese Client ID.
+    // Un clientId/secret stale en BD hace fallar el refresh (unauthorized_client).
+    const clientId = oauthApp?.clientId ?? stored.clientId;
+    const clientSecret = oauthApp?.clientSecret ?? stored.clientSecret;
     if (clientId && clientSecret) {
       return {
         data: {
@@ -124,33 +127,44 @@ async function checkYouTubeStatus(
     const oauth2 = new google.auth.OAuth2(creds.clientId, creds.clientSecret);
     oauth2.setCredentials({ refresh_token: creds.refreshToken });
     const { credentials } = await oauth2.refreshAccessToken();
+    const tokenOk = !!credentials.access_token;
 
-    const youtube = google.youtube({ version: 'v3', auth: oauth2 });
-    const channels = await youtube.channels.list({ part: ['snippet'], mine: true });
-    const channelTitle = channels.data.items?.[0]?.snippet?.title ?? null;
+    let channelTitle: string | null = null;
+    let listError: string | null = null;
+    try {
+      const youtube = google.youtube({ version: 'v3', auth: oauth2 });
+      const channels = await youtube.channels.list({ part: ['snippet'], mine: true });
+      channelTitle = channels.data.items?.[0]?.snippet?.title ?? null;
+    } catch (err) {
+      listError = err instanceof Error ? err.message : String(err);
+    }
 
     let analyticsOk = false;
     let analyticsError: string | null = null;
-    try {
-      const youtubeAnalytics = google.youtubeAnalytics({ version: 'v2', auth: oauth2 });
-      const end = new Date().toISOString().slice(0, 10);
-      const start = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
-      await youtubeAnalytics.reports.query({
-        ids: 'channel==MINE',
-        startDate: start,
-        endDate: end,
-        metrics: 'views',
-      });
-      analyticsOk = true;
-    } catch (err) {
-      analyticsError = err instanceof Error ? err.message : String(err);
+    if (tokenOk) {
+      try {
+        const youtubeAnalytics = google.youtubeAnalytics({ version: 'v2', auth: oauth2 });
+        const end = new Date().toISOString().slice(0, 10);
+        const start = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+        await youtubeAnalytics.reports.query({
+          ids: 'channel==MINE',
+          startDate: start,
+          endDate: end,
+          metrics: 'views',
+        });
+        analyticsOk = true;
+      } catch (err) {
+        analyticsError = err instanceof Error ? err.message : String(err);
+      }
     }
 
     return {
       ...base,
       connected: true,
-      tokenOk: !!credentials.access_token,
+      tokenOk,
       channelTitle,
+      // Solo marcar error de UI si el refresh falló; list/analytics son secundarios.
+      error: tokenOk ? null : listError,
       privacyStatus: creds.privacyStatus ?? loadConfig().YOUTUBE_PRIVACY_STATUS ?? 'private',
       analyticsOk,
       analyticsError,
@@ -178,15 +192,44 @@ export async function getChannelIntegrations(
   });
 
   const youtubeStored = stored.find((c) => c.provider === 'youtube');
+  const decrypted =
+    (decryptCredentialPayload(youtubeStored?.data) as YouTubeCredentialData | null) ?? null;
+
+  // Alinear clientId/secret con la app OAuth de plataforma (tokens emitidos por ella).
+  const oauthApp = resolvePlatformYouTubeOAuthAppSync();
+  if (
+    youtubeStored &&
+    decrypted?.refreshToken &&
+    oauthApp &&
+    (decrypted.clientId !== oauthApp.clientId || decrypted.clientSecret !== oauthApp.clientSecret)
+  ) {
+    await upsertChannelCredential(youtubeStored.organizationId, channelId, 'youtube', {
+      clientId: oauthApp.clientId,
+      clientSecret: oauthApp.clientSecret,
+      refreshToken: decrypted.refreshToken,
+      privacyStatus: decrypted.privacyStatus ?? loadConfig().YOUTUBE_PRIVACY_STATUS ?? 'private',
+      linkedFromEnv: false,
+    });
+  }
 
   const youtubeResolved = resolveYouTubeCredentials(
-    (decryptCredentialPayload(youtubeStored?.data) as YouTubeCredentialData | null) ?? null,
+    decrypted?.refreshToken
+      ? {
+          ...decrypted,
+          ...(oauthApp
+            ? { clientId: oauthApp.clientId, clientSecret: oauthApp.clientSecret }
+            : {}),
+        }
+      : decrypted,
   );
 
   const youtube = await checkYouTubeStatus(youtubeResolved.data, youtubeResolved.source);
   const result = { channelId, youtube };
 
-  await cacheSet(cacheKey, result, YT_INTEGRATION_CACHE_TTL_SEC);
+  // No cachear "needs attention": tras reconnect/heal debe verse al instante.
+  if (youtube.tokenOk || !youtube.connected) {
+    await cacheSet(cacheKey, result, YT_INTEGRATION_CACHE_TTL_SEC);
+  }
   return result;
 }
 

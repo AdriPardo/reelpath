@@ -78,5 +78,26 @@ export function decryptCredentialPayload(data: unknown): Record<string, unknown>
   decipher.setAuthTag(tag);
   const decrypted = Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8');
 
-  return JSON.parse(decrypted) as Record<string, unknown>;
+  const parsed = JSON.parse(decrypted) as Record<string, unknown>;
+
+  // Recuperación: un update de privacy llegó a cifrar el envelope en vez del plaintext
+  // ({ __encrypted, payload, privacyStatus }). Desciframos el envelope anidado y
+  // conservamos privacyStatus si venía en el wrapper corrupto.
+  if (isEncryptedCredentialData(parsed)) {
+    const leakedPrivacy =
+      typeof parsed.privacyStatus === 'string' ? parsed.privacyStatus : undefined;
+    const inner = decryptCredentialPayload({
+      __encrypted: true,
+      v: typeof parsed.v === 'number' ? parsed.v : ENVELOPE_VERSION,
+      payload: parsed.payload,
+    });
+    if (inner) {
+      return {
+        ...inner,
+        ...(leakedPrivacy ? { privacyStatus: leakedPrivacy } : {}),
+      };
+    }
+  }
+
+  return parsed;
 }

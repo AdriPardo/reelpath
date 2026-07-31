@@ -58,17 +58,18 @@ function SettingsTabs({ plans }: { plans: PlanDefinition[] }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const tabParam = searchParams?.get('tab')?.toLowerCase() ?? '';
-  const isOwner = session?.role === 'owner';
-  const visibleSections = SECTION_IDS.filter((id) => id !== 'platformSecrets' || isOwner);
+  const visibleSections = SECTION_IDS.filter(
+    (id) => id !== 'platformSecrets' || session?.isPlatformAdmin === true,
+  );
   const initialRaw = TAB_ALIASES[tabParam] ?? 'account';
   const initial =
-    initialRaw === 'platformSecrets' && !isOwner ? 'account' : initialRaw;
+    initialRaw === 'platformSecrets' && !session?.isPlatformAdmin ? 'account' : initialRaw;
   const [activeSection, setActiveSection] = useState<SectionId>(initial);
 
   useEffect(() => {
     const next = TAB_ALIASES[tabParam];
-    if (next && (next !== 'platformSecrets' || isOwner)) setActiveSection(next);
-  }, [tabParam, isOwner]);
+    if (next && (next !== 'platformSecrets' || session?.isPlatformAdmin)) setActiveSection(next);
+  }, [tabParam, session?.isPlatformAdmin]);
 
   function selectSection(id: SectionId) {
     setActiveSection(id);

@@ -4,6 +4,7 @@
 # Required env (write .env next to this file, or export):
 #   DOMAIN=reelpath.atlasops.dev
 #   AUTH_SECRET=<random 32+ chars>
+#   PLATFORM_ADMIN_EMAILS=<your@email.com>
 #   CREDENTIALS_ENCRYPTION_KEY=<openssl rand -hex 32>
 #   POSTGRES_PASSWORD=<secure>
 
@@ -54,6 +55,7 @@ services:
       ATLAS_HOSTED: ${ATLAS_HOSTED:-true}
       AUTH_REQUIRED: ${AUTH_REQUIRED:-true}
       AUTH_SECRET: ${AUTH_SECRET:-change-me-reelpath-dev-secret-32chars}
+      PLATFORM_ADMIN_EMAILS: ${PLATFORM_ADMIN_EMAILS:-}
       CREDENTIALS_ENCRYPTION_KEY: ${CREDENTIALS_ENCRYPTION_KEY:?set CREDENTIALS_ENCRYPTION_KEY in .env}
       NEXT_PUBLIC_AUTH_REQUIRED: ${NEXT_PUBLIC_AUTH_REQUIRED:-true}
       YOUTUBE_OAUTH_REDIRECT_URI: https://${DOMAIN:-reelpath.atlasops.dev}/api/integrations/youtube/callback

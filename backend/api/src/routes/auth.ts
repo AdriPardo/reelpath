@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { buildWelcomeEmail, loadConfig, sendEmail } from '@autotube/config';
+import { buildWelcomeEmail, isPlatformAdminEmail, loadConfig, sendEmail } from '@autotube/config';
 import { prisma } from '@autotube/database';
 import { hashPassword, signToken, verifyPassword } from '../lib/auth.js';
 import { clearAuthCookies, setAuthCookies } from '../lib/auth-cookie.js';
@@ -92,6 +92,7 @@ authRouter.post('/login', authRateLimiter, async (req, res) => {
     user: serializeUser(user),
     organization: serializeOrganization(membership.organization),
     role: membership.role,
+    isPlatformAdmin: isPlatformAdminEmail(user.email),
   });
 });
 
@@ -132,6 +133,7 @@ authRouter.get('/me', requireAuth, async (req, res) => {
     user: serializeUser(user),
     organization: serializeOrganization(membership.organization),
     role: membership.role,
+    isPlatformAdmin: isPlatformAdminEmail(user.email),
   });
 });
 
@@ -319,5 +321,6 @@ authRouter.post('/register', authRateLimiter, async (req, res) => {
     user: serializeUser(result.user),
     organization: serializeOrganization(result.organization),
     role: 'owner',
+    isPlatformAdmin: isPlatformAdminEmail(result.user.email),
   });
 });

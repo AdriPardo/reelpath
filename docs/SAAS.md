@@ -24,6 +24,7 @@ Los pipelines, vídeos y analytics se filtran indirectamente por los canales de 
 | `AUTH_SECRET` | — | Obligatorio cuando `AUTH_REQUIRED=true` (HS256, ≥32 chars recomendado) |
 | `DEFAULT_ADMIN_EMAIL` | `adripardo72@gmail.com` | Admin creado por `db:seed` |
 | `DEFAULT_ADMIN_PASSWORD` | `changeme` | Contraseña del admin de seed |
+| `PLATFORM_ADMIN_EMAILS` | — | Emails (coma-separados) con acceso al panel `/admin` y a `/api/platform` |
 
 ### Frontend
 

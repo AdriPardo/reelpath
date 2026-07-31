@@ -27,6 +27,7 @@ import { billingRouter } from './routes/billing.js';
 import { billingWebhookHandler } from './routes/billing-webhook.js';
 import { orgRouter } from './routes/org.js';
 import { platformRouter } from './routes/platform.js';
+import { adminRouter } from './routes/admin.js';
 
 const config = loadConfig();
 initSentryForApi();
@@ -125,6 +126,7 @@ app.use('/api/system', systemRouter);
 app.use('/api/billing', billingRouter);
 app.use('/api/org', orgRouter);
 app.use('/api/platform', platformRouter);
+app.use('/api/admin', adminRouter);
 
 installSentryErrorHandler(app);
 app.use((err: Error & { statusCode?: number }, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

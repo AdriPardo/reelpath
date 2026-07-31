@@ -36,8 +36,9 @@ export async function resolveYouTubeCredentialsForChannel(
   const data = (decryptCredentialPayload(stored?.data) as YouTubeCredentialData | null) ?? null;
 
   if (data?.refreshToken) {
-    const clientId = data.clientId ?? oauthApp?.clientId;
-    const clientSecret = data.clientSecret ?? oauthApp?.clientSecret;
+    // Prefer platform OAuth app — channel refresh tokens are issued by that client.
+    const clientId = oauthApp?.clientId ?? data.clientId;
+    const clientSecret = oauthApp?.clientSecret ?? data.clientSecret;
     if (!clientId || !clientSecret) return null;
     return {
       clientId,

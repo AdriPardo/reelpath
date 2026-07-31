@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
+import { isPlatformAdminEmail } from '@autotube/config';
 import { prisma } from '@autotube/database';
 import { isAdminRole, verifyToken, type AuthContext } from '../lib/auth.js';
 import type { ApiLocale } from '../lib/i18n.js';
@@ -119,10 +120,19 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction): v
   next();
 }
 
-/** Solo propietario de la organización (gestor de secretos de plataforma). */
+/** Solo propietario de la organización. */
 export function requireOwner(req: Request, res: Response, next: NextFunction): void {
   if (!req.auth || req.auth.role !== 'owner') {
-    res.status(403).json({ error: 'Solo el propietario puede gestionar secretos de plataforma' });
+    res.status(403).json({ error: 'Se requiere rol de propietario' });
+    return;
+  }
+  next();
+}
+
+/** Operador de plataforma (PLATFORM_ADMIN_EMAILS), no confundir con admin de org. */
+export function requirePlatformAdmin(req: Request, res: Response, next: NextFunction): void {
+  if (!req.auth || !isPlatformAdminEmail(req.auth.email)) {
+    res.status(403).json({ error: 'Se requiere acceso de administrador de plataforma' });
     return;
   }
   next();

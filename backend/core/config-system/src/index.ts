@@ -117,6 +117,8 @@ const envSchema = z.object({
     .default('false'),
   DEFAULT_ADMIN_EMAIL: z.string().email().default('adripardo72@gmail.com'),
   DEFAULT_ADMIN_PASSWORD: z.string().default('changeme'),
+  /** Emails de operadores de plataforma (panel /admin), separados por comas. */
+  PLATFORM_ADMIN_EMAILS: z.string().default(''),
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
   STRIPE_PRICE_STARTER: z.string().optional(),
@@ -180,6 +182,17 @@ export function loadConfig(): AppConfig {
   validateProductionConfig(cfg);
   cached = cfg;
   return cached;
+}
+
+/** Operadores de plataforma (panel /admin). Lista case-insensitive desde PLATFORM_ADMIN_EMAILS. */
+export function isPlatformAdminEmail(email: string | null | undefined): boolean {
+  if (!email?.trim()) return false;
+  const list = loadConfig()
+    .PLATFORM_ADMIN_EMAILS.split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  if (list.length === 0) return false;
+  return list.includes(email.trim().toLowerCase());
 }
 
 function validateProductionConfig(cfg: AppConfig): void {
@@ -645,6 +658,7 @@ export {
   encryptCredentialPayload,
   isCredentialEncryptionEnabled,
   isEncryptedCredentialData,
+  type EncryptedCredentialEnvelope,
 } from './credential-crypto.js';
 export {
   clearOrgPipelineOverrides,

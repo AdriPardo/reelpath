@@ -5,7 +5,7 @@ import {
   getChannelYouTubeAnalytics,
   syncChannelYouTubeAnalytics,
 } from '@autotube/analytics';
-import { channelConfigSchema, loadConfig, parseChannelConfig } from '@autotube/config';
+import { channelConfigSchema, decryptCredentialPayload, loadConfig, parseChannelConfig } from '@autotube/config';
 import { prisma } from '@autotube/database';
 import {
   buildCredentialFromEnv,
@@ -269,8 +269,9 @@ channelsRouter.patch('/:id/integrations/:provider', async (req, res) => {
     if (!existing) {
       return res.status(404).json({ error: 'No hay credenciales guardadas para este canal' });
     }
-    const current = existing.data as YouTubeCredentialData;
-    const merged = {
+    const current =
+      (decryptCredentialPayload(existing.data) as YouTubeCredentialData | null) ?? {};
+    const merged: YouTubeCredentialData = {
       ...current,
       ...(body.privacyStatus ? { privacyStatus: body.privacyStatus } : {}),
     };
