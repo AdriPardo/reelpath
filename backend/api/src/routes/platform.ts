@@ -48,8 +48,30 @@ const patchSchema = z
 
 platformRouter.get('/secrets', async (_req, res) => {
   const status = await getPlatformSecretsStatus();
+  const config = loadConfig();
+  const ytEnv = !!(config.YOUTUBE_CLIENT_ID?.trim() && config.YOUTUBE_CLIENT_SECRET?.trim());
+
+  const source = (inDb: boolean, inEnv: boolean): 'db' | 'env' | 'none' => {
+    if (inDb) return 'db';
+    if (inEnv) return 'env';
+    return 'none';
+  };
+
+  const sources = {
+    youtube: source(status.hasYoutubeOAuthApp, ytEnv),
+    openai: source(status.hasOpenaiKey, !!config.OPENAI_API_KEY?.trim()),
+    deepseek: source(status.hasDeepseekKey, !!config.DEEPSEEK_API_KEY?.trim()),
+    elevenlabs: source(status.hasElevenLabsKey, !!config.ELEVENLABS_API_KEY?.trim()),
+    pexels: source(status.hasPexelsKey, !!config.PEXELS_API_KEY?.trim()),
+  };
+
   res.json({
-    ...status,
+    hasYoutubeOAuthApp: status.hasYoutubeOAuthApp || ytEnv,
+    hasOpenaiKey: status.hasOpenaiKey || !!config.OPENAI_API_KEY?.trim(),
+    hasDeepseekKey: status.hasDeepseekKey || !!config.DEEPSEEK_API_KEY?.trim(),
+    hasElevenLabsKey: status.hasElevenLabsKey || !!config.ELEVENLABS_API_KEY?.trim(),
+    hasPexelsKey: status.hasPexelsKey || !!config.PEXELS_API_KEY?.trim(),
+    sources,
     youtubeOAuthRedirectUri: getYouTubeOAuthRedirectUri(),
   });
 });
@@ -92,8 +114,26 @@ platformRouter.patch('/secrets', async (req, res) => {
 
   await loadPlatformSecretsOverrides();
   const status = await getPlatformSecretsStatus();
+  const config = loadConfig();
+  const ytEnv = !!(config.YOUTUBE_CLIENT_ID?.trim() && config.YOUTUBE_CLIENT_SECRET?.trim());
+  const source = (inDb: boolean, inEnv: boolean): 'db' | 'env' | 'none' => {
+    if (inDb) return 'db';
+    if (inEnv) return 'env';
+    return 'none';
+  };
   res.json({
-    ...status,
+    hasYoutubeOAuthApp: status.hasYoutubeOAuthApp || ytEnv,
+    hasOpenaiKey: status.hasOpenaiKey || !!config.OPENAI_API_KEY?.trim(),
+    hasDeepseekKey: status.hasDeepseekKey || !!config.DEEPSEEK_API_KEY?.trim(),
+    hasElevenLabsKey: status.hasElevenLabsKey || !!config.ELEVENLABS_API_KEY?.trim(),
+    hasPexelsKey: status.hasPexelsKey || !!config.PEXELS_API_KEY?.trim(),
+    sources: {
+      youtube: source(status.hasYoutubeOAuthApp, ytEnv),
+      openai: source(status.hasOpenaiKey, !!config.OPENAI_API_KEY?.trim()),
+      deepseek: source(status.hasDeepseekKey, !!config.DEEPSEEK_API_KEY?.trim()),
+      elevenlabs: source(status.hasElevenLabsKey, !!config.ELEVENLABS_API_KEY?.trim()),
+      pexels: source(status.hasPexelsKey, !!config.PEXELS_API_KEY?.trim()),
+    },
     youtubeOAuthRedirectUri: getYouTubeOAuthRedirectUri(),
     message: 'Secretos de plataforma actualizados',
   });

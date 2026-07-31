@@ -6,6 +6,9 @@ import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
 import { Button } from '@/components/ui/Button';
+import { Chip } from '@/components/ui/Chip';
+
+type SecretSource = 'db' | 'env' | 'none';
 
 type PlatformSecretsStatus = {
   hasYoutubeOAuthApp: boolean;
@@ -14,7 +17,36 @@ type PlatformSecretsStatus = {
   hasElevenLabsKey: boolean;
   hasPexelsKey: boolean;
   youtubeOAuthRedirectUri: string;
+  sources?: {
+    youtube: SecretSource;
+    openai: SecretSource;
+    deepseek: SecretSource;
+    elevenlabs: SecretSource;
+    pexels: SecretSource;
+  };
 };
+
+function StatusChip({
+  configured,
+  source,
+  configuredLabel,
+  missingLabel,
+  envLabel,
+}: {
+  configured: boolean;
+  source?: SecretSource;
+  configuredLabel: string;
+  missingLabel: string;
+  envLabel: string;
+}) {
+  if (!configured) {
+    return <Chip variant="neutral">{missingLabel}</Chip>;
+  }
+  if (source === 'env') {
+    return <Chip variant="warning">{envLabel}</Chip>;
+  }
+  return <Chip variant="success">{configuredLabel}</Chip>;
+}
 
 export function SettingsPlatformSecretsPanel() {
   const t = useTranslations('settings.platformSecrets');
@@ -138,69 +170,86 @@ export function SettingsPlatformSecretsPanel() {
     );
   }
 
+  const ytSource = status.sources?.youtube ?? (status.hasYoutubeOAuthApp ? 'db' : 'none');
+
   return (
     <div className="settings-platform-secrets">
       <section className="settings-section">
-        <h2>{t('title')}</h2>
-        <p className="text-muted">{t('desc')}</p>
+        <header className="settings-section-header">
+          <h2>{t('title')}</h2>
+          <p className="settings-section-desc">{t('desc')}</p>
+        </header>
       </section>
 
-      <section className="settings-section">
-        <h3>{t('youtubeTitle')}</h3>
+      <section className="settings-section platform-secret-block">
+        <div className="platform-secret-block-head">
+          <h3>{t('youtubeTitle')}</h3>
+          <StatusChip
+            configured={status.hasYoutubeOAuthApp}
+            source={ytSource}
+            configuredLabel={t('configured')}
+            missingLabel={t('missing')}
+            envLabel={t('configuredEnv')}
+          />
+        </div>
         <p className="text-muted">{t('youtubeHint')}</p>
-        <p className="settings-secrets-status">
-          {t('status')}:{' '}
-          <strong>{status.hasYoutubeOAuthApp ? t('configured') : t('missing')}</strong>
-        </p>
-        <label className="settings-field" htmlFor={`${ytId}-redirect`}>
-          {t('redirectLabel')}
-        </label>
-        <input
-          id={`${ytId}-redirect`}
-          className="input"
-          readOnly
-          value={status.youtubeOAuthRedirectUri}
-          onFocus={(e) => e.target.select()}
-        />
-        <p className="text-muted settings-field-hint">{t('redirectHint')}</p>
 
-        <label className="settings-field" htmlFor={ytId}>
-          {t('clientIdLabel')}
+        <label className="platform-secret-field" htmlFor={`${ytId}-redirect`}>
+          <span className="platform-secret-label">{t('redirectLabel')}</span>
+          <input
+            id={`${ytId}-redirect`}
+            className="platform-secret-input"
+            readOnly
+            value={status.youtubeOAuthRedirectUri}
+            onFocus={(e) => e.target.select()}
+          />
+          <span className="platform-secret-hint">{t('redirectHint')}</span>
         </label>
-        <input
-          id={ytId}
-          className="input"
-          type="text"
-          autoComplete="off"
-          placeholder={status.hasYoutubeOAuthApp ? t('leaveBlank') : ''}
-          value={youtubeClientId}
-          onChange={(e) => setYoutubeClientId(e.target.value)}
-        />
-        <label className="settings-field" htmlFor={ytSecret}>
-          {t('clientSecretLabel')}
-        </label>
-        <input
-          id={ytSecret}
-          className="input"
-          type="password"
-          autoComplete="new-password"
-          placeholder={status.hasYoutubeOAuthApp ? t('leaveBlank') : ''}
-          value={youtubeClientSecret}
-          onChange={(e) => setYoutubeClientSecret(e.target.value)}
-        />
-        {status.hasYoutubeOAuthApp ? (
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={saving}
-            onClick={() => void clearKey('clearYoutubeOAuthApp')}
-          >
-            {t('clearYoutube')}
-          </Button>
+
+        <div className="platform-secret-grid">
+          <label className="platform-secret-field" htmlFor={ytId}>
+            <span className="platform-secret-label">{t('clientIdLabel')}</span>
+            <input
+              id={ytId}
+              className="platform-secret-input"
+              type="text"
+              autoComplete="off"
+              placeholder={status.hasYoutubeOAuthApp ? t('leaveBlank') : t('clientIdPlaceholder')}
+              value={youtubeClientId}
+              onChange={(e) => setYoutubeClientId(e.target.value)}
+            />
+          </label>
+          <label className="platform-secret-field" htmlFor={ytSecret}>
+            <span className="platform-secret-label">{t('clientSecretLabel')}</span>
+            <input
+              id={ytSecret}
+              className="platform-secret-input"
+              type="password"
+              autoComplete="new-password"
+              placeholder={status.hasYoutubeOAuthApp ? t('leaveBlank') : t('clientSecretPlaceholder')}
+              value={youtubeClientSecret}
+              onChange={(e) => setYoutubeClientSecret(e.target.value)}
+            />
+          </label>
+        </div>
+
+        {status.hasYoutubeOAuthApp && ytSource === 'db' ? (
+          <div className="platform-secret-actions">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={saving}
+              onClick={() => void clearKey('clearYoutubeOAuthApp')}
+            >
+              {t('clearYoutube')}
+            </Button>
+          </div>
         ) : null}
+        {ytSource === 'env' ? <p className="platform-secret-hint">{t('envOnlyHint')}</p> : null}
       </section>
 
-      <section className="settings-section">
+      <section className="settings-section platform-secret-block">
         <h3>{t('apiKeysTitle')}</h3>
         <p className="text-muted">{t('apiKeysHint')}</p>
 
@@ -210,6 +259,7 @@ export function SettingsPlatformSecretsPanel() {
               id: openaiId,
               label: t('openaiLabel'),
               has: status.hasOpenaiKey,
+              source: status.sources?.openai,
               value: openaiKey,
               set: setOpenaiKey,
               clear: 'clearOpenaiApiKey' as const,
@@ -218,6 +268,7 @@ export function SettingsPlatformSecretsPanel() {
               id: deepseekId,
               label: t('deepseekLabel'),
               has: status.hasDeepseekKey,
+              source: status.sources?.deepseek,
               value: deepseekKey,
               set: setDeepseekKey,
               clear: 'clearDeepseekApiKey' as const,
@@ -226,6 +277,7 @@ export function SettingsPlatformSecretsPanel() {
               id: elevenId,
               label: t('elevenLabel'),
               has: status.hasElevenLabsKey,
+              source: status.sources?.elevenlabs,
               value: elevenLabsKey,
               set: setElevenLabsKey,
               clear: 'clearElevenLabsApiKey' as const,
@@ -234,43 +286,62 @@ export function SettingsPlatformSecretsPanel() {
               id: pexelsId,
               label: t('pexelsLabel'),
               has: status.hasPexelsKey,
+              source: status.sources?.pexels,
               value: pexelsKey,
               set: setPexelsKey,
               clear: 'clearPexelsApiKey' as const,
             },
           ] as const
-        ).map((field) => (
-          <div key={field.id} className="settings-secrets-row">
-            <label className="settings-field" htmlFor={field.id}>
-              {field.label}
-            </label>
-            <p className="settings-secrets-status">
-              {t('status')}: <strong>{field.has ? t('configured') : t('missing')}</strong>
-            </p>
-            <input
-              id={field.id}
-              className="input"
-              type="password"
-              autoComplete="new-password"
-              placeholder={field.has ? t('leaveBlank') : ''}
-              value={field.value}
-              onChange={(e) => field.set(e.target.value)}
-            />
-            {field.has ? (
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={saving}
-                onClick={() => void clearKey(field.clear)}
-              >
-                {t('removeKey')}
-              </Button>
-            ) : null}
-          </div>
-        ))}
+        ).map((field) => {
+          const source = field.source ?? (field.has ? 'db' : 'none');
+          return (
+            <div key={field.id} className="platform-secret-row">
+              <div className="platform-secret-block-head">
+                <label className="platform-secret-label" htmlFor={field.id}>
+                  {field.label}
+                </label>
+                <StatusChip
+                  configured={field.has}
+                  source={source}
+                  configuredLabel={t('configured')}
+                  missingLabel={t('missing')}
+                  envLabel={t('configuredEnv')}
+                />
+              </div>
+              {field.has ? (
+                <p className="platform-secret-stored" aria-hidden="true">
+                  ••••••••••••••••
+                </p>
+              ) : null}
+              <input
+                id={field.id}
+                className="platform-secret-input"
+                type="password"
+                autoComplete="new-password"
+                placeholder={field.has ? t('leaveBlank') : t('pasteKey')}
+                value={field.value}
+                onChange={(e) => field.set(e.target.value)}
+              />
+              {field.has && source === 'db' ? (
+                <div className="platform-secret-actions">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    disabled={saving}
+                    onClick={() => void clearKey(field.clear)}
+                  >
+                    {t('removeKey')}
+                  </Button>
+                </div>
+              ) : null}
+              {source === 'env' ? <p className="platform-secret-hint">{t('envOnlyHint')}</p> : null}
+            </div>
+          );
+        })}
       </section>
 
-      <div className="settings-actions">
+      <div className="platform-secret-actions platform-secret-actions-primary">
         <Button type="button" disabled={saving} onClick={() => void save()}>
           {saving ? tc('saving') : t('save')}
         </Button>

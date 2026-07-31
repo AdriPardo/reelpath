@@ -1,10 +1,12 @@
-import { getTranslations } from 'next-intl/server';
+'use client';
+
+import { useTranslations } from 'next-intl';
 import { ButtonLink } from '@/components/ui/Button';
 
-export async function SettingsPublicationPanel() {
-  const t = await getTranslations('settings.publication');
-  const ts = await getTranslations('settingsExt');
-  const tc = await getTranslations('common');
+export function SettingsPublicationPanel() {
+  const t = useTranslations('settings.publication');
+  const ts = useTranslations('settingsExt');
+  const tc = useTranslations('common');
 
   return (
     <section className="settings-section">
@@ -15,7 +17,16 @@ export async function SettingsPublicationPanel() {
 
       <div className="settings-publish-card">
         <div className="settings-publish-icon" aria-hidden="true">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.75"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <path d="M22 8.5V17a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8.5" />
             <path d="M12 12v6" />
             <path d="M7 12v6" />

@@ -101,6 +101,11 @@ export function SettingsApiKeysPanel() {
       : ttsProvider === 'openai'
         ? (settings?.platformDefaults?.openaiTtsVoice ?? 'nova')
         : (settings?.platformDefaults?.edgeTtsVoice ?? 'es-ES-ElviraNeural');
+  const platformVoiceLabel =
+    voiceOptions.find((v) => v.id === platformVoiceDefault)?.label ?? null;
+  const voiceInheritLabel = platformVoiceLabel
+    ? ts('apikeysVoiceInherit', { default: platformVoiceLabel })
+    : ts('apikeysVoiceInheritPlain');
 
   function setActiveVoice(value: string) {
     if (ttsProvider === 'elevenlabs') setElevenLabsVoiceId(value);
@@ -272,7 +277,7 @@ export function SettingsApiKeysPanel() {
                 }
                 value={activeVoiceValue}
                 onChange={setActiveVoice}
-                inheritLabel={ts('apikeysVoiceInherit', { default: platformVoiceDefault })}
+                inheritLabel={voiceInheritLabel}
                 provider={ttsProvider === 'auto' ? 'edge' : ttsProvider}
               />
               <span className="text-muted text-sm">

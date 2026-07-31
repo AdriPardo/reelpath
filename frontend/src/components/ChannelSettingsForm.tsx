@@ -138,16 +138,20 @@ export function ChannelSettingsForm({
       : effectiveProvider === 'openai'
         ? (config.openaiTtsVoice ?? '')
         : (config.edgeTtsVoice ?? '');
-  const inheritVoiceLabel =
+  const inheritVoiceId =
     effectiveProvider === 'elevenlabs'
       ? (orgTts?.elevenLabsVoiceId ||
           orgTts?.platformDefaults?.elevenLabsVoiceId ||
-          'ElevenLabs')
+          '')
       : effectiveProvider === 'openai'
         ? (orgTts?.openaiTtsVoice || orgTts?.platformDefaults?.openaiTtsVoice || 'nova')
         : (orgTts?.edgeTtsVoice ||
             orgTts?.platformDefaults?.edgeTtsVoice ||
             'es-ES-ElviraNeural');
+  const inheritVoiceName = voiceOptions.find((v) => v.id === inheritVoiceId)?.label ?? null;
+  const inheritLabel = inheritVoiceName
+    ? t('ttsVoiceInherit', { default: inheritVoiceName })
+    : t('ttsVoiceInheritPlain');
 
   function setChannelVoice(value: string) {
     const next = value.trim() === '' ? null : value.trim();
@@ -553,7 +557,7 @@ export function ChannelSettingsForm({
             }
             value={typeof activeChannelVoice === 'string' ? activeChannelVoice : ''}
             onChange={setChannelVoice}
-            inheritLabel={t('ttsVoiceInherit', { default: inheritVoiceLabel })}
+            inheritLabel={inheritLabel}
             provider={effectiveProvider}
           />
         </div>
