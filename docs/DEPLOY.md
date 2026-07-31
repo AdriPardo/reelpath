@@ -122,7 +122,7 @@ Variables **obligatorias**:
 | `CREDENTIALS_ENCRYPTION_KEY` | (hex 32) | Cifrado BYOK + secretos de plataforma |
 | `DEFAULT_ADMIN_PASSWORD` | (segura) | Usuario admin del seed |
 
-API keys (OpenAI/DeepSeek/ElevenLabs/Pexels) y YouTube **Client ID/Secret** se configuran en **Ajustes → Secretos de plataforma** tras el primer login (o `npm run secrets:import-from-env` si migras desde un `.env` antiguo).
+API keys de IA (OpenAI/DeepSeek/ElevenLabs) las posee **ops vía script**, no el end-user en UI. Ver [PLATFORM_AI_SECRETS.md](./PLATFORM_AI_SECRETS.md). En Atlas: `seed-project-secrets.sh`; bridge local: `npm run secrets:seed-from-env`. YouTube Client ID/Secret igual por script / PlatformSecret ops — no pegar en UI de usuario final.
 
 Asegúrate de que `NEXT_PUBLIC_API_URL` y `FRONTEND_URL` usan `https://` + tu `DOMAIN`.
 
@@ -343,7 +343,8 @@ Antes de abrir registro público o cobrar clientes, verifica:
 - [ ] **SMTP Brevo** (u otro): `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM` — ver [EMAIL.md](./EMAIL.md)
 - [ ] **`CREDENTIALS_ENCRYPTION_KEY`**: genera con `openssl rand -hex 32` (cifrado BYOK + secretos de plataforma)
 - [ ] **OAuth Google / YouTube**: proyecto GCP, consent screen, redirect URI `https://TU_DOMINIO/api/integrations/youtube/callback`
-- [ ] **Secretos de plataforma** (UI owner): YouTube Client ID/Secret + DeepSeek/OpenAI (y opcional ElevenLabs/Pexels)
+- [ ] **AI / YouTube secrets**: ops script ([PLATFORM_AI_SECRETS.md](./PLATFORM_AI_SECRETS.md)) — no pegar keys en UI end-user
+- [ ] Login admin → verificar features IA sin formulario BYOK al usuario
 - [ ] **Stripe webhook**: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, precios y portal — ver [BILLING.md](./BILLING.md)
 - [ ] **`MOCK_EXTERNAL_APIS=false`** en producción (TTS, imágenes y YouTube reales)
 - [ ] Health check: `https://TU_DOMINIO/health`
@@ -359,7 +360,7 @@ Antes de abrir registro público o cobrar clientes, verifica:
 - [ ] Crear proyecto Google Cloud + OAuth web + redirect URI de producción
 - [ ] Ejecutar `./infrastructure/scripts/deploy-prod.sh`
 - [ ] Verificar `https://TU_DOMINIO/health`
-- [ ] Login admin → Ajustes → Secretos de plataforma (Client ID/Secret + API keys)
+- [ ] Login admin → features IA OK sin formulario BYOK; secrets sembrados por script ops
 - [ ] Conectar canal YouTube vía OAuth
 - [ ] Lanzar pipeline de prueba
 - [ ] (Opcional) Configurar backup cron de Postgres

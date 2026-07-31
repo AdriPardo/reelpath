@@ -3,6 +3,7 @@ dist/
 .next/
 .env
 .env.local
+.env.secrets
 .env.orig
 .env.*.local
 *.log

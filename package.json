@@ -43,6 +43,7 @@
     "pre-deploy:check": "dotenv -e .env -- tsx scripts/pre-deploy-check.ts",
     "pre-deploy:check:prod": "dotenv -e .env -- env NODE_ENV=production tsx scripts/pre-deploy-check.ts --strict-prod",
     "secrets:import-from-env": "dotenv -e .env -- tsx scripts/import-platform-secrets-from-env.ts",
+    "secrets:seed-from-env": "dotenv -e .env -- tsx scripts/seed-platform-secrets-from-env.ts",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "docker:build": "docker compose build",
