@@ -130,15 +130,16 @@ export async function generateSpeech(
   const language = options?.language ?? 'es';
   const ttsInput = preprocessForTts(text, language);
 
-  if (config.MOCK_EXTERNAL_APIS) {
-    await generateSilentAudio(outPath, estimateDuration(ttsInput));
-    return { mock: true, provider: 'mock' };
-  }
-
   const chain = getTtsFallbackChain(config);
   if (chain.length === 0) {
-    await generateSilentAudio(outPath, estimateDuration(ttsInput));
-    return { mock: true, provider: 'mock' };
+    if (config.MOCK_EXTERNAL_APIS) {
+      console.warn('[media/TTS] MOCK — audio silencioso (sin providers TTS)');
+      await generateSilentAudio(outPath, estimateDuration(ttsInput));
+      return { mock: true, provider: 'mock' };
+    }
+    throw new Error(
+      'Sin provider TTS usable. Activa Edge TTS, o configura ElevenLabs/OpenAI en Secretos de plataforma / canal.',
+    );
   }
 
   console.info(
@@ -194,29 +195,30 @@ export async function generateSceneImage(params: {
   const { width, height } = isVertical ? VIDEO_RESOLUTION_SHORT : VIDEO_RESOLUTION_LONG;
 
   const allowAi = params.allowAiImages !== false;
+  // Clave efectiva (org/plataforma/env) gana sobre useMocks: si hay OpenAI, se puede generar IA.
   const useAiImages =
     allowAi &&
-    !config.useMocks &&
-    !!config.OPENAI_API_KEY &&
+    !!config.OPENAI_API_KEY?.trim() &&
     (config.GENERATE_DALLE_IMAGES || !!params.forceAiImages);
 
   if (!useAiImages) {
     if (
       config.OPENAI_API_KEY &&
-      !config.useMocks &&
       !config.GENERATE_DALLE_IMAGES &&
       !params.forceAiImages
     ) {
       console.info(
         '[media] GENERATE_DALLE_IMAGES=false — imágenes procedurales/stock. ' +
-          'Pon GENERATE_DALLE_IMAGES=true (y opcionalmente FORCE_AI_IMAGES_ON_PAID) para imágenes IA.',
+          'Activa imágenes IA en Ajustes / canal para DALL·E / gpt-image.',
       );
     } else if (!allowAi) {
       console.info(
         `[media] scene=${params.sceneIndex} tope MAX_AI_IMAGES_PER_VIDEO — procedural/stock`,
       );
+    } else if (!config.OPENAI_API_KEY?.trim()) {
+      console.info('[media] Imágenes procedurales (sin OPENAI_API_KEY en env/plataforma/org)');
     } else {
-      console.info('[media] Imágenes procedurales (sin API key o mocks activos)');
+      console.info('[media] Imágenes procedurales/stock');
     }
     await generateProceduralSceneImage({ ...params, width, height });
     return { mock: true, provider: 'procedural', visualOrigin: 'placeholder' };

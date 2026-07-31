@@ -4,8 +4,8 @@ export interface SubscriptionPlan {
   name: string;
   priceLabel: string;
   badge?: string;
-  description: string;
-  bullets: string[];
+  videos: string;
+  channels: string;
   ctaLabel: string;
 }
 
@@ -15,37 +15,25 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     id: 'starter',
     name: 'Creator',
     priceLabel: '79 EUR/mes',
-    description: 'Para creadores que publican con ritmo (~2 vídeos largos por semana) y quieren automatizar el canal.',
-    bullets: [
-      'Hasta 8 vídeos al mes',
-      '1 canal y revisión manual antes de publicar',
-      'Hasta 2 generaciones al día',
-    ],
+    videos: '8 / mes',
+    channels: '1 canal',
     ctaLabel: 'Empezar con Creator',
   },
   {
     id: 'pro',
     name: 'Pro',
     priceLabel: '149 EUR/mes',
-    badge: 'Lanzamiento',
-    description: 'El plan de referencia para operar un canal en serio sin montar un equipo interno completo.',
-    bullets: [
-      'Hasta 16 vídeos al mes',
-      'Hasta 3 canales',
-      'Hasta 4 generaciones al día',
-    ],
+    badge: 'Recomendado',
+    videos: '24 / mes',
+    channels: 'Hasta 3',
     ctaLabel: 'Elegir Pro',
   },
   {
     id: 'unlimited',
     name: 'Studio',
     priceLabel: '399 EUR/mes',
-    description: 'Para agencias, estudios y operadores multi-canal que necesitan volumen y margen de maniobra.',
-    bullets: [
-      'Canales y vídeos ilimitados',
-      'Flujos de publicación y revisión para equipo',
-      'Onboarding y acompañamiento de lanzamiento',
-    ],
+    videos: 'Ilimitados',
+    channels: 'Ilimitados',
     ctaLabel: 'Hablar con ventas',
   },
 ];

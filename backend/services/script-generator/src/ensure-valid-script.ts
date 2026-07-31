@@ -1,5 +1,4 @@
-import { getLlmClient } from '@autotube/llm';
-import { loadConfig } from '@autotube/config';
+import { getLlmClient, isLlmMockMode } from '@autotube/llm';
 import type { ChannelConfig, ScriptScene, VideoFormat } from '@autotube/shared';
 import { getMinScriptWords, LONG_SCENE_WORDS_HARD_MIN, LONG_SCENE_WORDS_MIN } from '@autotube/shared';
 import {
@@ -130,7 +129,7 @@ async function fixGenericVisualPrompts(
 ): Promise<ScriptScene[]> {
   let updated = [...scenes];
 
-  if (!loadConfig().useMocks) {
+  if (!isLlmMockMode()) {
     const genericIndices = updated
       .map((s, i) => ({ i, generic: isGenericVisual(s.visualPrompt) }))
       .filter((x) => x.generic)

@@ -237,49 +237,106 @@ export function SettingsPlanPanel({ plans }: { plans: PlanDefinition[] }) {
           {plans.length === 0 ? (
             <p className="text-muted text-sm">{t('plansComingSoon')}</p>
           ) : (
-            <ul className="settings-plans-list">
-              {plans
-                .filter((plan) => plan.id !== 'trial')
-                .map((plan) => {
+            <div className="settings-plans-compare-grid" role="table" aria-label={t('availablePlans')}>
+              {(() => {
+                const visible = plans.filter((plan) => plan.id !== 'trial');
+                const cells = visible.map((plan) => {
+                  const limits = plan.limits as PlanLimits;
                   const isCurrent = plan.id === currentPlanId;
-                  const planBullets = planLimitsToBullets(plan.limits as PlanLimits, locale);
                   const canChange =
                     !isCurrent &&
                     UPGRADE_PLAN_IDS.includes(plan.id as (typeof UPGRADE_PLAN_IDS)[number]);
-                  return (
-                    <li
-                      key={plan.id}
-                      className={`settings-plan-card${isCurrent ? ' settings-plan-card-current' : ''}`}
-                    >
-                      <div className="settings-plan-row">
-                        <strong>{plan.name}</strong>
-                        <span className="settings-plan-price">{formatPlanPrice(plan.priceMonthlyCents)}</span>
-                      </div>
-                      {plan.description && (
-                        <p className="text-muted text-sm">{plan.description}</p>
-                      )}
-                      <ul className="settings-plan-limits settings-plan-limits-compact">
-                        {planBullets.map((item) => (
-                          <li key={item}>{item}</li>
-                        ))}
-                      </ul>
-                      {isCurrent ? (
-                        <span className="badge badge-approved">{t('yourPlan')}</span>
-                      ) : canChange && canManageBilling ? (
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          disabled={checkoutPlanId === plan.id}
-                          onClick={() => void handlePlanChange(plan.id)}
+                  return { plan, limits, isCurrent, canChange };
+                });
+                return (
+                  <>
+                    <div className="settings-plans-compare-row" role="row">
+                      {cells.map(({ plan, isCurrent }) => (
+                        <div
+                          key={`${plan.id}-name`}
+                          role="columnheader"
+                          className={`settings-plans-compare-cell${isCurrent ? ' is-current' : ''}`}
                         >
-                          {checkoutPlanId === plan.id ? t('processing') : t('upgradeToPlan')}
-                        </Button>
-                      ) : null}
-                    </li>
-                  );
-                })}
-            </ul>
+                          <strong>{plan.name}</strong>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="settings-plans-compare-row" role="row">
+                      {cells.map(({ plan, isCurrent }) => (
+                        <div
+                          key={`${plan.id}-price`}
+                          role="cell"
+                          className={`settings-plans-compare-cell settings-plans-compare-price${isCurrent ? ' is-current' : ''}`}
+                        >
+                          {formatPlanPrice(plan.priceMonthlyCents)}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="settings-plans-compare-row" role="row">
+                      {cells.map(({ plan, limits, isCurrent }) => (
+                        <div
+                          key={`${plan.id}-videos`}
+                          role="cell"
+                          className={`settings-plans-compare-cell${isCurrent ? ' is-current' : ''}`}
+                        >
+                          <span className="settings-plans-compare-label">{t('limitVideos')}</span>
+                          <span>
+                            {limits.unlimited
+                              ? t('unlimitedVideos')
+                              : limits.maxVideosPerMonth != null
+                                ? String(limits.maxVideosPerMonth)
+                                : '—'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="settings-plans-compare-row" role="row">
+                      {cells.map(({ plan, limits, isCurrent }) => (
+                        <div
+                          key={`${plan.id}-channels`}
+                          role="cell"
+                          className={`settings-plans-compare-cell${isCurrent ? ' is-current' : ''}`}
+                        >
+                          <span className="settings-plans-compare-label">{t('limitChannels')}</span>
+                          <span>
+                            {limits.unlimited
+                              ? t('unlimitedChannels')
+                              : limits.maxChannels != null
+                                ? String(limits.maxChannels)
+                                : '—'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="settings-plans-compare-row settings-plans-compare-ctas" role="row">
+                      {cells.map(({ plan, isCurrent, canChange }) => (
+                        <div
+                          key={`${plan.id}-cta`}
+                          role="cell"
+                          className={`settings-plans-compare-cell${isCurrent ? ' is-current' : ''}`}
+                        >
+                          {isCurrent ? (
+                            <span className="badge badge-approved">{t('yourPlan')}</span>
+                          ) : canChange && canManageBilling ? (
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              disabled={checkoutPlanId === plan.id}
+                              onClick={() => void handlePlanChange(plan.id)}
+                            >
+                              {checkoutPlanId === plan.id ? t('processing') : t('upgradeToPlan')}
+                            </Button>
+                          ) : (
+                            <span className="text-muted text-sm">—</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
           )}
 
           <p className="text-muted text-sm settings-plans-footnote">{t('stripeFootnote')}</p>

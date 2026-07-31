@@ -144,6 +144,17 @@ export async function processPipelineJob(job: Job<PipelineJobPayload>): Promise<
   await loadPlatformSecretsOverrides();
   resetLlmClient();
 
+  const { loadEffectiveConfig } = await import('@autotube/config');
+  const { getActiveLlmLabel, isLlmMockMode } = await import('@autotube/llm');
+  const eff = loadEffectiveConfig();
+  console.info(
+    `[pipeline] run=${pipelineRunId} step=${step} llm=${getActiveLlmLabel()}` +
+      ` mockLlm=${isLlmMockMode()} mockFlag=${eff.MOCK_EXTERNAL_APIS}` +
+      ` tts=${eff.TTS_PROVIDER} dalle=${eff.GENERATE_DALLE_IMAGES}` +
+      ` hasOpenAi=${!!eff.OPENAI_API_KEY} hasDeepseek=${!!eff.DEEPSEEK_API_KEY}` +
+      ` hasEleven=${!!eff.ELEVENLABS_API_KEY}`,
+  );
+
   try {
     await runPipelineStep(job, run, { pipelineRunId, channelId, step, youtubeOnly, splitOnly });
   } finally {
@@ -208,12 +219,9 @@ async function runPipelineStep(
         const idea = await prisma.videoIdea.findFirstOrThrow({
           where: { pipelineRunId, isSelected: true },
         });
-        const { loadConfig, isScriptDevMode } = await import('@autotube/config');
+        const { isScriptDevMode } = await import('@autotube/config');
         const { getActiveLlmLabel } = await import('@autotube/llm');
-        const cfg = loadConfig();
-        const scriptMode = cfg.useMocks
-          ? 'MOCK (sin coste API)'
-          : getActiveLlmLabel();
+        const scriptMode = getActiveLlmLabel();
         console.info(
           `[worker] generate_script — ${scriptMode}` +
             (isScriptDevMode() ? ', dev económico' : '') +

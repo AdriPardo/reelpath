@@ -1,6 +1,7 @@
-import { getMinScenes, loadConfig } from '@autotube/config';
+import { getMinScenes } from '@autotube/config';
 import type { ChannelConfig, ScriptScene } from '@autotube/shared';
 import { applyVisualSourceToScenes, getMinScriptWords, getTargetScriptWords } from '@autotube/shared';
+import { isLlmMockMode } from '@autotube/llm';
 import { assembleScript, buildHookScene, expandScriptToMinDuration, generatePaddingScene } from './assemble.js';
 import { generateChunk } from './chunk.js';
 import { ensureValidScript } from './ensure-valid-script.js';
@@ -23,7 +24,7 @@ export async function generateChunkedScript(params: {
   scenes: ScriptScene[];
 }> {
   const { idea, config, channelContext } = params;
-  if (loadConfig().useMocks) {
+  if (isLlmMockMode()) {
     console.info('[script] MOCK — sin coste API');
   }
 

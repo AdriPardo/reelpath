@@ -1,5 +1,4 @@
-import { getLlmClient } from '@autotube/llm';
-import { loadConfig } from '@autotube/config';
+import { getLlmClient, isLlmMockMode } from '@autotube/llm';
 import type { ChannelConfig, ScriptScene } from '@autotube/shared';
 import {
   getLongWordsPerSceneRange,
@@ -77,7 +76,7 @@ export async function generatePaddingScene(params: {
   const range = getLongWordsPerSceneRange();
   const lastSection = outline.sections[outline.sections.length - 1];
 
-  if (loadConfig().useMocks) {
+  if (isLlmMockMode()) {
     const narration = expandNarrationProgrammatic(
       `El desarrollo continúa desde la escena anterior, profundizando en ${lastSection?.title ?? 'el tema'}.`,
       LONG_SCENE_WORDS_MIN,
@@ -134,7 +133,7 @@ export async function expandScene(params: {
   const { scene, sceneNumber, outline, config } = params;
   const currentWords = countWords(scene.narration);
 
-  if (loadConfig().useMocks || currentWords < LONG_SCENE_WORDS_MIN) {
+  if (isLlmMockMode() || currentWords < LONG_SCENE_WORDS_MIN) {
     const narration = expandNarrationProgrammatic(scene.narration, LONG_SCENE_WORDS_MIN);
     if (countWords(narration) > currentWords) {
       return {

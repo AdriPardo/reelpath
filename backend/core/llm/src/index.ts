@@ -343,39 +343,40 @@ export function resetLlmClient(): void {
 
 export function getLlmClient(): LlmClient {
   if (!client) {
-    const config = loadConfig();
-    if (config.useMocks && !orgApiKeyOverride) {
+    const connection = resolveLlmConnection({ orgOpenAiApiKey: orgApiKeyOverride });
+    if (connection) {
+      console.info(`[llm] provider=${connection.provider} model=${connection.model}`);
+      client = new OpenAiCompatibleClient({
+        apiKey: connection.apiKey,
+        baseURL: connection.baseURL,
+        provider: connection.provider,
+        model: connection.model,
+      });
+    } else if (loadConfig().MOCK_EXTERNAL_APIS) {
+      console.info('[llm] MOCK_EXTERNAL_APIS=true — MockLlmClient (solo desarrollo local)');
       client = new MockLlmClient();
     } else {
-      const connection = resolveLlmConnection({ orgOpenAiApiKey: orgApiKeyOverride });
-      if (connection) {
-        console.info(`[llm] provider=${connection.provider} model=${connection.model}`);
-        client = new OpenAiCompatibleClient({
-          apiKey: connection.apiKey,
-          baseURL: connection.baseURL,
-          provider: connection.provider,
-          model: connection.model,
-        });
-      } else {
-        client = new MockLlmClient();
-      }
+      throw new Error(
+        'Sin clave LLM configurada. Añade DeepSeek u OpenAI en Ajustes → Secretos de plataforma, ' +
+          'BYOK de la organización, o DEEPSEEK_API_KEY / OPENAI_API_KEY en .env.',
+      );
     }
   }
   return client;
 }
 
+/** True solo en desarrollo con MOCK_EXTERNAL_APIS y sin claves reales. */
 export function isLlmMockMode(): boolean {
-  const config = loadConfig();
-  if (orgApiKeyOverride) return false;
-  if (config.useMocks) return true;
+  if (!loadConfig().MOCK_EXTERNAL_APIS) return false;
+  if (orgApiKeyOverride?.trim()) return false;
   return !resolveLlmConnection({ orgOpenAiApiKey: orgApiKeyOverride });
 }
 
-/** Label for logs: MOCK or `deepseek:model` / `openai:model`. */
+/** Label for logs: MOCK (solo si MOCK_EXTERNAL_APIS) o `deepseek:model` / `openai:model`. */
 export function getActiveLlmLabel(): string {
   if (isLlmMockMode()) return 'MOCK (sin coste API)';
   const connection = resolveLlmConnection({ orgOpenAiApiKey: orgApiKeyOverride });
-  if (!connection) return 'MOCK (sin coste API)';
+  if (!connection) return 'sin-clave-LLM';
   return `${connection.provider}:${connection.model || getLlmModel({ orgOpenAiApiKey: orgApiKeyOverride })}`;
 }
 

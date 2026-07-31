@@ -171,8 +171,9 @@ export function loadConfig(): AppConfig {
 
   const hasLlmKey = !!(parsed.data.OPENAI_API_KEY || parsed.data.DEEPSEEK_API_KEY);
 
-  const useMocks =
-    parsed.data.MOCK_EXTERNAL_APIS || (!hasLlmKey && !hasRealTts);
+  // Claves env ganan sobre MOCK_EXTERNAL_APIS. Secretos de plataforma/BYOK
+  // se reflejan en loadEffectiveConfig() e isLlmMockMode() — no en este flag cacheado.
+  const useMocks = !hasLlmKey && !hasRealTts;
 
   if (parsed.data.AUTH_REQUIRED && !parsed.data.AUTH_SECRET) {
     throw new Error('AUTH_SECRET is required when AUTH_REQUIRED=true');
@@ -215,14 +216,18 @@ function validateProductionConfig(cfg: AppConfig): void {
     throw new Error('En producción se exige CREDENTIALS_ENCRYPTION_KEY configurada');
   }
 
-  // Atlas shared-host / demo: permite mocks hasta configurar secretos externos.
+  // Producción y Atlas: mocks prohibidos. Secretos reales en .env o Ajustes → Secretos de plataforma.
+  if (cfg.MOCK_EXTERNAL_APIS !== false) {
+    throw new Error(
+      'En producción/Atlas se exige MOCK_EXTERNAL_APIS=false. ' +
+        'Configura DeepSeek/OpenAI (y opcional ElevenLabs) en Secretos de plataforma o .env.',
+    );
+  }
+
+  // Atlas: OAuth YouTube / Stripe viven en PlatformSecret o se configuran después — no exigir en env.
   const atlasHosted = process.env.ATLAS_HOSTED === 'true';
   if (atlasHosted) {
     return;
-  }
-
-  if (cfg.MOCK_EXTERNAL_APIS !== false) {
-    throw new Error('En producción se exige MOCK_EXTERNAL_APIS=false');
   }
 
   // YouTube OAuth app: client/secret viven en PlatformSecret (BD), no en .env.
@@ -500,13 +505,30 @@ export function resolveLlmConnection(options?: {
 /**
  * Config with org (+ merged channel) pipeline overrides applied.
  * Product prefs resolve channel > org > code defaults (not .env).
+ * Secrets: org BYOK > platform > env. `useMocks` reflects effective keys (not MOCK alone).
  */
 export function loadEffectiveConfig(): AppConfig {
   const base = loadConfig();
   const org = getOrgPipelineOverrides();
+  const platform = getPlatformSecretsOverrides();
+
+  const openAiKey =
+    org?.openAiApiKey?.trim() || platform?.openAiApiKey?.trim() || base.OPENAI_API_KEY;
+  const deepseekKey =
+    org?.deepseekApiKey?.trim() || platform?.deepseekApiKey?.trim() || base.DEEPSEEK_API_KEY;
+  const elevenKey =
+    org?.elevenLabsApiKey?.trim() || platform?.elevenLabsApiKey?.trim() || base.ELEVENLABS_API_KEY;
+  const pexelsKey = platform?.pexelsApiKey?.trim() || base.PEXELS_API_KEY;
+
+  const hasLlm = !!(openAiKey?.trim() || deepseekKey?.trim());
+  const hasRealTts = !!(elevenKey?.trim() || openAiKey?.trim() || base.TTS_ENABLE_EDGE);
+  // Claves efectivas ganan: MOCK_EXTERNAL_APIS no fuerza mock si hay LLM/TTS usable.
+  const useMocks = !hasLlm && !hasRealTts;
+
   if (!org) {
     return {
       ...base,
+      useMocks,
       TTS_PROVIDER: PRODUCT_DEFAULTS.ttsProvider,
       GENERATE_DALLE_IMAGES: PRODUCT_DEFAULTS.generateAiImages,
       PIPELINE_MAX_SCENES_LONG: PRODUCT_DEFAULTS.maxScenesLong,
@@ -517,6 +539,10 @@ export function loadEffectiveConfig(): AppConfig {
       EDGE_TTS_VOICE: PRODUCT_DEFAULTS.edgeTtsVoice,
       ELEVENLABS_VOICE_ID: PRODUCT_DEFAULTS.elevenLabsVoiceId,
       OPENAI_TTS_VOICE: PRODUCT_DEFAULTS.openaiTtsVoice,
+      OPENAI_API_KEY: openAiKey,
+      DEEPSEEK_API_KEY: deepseekKey,
+      ELEVENLABS_API_KEY: elevenKey,
+      PEXELS_API_KEY: pexelsKey,
     };
   }
 
@@ -533,6 +559,7 @@ export function loadEffectiveConfig(): AppConfig {
 
   return {
     ...base,
+    useMocks,
     LLM_PROVIDER: llmProvider,
     TTS_PROVIDER: ttsProvider,
     GENERATE_DALLE_IMAGES: resolveGenerateAiImages({
@@ -567,14 +594,10 @@ export function loadEffectiveConfig(): AppConfig {
     EDGE_TTS_VOICE: org.edgeTtsVoice?.trim() || PRODUCT_DEFAULTS.edgeTtsVoice,
     ELEVENLABS_VOICE_ID: org.elevenLabsVoiceId?.trim() || PRODUCT_DEFAULTS.elevenLabsVoiceId,
     OPENAI_TTS_VOICE: org.openaiTtsVoice?.trim() || PRODUCT_DEFAULTS.openaiTtsVoice,
-    OPENAI_API_KEY: org.openAiApiKey?.trim() || getPlatformSecretsOverrides()?.openAiApiKey?.trim() || base.OPENAI_API_KEY,
-    DEEPSEEK_API_KEY:
-      org.deepseekApiKey?.trim() || getPlatformSecretsOverrides()?.deepseekApiKey?.trim() || base.DEEPSEEK_API_KEY,
-    ELEVENLABS_API_KEY:
-      org.elevenLabsApiKey?.trim() ||
-      getPlatformSecretsOverrides()?.elevenLabsApiKey?.trim() ||
-      base.ELEVENLABS_API_KEY,
-    PEXELS_API_KEY: getPlatformSecretsOverrides()?.pexelsApiKey?.trim() || base.PEXELS_API_KEY,
+    OPENAI_API_KEY: openAiKey,
+    DEEPSEEK_API_KEY: deepseekKey,
+    ELEVENLABS_API_KEY: elevenKey,
+    PEXELS_API_KEY: pexelsKey,
   };
 }
 

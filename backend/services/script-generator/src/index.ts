@@ -1,6 +1,6 @@
 import { prisma } from '@autotube/database';
 import { getMaxScenes, getMinScenes, isScriptDevMode, loadConfig } from '@autotube/config';
-import { extractScenes, extractScriptResponse, getActiveLlmLabel, getLlmClient } from '@autotube/llm';
+import { extractScenes, extractScriptResponse, getActiveLlmLabel, getLlmClient, isLlmMockMode } from '@autotube/llm';
 import { promptEngine } from '@autotube/prompt-engine';
 import type { ChannelConfig, ScriptDTO, ScriptScene, ScriptVariant, VideoFormat } from '@autotube/shared';
 import {
@@ -385,8 +385,7 @@ export async function generateTeaserScript(params: {
   variationHint?: string;
 }): Promise<TeaserScriptResult> {
   const { config, longVideo, variationHint } = params;
-  const cfg = loadConfig();
-  if (cfg.useMocks) {
+  if (isLlmMockMode()) {
     console.info('[teaser-script] MOCK — teaser válido sin coste API');
     return buildMockTeaserScript(longVideo);
   }

@@ -70,8 +70,8 @@ export function MarketingHome() {
       id: 'starter',
       name: t('planCreator'),
       priceLabel: t('priceCreator'),
-      description: t('planCreatorDesc'),
-      bullets: [t('planCreatorBullet1'), t('planCreatorBullet2'), t('planCreatorBullet3')],
+      videos: t('planCreatorVideos'),
+      channels: t('planCreatorChannels'),
       ctaLabel: t('planCreatorCta'),
       featured: false,
     },
@@ -80,8 +80,8 @@ export function MarketingHome() {
       name: t('planPro'),
       priceLabel: t('pricePro'),
       badge: t('planProBadge'),
-      description: t('planProDesc'),
-      bullets: [t('planProBullet1'), t('planProBullet2'), t('planProBullet3')],
+      videos: t('planProVideos'),
+      channels: t('planProChannels'),
       ctaLabel: t('planProCta'),
       featured: true,
     },
@@ -89,12 +89,12 @@ export function MarketingHome() {
       id: 'unlimited',
       name: t('planStudio'),
       priceLabel: t('priceStudio'),
-      description: t('planStudioDesc'),
-      bullets: [t('planStudioBullet1'), t('planStudioBullet2'), t('planStudioBullet3')],
+      videos: t('planStudioVideos'),
+      channels: t('planStudioChannels'),
       ctaLabel: t('planStudioCta'),
       featured: false,
     },
-  ];
+  ] as const;
 
   const FAQ = [
     { q: t('faqAiQ'), a: t('faqAiA') },
@@ -293,33 +293,78 @@ export function MarketingHome() {
 
         <div className="home-pricing-block home-reveal">
           <div className="home-pricing-label">{t('monthlySubscription')}</div>
-          <div className="home-pricing-grid home-pricing-grid-plans">
-            {PLANS.map((plan) => (
-              <article
-                key={plan.id}
-                className={`card home-pricing-card${plan.featured ? ' home-pricing-card-featured' : ''}`}
-              >
-                <div className="home-pricing-top">
-                  <div>
-                    <h3>{plan.name}</h3>
-                    <p>{plan.description}</p>
-                  </div>
-                  {plan.badge ? <span className="home-pricing-badge">{plan.badge}</span> : null}
-                </div>
-                <div className="home-pricing-price">{plan.priceLabel}</div>
-                <ul className="home-pricing-list">
-                  {plan.bullets.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-                <Link
-                  href={plan.id === 'unlimited' ? `mailto:${PLATFORM.contactEmail}` : '/register'}
-                  className={plan.featured ? 'btn btn-primary' : 'btn btn-secondary'}
+          <div className="home-pricing-compare" role="table" aria-label={t('pricing')}>
+            <div className="home-pricing-compare-row home-pricing-compare-names" role="row">
+              {PLANS.map((plan) => (
+                <div
+                  key={`${plan.id}-name`}
+                  role="columnheader"
+                  className={`home-pricing-cell${plan.featured ? ' is-featured' : ''}`}
                 >
-                  {plan.ctaLabel}
-                </Link>
-              </article>
-            ))}
+                  <div className="home-pricing-top">
+                    <h3>{plan.name}</h3>
+                    {'badge' in plan && plan.badge ? (
+                      <span className="home-pricing-badge">{plan.badge}</span>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="home-pricing-compare-row home-pricing-compare-prices" role="row">
+              {PLANS.map((plan) => (
+                <div
+                  key={`${plan.id}-price`}
+                  role="cell"
+                  className={`home-pricing-cell home-pricing-price${plan.featured ? ' is-featured' : ''}`}
+                >
+                  {plan.priceLabel}
+                </div>
+              ))}
+            </div>
+
+            <div className="home-pricing-compare-row home-pricing-compare-feature" role="row">
+              {PLANS.map((plan) => (
+                <div
+                  key={`${plan.id}-videos`}
+                  role="cell"
+                  className={`home-pricing-cell${plan.featured ? ' is-featured' : ''}`}
+                >
+                  <span className="home-pricing-feature-label">{t('planFeatureVideos')}</span>
+                  <span className="home-pricing-feature-value">{plan.videos}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="home-pricing-compare-row home-pricing-compare-feature" role="row">
+              {PLANS.map((plan) => (
+                <div
+                  key={`${plan.id}-channels`}
+                  role="cell"
+                  className={`home-pricing-cell${plan.featured ? ' is-featured' : ''}`}
+                >
+                  <span className="home-pricing-feature-label">{t('planFeatureChannels')}</span>
+                  <span className="home-pricing-feature-value">{plan.channels}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="home-pricing-compare-row home-pricing-compare-ctas" role="row">
+              {PLANS.map((plan) => (
+                <div
+                  key={`${plan.id}-cta`}
+                  role="cell"
+                  className={`home-pricing-cell${plan.featured ? ' is-featured' : ''}`}
+                >
+                  <Link
+                    href={plan.id === 'unlimited' ? `mailto:${PLATFORM.contactEmail}` : '/register'}
+                    className={`home-pricing-cta ${plan.featured ? 'btn btn-primary' : 'btn btn-secondary'}`}
+                  >
+                    {plan.ctaLabel}
+                  </Link>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
