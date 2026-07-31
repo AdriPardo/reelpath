@@ -12,6 +12,7 @@ import {
   deleteOrgElevenLabsApiKey,
   deleteOrgOpenAiApiKey,
   getOrgPipelineSettings,
+  getPlatformSecretsStatus,
   prisma,
   resolveOrgElevenLabsApiKey,
   resolvePlatformApiKey,
@@ -353,10 +354,18 @@ orgRouter.get('/settings', async (req, res) => {
     return res.status(404).json({ error: 'Organización no encontrada' });
   }
 
+  const platformStatus = await getPlatformSecretsStatus();
+  const config = loadConfig();
+
   res.json({
     ...settings,
     /** Compat con UI antigua que solo miraba OpenAI BYOK. */
     hasOpenaiKey: settings.hasOpenaiKey,
+    platformKeys: {
+      openai: platformStatus.hasOpenaiKey || !!config.OPENAI_API_KEY?.trim(),
+      deepseek: platformStatus.hasDeepseekKey || !!config.DEEPSEEK_API_KEY?.trim(),
+      elevenlabs: platformStatus.hasElevenLabsKey || !!config.ELEVENLABS_API_KEY?.trim(),
+    },
     platformDefaults: {
       llmProvider: PRODUCT_DEFAULTS.llmProvider,
       ttsProvider: PRODUCT_DEFAULTS.ttsProvider,

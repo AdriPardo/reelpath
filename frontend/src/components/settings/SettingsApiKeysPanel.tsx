@@ -31,6 +31,11 @@ type OrgSettings = {
   hasOpenaiKey: boolean;
   hasDeepseekKey: boolean;
   hasElevenLabsKey: boolean;
+  platformKeys?: {
+    openai: boolean;
+    deepseek: boolean;
+    elevenlabs: boolean;
+  };
   platformDefaults?: {
     llmProvider: string;
     ttsProvider: string;
@@ -47,6 +52,16 @@ type OrgSettings = {
 const LLM_OPTIONS: LlmProvider[] = ['auto', 'deepseek', 'openai'];
 const TTS_OPTIONS: TtsProvider[] = ['auto', 'edge', 'elevenlabs', 'openai'];
 const IMAGE_QUALITY_OPTIONS: ImageQuality[] = ['low', 'medium', 'high', 'auto'];
+
+function byokStatusLabel(
+  hasOwn: boolean,
+  platformHas: boolean | undefined,
+  ts: ReturnType<typeof useTranslations>,
+): string {
+  if (hasOwn) return ts('apikeysOwn');
+  if (platformHas) return ts('apikeysServer');
+  return ts('apikeysMissing');
+}
 
 function voicesForProvider(provider: TtsProvider): TtsVoiceOption[] {
   if (provider === 'elevenlabs') return ELEVENLABS_TTS_VOICES;
@@ -366,7 +381,7 @@ export function SettingsApiKeysPanel() {
             <label className="modal-field" htmlFor={openaiId}>
               {ts('apikeysKeyLabel')}
               <span className="text-muted text-sm">
-                {settings?.hasOpenaiKey ? ts('apikeysOwn') : ts('apikeysServer')}
+                {byokStatusLabel(!!settings?.hasOpenaiKey, settings?.platformKeys?.openai, ts)}
               </span>
               <input
                 id={openaiId}
@@ -387,7 +402,7 @@ export function SettingsApiKeysPanel() {
             <label className="modal-field" htmlFor={deepseekId}>
               {ts('apikeysDeepseekLabel')}
               <span className="text-muted text-sm">
-                {settings?.hasDeepseekKey ? ts('apikeysOwn') : ts('apikeysServer')}
+                {byokStatusLabel(!!settings?.hasDeepseekKey, settings?.platformKeys?.deepseek, ts)}
               </span>
               <input
                 id={deepseekId}
@@ -414,7 +429,7 @@ export function SettingsApiKeysPanel() {
             <label className="modal-field" htmlFor={elevenId}>
               {ts('apikeysElevenLabel')}
               <span className="text-muted text-sm">
-                {settings?.hasElevenLabsKey ? ts('apikeysOwn') : ts('apikeysServer')}
+                {byokStatusLabel(!!settings?.hasElevenLabsKey, settings?.platformKeys?.elevenlabs, ts)}
               </span>
               <input
                 id={elevenId}
