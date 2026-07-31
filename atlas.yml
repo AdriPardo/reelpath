@@ -9,6 +9,16 @@ runtime:
   kind: compose
   composeFile: docker-compose.atlas.yml
   # Injected into workspace .env before compose up (survives new workspace seed from .env.atlas.example).
+  #
+  # Atlas Project secrets (UI: Project → Secrets) — create as PROJECT-owned with these exact names:
+  #   AUTH_SECRET                → env AUTH_SECRET
+  #   CREDENTIALS_ENCRYPTION_KEY → env CREDENTIALS_ENCRYPTION_KEY
+  # Optional override if names differ: `as: ENV_NAME` or `env: ENV_NAME`.
+  #
+  # NOT here (different layers):
+  #   - POSTGRES_PASSWORD / DOMAIN → .env.atlas.example seed (compose-local Postgres; not Atlas db.url)
+  #   - OPENAI / DEEPSEEK / ElevenLabs / YouTube OAuth app → Reelpath UI Ajustes → Secretos de plataforma
+  #   - git.token / cloudflare.api.token → Atlas Org secrets (clone privado / Autopilot Tunnel+DNS)
   envFrom:
     - secretRef: CREDENTIALS_ENCRYPTION_KEY
     - secretRef: AUTH_SECRET
