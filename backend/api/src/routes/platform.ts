@@ -52,8 +52,9 @@ platformRouter.get('/secrets', async (_req, res) => {
   const ytEnv = !!(config.YOUTUBE_CLIENT_ID?.trim() && config.YOUTUBE_CLIENT_SECRET?.trim());
 
   const source = (inDb: boolean, inEnv: boolean): 'db' | 'env' | 'none' => {
-    if (inDb) return 'db';
+    // Match runtime: Atlas env wins over PlatformSecret rows.
     if (inEnv) return 'env';
+    if (inDb) return 'db';
     return 'none';
   };
 
@@ -117,8 +118,9 @@ platformRouter.patch('/secrets', async (req, res) => {
   const config = loadConfig();
   const ytEnv = !!(config.YOUTUBE_CLIENT_ID?.trim() && config.YOUTUBE_CLIENT_SECRET?.trim());
   const source = (inDb: boolean, inEnv: boolean): 'db' | 'env' | 'none' => {
-    if (inDb) return 'db';
+    // Match runtime: Atlas env wins over PlatformSecret rows.
     if (inEnv) return 'env';
+    if (inDb) return 'db';
     return 'none';
   };
   res.json({

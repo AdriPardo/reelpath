@@ -156,24 +156,24 @@ Con `AUTH_REQUIRED=false`, el desarrollo local funciona **sin login**. Con `AUTH
 
 Resolución de preferencias de **producto/coste**: **canal → organización → defaults de código** (`PRODUCT_DEFAULTS`).
 
-Infraestructura vive en **`.env`**. Secretos de proveedores (API keys, YouTube Client ID/Secret) viven en **Ajustes → Secretos de plataforma** (`PlatformSecret`, cifrados). Preferencias de producto: **canal → organización → defaults de código**.
+Infraestructura vive en **`.env`**. API keys de IA: **Atlas envFrom** (preferido) → **PlatformSecret** (fallback). YouTube Client ID/Secret: **Admin → Infra** (`PlatformSecret`). Preferencias de producto: **canal → organización → defaults de código**.
 
 | Qué | Dónde | Motivo |
 |-----|--------|--------|
 | `DATABASE_URL`, `REDIS_URL`, `STORAGE_PATH`, S3/CDN | **`.env`** | Infra de la instancia |
-| `AUTH_SECRET`, `AUTH_REQUIRED`, `CREDENTIALS_ENCRYPTION_KEY` | **`.env`** | Seguridad de plataforma |
+| `AUTH_SECRET`, `AUTH_REQUIRED`, `CREDENTIALS_ENCRYPTION_KEY` | **`.env`** (Atlas envFrom) | Seguridad de plataforma |
 | `WORKER_CONCURRENCY`, `FFMPEG_THREADS` / `CONCURRENCY` / `PRESET` | **`.env`** | Capacidad CPU compartida (Atlas) |
 | `YOUTUBE_OAUTH_REDIRECT_URI` (o `DOMAIN`) | **`.env`** | Callback público de OAuth |
-| YouTube OAuth app (`CLIENT_ID` / `SECRET`) | **BD** `PlatformSecret` | Gestor de secretos (UI owner) |
-| API keys plataforma (OpenAI, DeepSeek, ElevenLabs, Pexels) | **BD** `PlatformSecret` | Fallback sin BYOK de cliente |
+| YouTube OAuth app (`CLIENT_ID` / `SECRET`) | **BD** `PlatformSecret` (ops Admin → Infra) | App OAuth compartida |
+| API keys plataforma (OpenAI, DeepSeek, ElevenLabs, Pexels) | **Atlas env** → **BD** `PlatformSecret` fallback | Sin BYOK end-user |
 | YouTube refresh token + `privacyStatus` | **BD** `IntegrationCredential` (por canal) | Cada canal publica en su cuenta |
-| LLM / TTS / BYOK org / tope escenas / calidad / voces | **BD** `Organization` (+ UI Ajustes) | Defaults del cliente |
+| LLM / TTS / tope escenas / calidad / voces | **BD** `Organization` (+ UI Ajustes) | Defaults del cliente (sin paste de keys) |
 | Formato, tono, review, Shorts, planner, TTS, escenas, IA | **BD** `Channel.config` | Preferencias por canal YouTube |
 | `MOCK_EXTERNAL_APIS` | **`.env`** | Solo desarrollo |
 
-**Hoy:** el owner configura secretos de plataforma en UI; cada org puede aportar BYOK; cada canal configura producto. El worker aplica `channel > org > código` y keys `BYOK org > PlatformSecret > env legacy`.
+**Hoy:** Atlas inyecta AI keys vía envFrom; PlatformSecret = fallback; panel keys solo ops. Worker aplica `channel > org > código` (producto) y keys `env > PlatformSecret > leftover org`.
 
-**Objetivo al vender:** el operador configura infra en `.env` y secretos en la UI; cada cliente elige coste/calidad en UI.
+**Objetivo al vender:** el operador configura secrets en Atlas; cada cliente elige coste/calidad en UI sin pegar API keys.
 
 ## Coste por vídeo (APIs)
 

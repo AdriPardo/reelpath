@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { ChannelConfig } from '@autotube/shared';
 import { getOrgPipelineOverrides } from './org-runtime.js';
 import { getPlatformSecretsOverrides } from './platform-secrets-runtime.js';
+import { pickFirstSecret } from './pick-first-secret.js';
 import { PRODUCT_DEFAULTS } from './product-defaults.js';
 import {
   resolveGenerateAiImages,
@@ -216,11 +217,11 @@ function validateProductionConfig(cfg: AppConfig): void {
     throw new Error('En producción se exige CREDENTIALS_ENCRYPTION_KEY configurada');
   }
 
-  // Producción y Atlas: mocks prohibidos. Secretos reales en .env o Ajustes → Secretos de plataforma.
+  // Producción y Atlas: mocks prohibidos. Secretos reales vía Atlas envFrom / .env o PlatformSecret fallback.
   if (cfg.MOCK_EXTERNAL_APIS !== false) {
     throw new Error(
       'En producción/Atlas se exige MOCK_EXTERNAL_APIS=false. ' +
-        'Configura DeepSeek/OpenAI (y opcional ElevenLabs) en Secretos de plataforma o .env.',
+        'Configura DeepSeek/OpenAI (y opcional ElevenLabs) vía Atlas envFrom o Secretos de plataforma.',
     );
   }
 
@@ -370,41 +371,38 @@ function effectiveLlmProviderPreference(options?: {
 function effectiveDeepseekApiKey(): string | undefined {
   const org = getOrgPipelineOverrides();
   const platform = getPlatformSecretsOverrides();
-  return (
-    org?.deepseekApiKey?.trim() ||
-    platform?.deepseekApiKey?.trim() ||
-    loadConfig().DEEPSEEK_API_KEY?.trim() ||
-    undefined
+  return pickFirstSecret(
+    loadConfig().DEEPSEEK_API_KEY,
+    platform?.deepseekApiKey,
+    org?.deepseekApiKey,
   );
 }
 
 function effectiveOpenAiApiKey(options?: { orgOpenAiApiKey?: string | null }): string | undefined {
   const org = getOrgPipelineOverrides();
   const platform = getPlatformSecretsOverrides();
-  return (
-    options?.orgOpenAiApiKey?.trim() ||
-    org?.openAiApiKey?.trim() ||
-    platform?.openAiApiKey?.trim() ||
-    loadConfig().OPENAI_API_KEY?.trim() ||
-    undefined
+  return pickFirstSecret(
+    loadConfig().OPENAI_API_KEY,
+    platform?.openAiApiKey,
+    options?.orgOpenAiApiKey,
+    org?.openAiApiKey,
   );
 }
 
-/** Platform + env fallback for ElevenLabs (org BYOK applied in loadEffectiveConfig). */
+/** Atlas env → PlatformSecret → leftover org BYOK. */
 export function effectiveElevenLabsApiKey(): string | undefined {
   const org = getOrgPipelineOverrides();
   const platform = getPlatformSecretsOverrides();
-  return (
-    org?.elevenLabsApiKey?.trim() ||
-    platform?.elevenLabsApiKey?.trim() ||
-    loadConfig().ELEVENLABS_API_KEY?.trim() ||
-    undefined
+  return pickFirstSecret(
+    loadConfig().ELEVENLABS_API_KEY,
+    platform?.elevenLabsApiKey,
+    org?.elevenLabsApiKey,
   );
 }
 
 export function effectivePexelsApiKey(): string | undefined {
   const platform = getPlatformSecretsOverrides();
-  return platform?.pexelsApiKey?.trim() || loadConfig().PEXELS_API_KEY?.trim() || undefined;
+  return pickFirstSecret(loadConfig().PEXELS_API_KEY, platform?.pexelsApiKey);
 }
 
 /** YouTube OAuth app credentials: PlatformSecret cache, then legacy env. */
@@ -434,8 +432,8 @@ export function resolvePlatformYouTubeOAuthAppSync(): {
 
 /**
  * Resolve chat LLM provider for ideas/scripts.
- * Org preference (UI) wins over .env; org BYOK keys enable that provider.
- * With preference=auto, org BYOK OpenAI alone forces openai (client pays).
+ * Org preference (UI) wins for provider choice; keys resolve env → PlatformSecret.
+ * auto: prefer DeepSeek when its key is available (cost).
  */
 export function resolveLlmProvider(options?: {
   orgOpenAiApiKey?: string | null;
@@ -443,9 +441,6 @@ export function resolveLlmProvider(options?: {
   const preference = effectiveLlmProviderPreference(options);
   const hasDeepseek = !!effectiveDeepseekApiKey();
   const hasOpenAi = !!effectiveOpenAiApiKey(options);
-  const orgByokOpenAi = !!(
-    options?.orgOpenAiApiKey?.trim() || getOrgPipelineOverrides()?.openAiApiKey?.trim()
-  );
 
   if (preference === 'deepseek') {
     if (hasDeepseek) return 'deepseek';
@@ -455,8 +450,7 @@ export function resolveLlmProvider(options?: {
     return 'openai';
   }
 
-  // auto: prefer DeepSeek for cost; org BYOK OpenAI wins when set
-  if (orgByokOpenAi) return 'openai';
+  // auto: prefer DeepSeek for cost when key present
   if (hasDeepseek) return 'deepseek';
   return 'openai';
 }
@@ -505,20 +499,30 @@ export function resolveLlmConnection(options?: {
 /**
  * Config with org (+ merged channel) pipeline overrides applied.
  * Product prefs resolve channel > org > code defaults (not .env).
- * Secrets: org BYOK > platform > env. `useMocks` reflects effective keys (not MOCK alone).
+ * Secrets: Atlas env → PlatformSecret → leftover org BYOK.
+ * `useMocks` reflects effective keys (not MOCK alone).
  */
 export function loadEffectiveConfig(): AppConfig {
   const base = loadConfig();
   const org = getOrgPipelineOverrides();
   const platform = getPlatformSecretsOverrides();
 
-  const openAiKey =
-    org?.openAiApiKey?.trim() || platform?.openAiApiKey?.trim() || base.OPENAI_API_KEY;
-  const deepseekKey =
-    org?.deepseekApiKey?.trim() || platform?.deepseekApiKey?.trim() || base.DEEPSEEK_API_KEY;
-  const elevenKey =
-    org?.elevenLabsApiKey?.trim() || platform?.elevenLabsApiKey?.trim() || base.ELEVENLABS_API_KEY;
-  const pexelsKey = platform?.pexelsApiKey?.trim() || base.PEXELS_API_KEY;
+  const openAiKey = pickFirstSecret(
+    base.OPENAI_API_KEY,
+    platform?.openAiApiKey,
+    org?.openAiApiKey,
+  );
+  const deepseekKey = pickFirstSecret(
+    base.DEEPSEEK_API_KEY,
+    platform?.deepseekApiKey,
+    org?.deepseekApiKey,
+  );
+  const elevenKey = pickFirstSecret(
+    base.ELEVENLABS_API_KEY,
+    platform?.elevenLabsApiKey,
+    org?.elevenLabsApiKey,
+  );
+  const pexelsKey = pickFirstSecret(base.PEXELS_API_KEY, platform?.pexelsApiKey);
 
   const hasLlm = !!(openAiKey?.trim() || deepseekKey?.trim());
   const hasRealTts = !!(elevenKey?.trim() || openAiKey?.trim() || base.TTS_ENABLE_EDGE);
@@ -701,6 +705,7 @@ export {
   type PlatformSecretsOverrides,
 } from './platform-secrets-runtime.js';
 export { PRODUCT_DEFAULTS } from './product-defaults.js';
+export { pickFirstSecret } from './pick-first-secret.js';
 export {
   resolveGenerateAiImages,
   resolveImageQuality,

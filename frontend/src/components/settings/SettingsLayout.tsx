@@ -33,6 +33,10 @@ const TAB_ALIASES: Record<string, SectionId> = {
   equipo: 'team',
   apikeys: 'apikeys',
   api: 'apikeys',
+  // Legacy deep-links → generation prefs (keys live under /admin)
+  platformSecrets: 'apikeys',
+  secrets: 'apikeys',
+  secretos: 'apikeys',
   plan: 'plan',
   planes: 'plan',
   preferences: 'preferences',
@@ -52,7 +56,6 @@ function SettingsTabs({ plans }: { plans: PlanDefinition[] }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const tabParam = searchParams?.get('tab')?.toLowerCase() ?? '';
-  const visibleSections = SECTION_IDS;
   const initial = TAB_ALIASES[tabParam] ?? 'account';
   const [activeSection, setActiveSection] = useState<SectionId>(initial);
 
@@ -72,7 +75,7 @@ function SettingsTabs({ plans }: { plans: PlanDefinition[] }) {
     <>
       <nav className="settings-nav" aria-label={t('sectionsNav')}>
         <div className="settings-nav-chips" role="tablist">
-          {visibleSections.map((id) => {
+          {SECTION_IDS.map((id) => {
             const label = t.has(`${id}.title`) ? t(`${id}.title`) : t(id);
             return (
               <button
@@ -90,7 +93,7 @@ function SettingsTabs({ plans }: { plans: PlanDefinition[] }) {
           })}
         </div>
         <ul className="settings-nav-sidebar">
-          {visibleSections.map((id) => {
+          {SECTION_IDS.map((id) => {
             const label = t.has(`${id}.title`) ? t(`${id}.title`) : t(id);
             return (
               <li key={id}>

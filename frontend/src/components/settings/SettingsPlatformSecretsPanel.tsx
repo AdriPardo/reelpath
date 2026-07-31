@@ -43,7 +43,7 @@ function StatusChip({
     return <Chip variant="neutral">{missingLabel}</Chip>;
   }
   if (source === 'env') {
-    return <Chip variant="warning">{envLabel}</Chip>;
+    return <Chip variant="success">{envLabel}</Chip>;
   }
   return <Chip variant="success">{configuredLabel}</Chip>;
 }

@@ -2,8 +2,10 @@
 # Deploy: docker compose -f docker-compose.atlas.yml up -d --build
 #
 # .env (seed .env.atlas.example): DOMAIN, POSTGRES_PASSWORD, PLATFORM_ADMIN_EMAILS
-# Atlas envFrom: AUTH_SECRET, CREDENTIALS_ENCRYPTION_KEY (y opcional POSTGRES_PASSWORD)
-# LLM / TTS / YouTube app → Ajustes → Secretos de plataforma (BD), no .env.
+# Atlas envFrom (atlas.yml): AUTH_SECRET, CREDENTIALS_ENCRYPTION_KEY,
+#   ai.openai / ai.elevenlabs / ai.deepseek → OPENAI_API_KEY / ELEVENLABS_API_KEY / DEEPSEEK_API_KEY
+# Runtime resolve: Atlas env → PlatformSecret (BD fallback). End-users never paste AI keys.
+# YouTube OAuth app → Admin → Infra (PlatformSecret) or ops script.
 
 name: reelpath
 

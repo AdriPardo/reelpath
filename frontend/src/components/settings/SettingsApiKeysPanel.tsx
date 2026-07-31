@@ -166,6 +166,7 @@ export function SettingsApiKeysPanel() {
   const platformMaxAi = settings?.platformDefaults?.maxAiImagesPerVideo ?? 4;
   const platformQuality = settings?.platformDefaults?.openaiImageQuality ?? 'medium';
 
+
   return (
     <section className="settings-section">
       <header className="settings-section-header">

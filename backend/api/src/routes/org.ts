@@ -105,6 +105,12 @@ const inviteSchema = z.object({
 
 const optionalVoiceId = z.union([z.string().min(2).max(120), z.null()]).optional();
 
+const ORG_FORBIDDEN_AI_KEY_FIELDS = [
+  'openaiApiKey',
+  'deepseekApiKey',
+  'elevenLabsApiKey',
+] as const;
+
 const orgSettingsPatchSchema = z
   .object({
     llmProvider: z.enum(['auto', 'deepseek', 'openai']).optional(),
@@ -378,6 +384,19 @@ orgRouter.get('/settings', async (req, res) => {
 
 orgRouter.patch('/settings', requireAdmin, async (req, res) => {
   const orgId = orgScope(req)!;
+  const raw = req.body as Record<string, unknown> | null;
+  if (raw && typeof raw === 'object') {
+    for (const field of ORG_FORBIDDEN_AI_KEY_FIELDS) {
+      if (Object.prototype.hasOwnProperty.call(raw, field)) {
+        return res.status(403).json({
+          error:
+            'Las claves de IA las gestiona solo un administrador de plataforma (Admin → Infra)',
+          hint: 'Usa /admin?tab=infra o PATCH /api/platform/secrets',
+        });
+      }
+    }
+  }
+
   const body = orgSettingsPatchSchema.parse(req.body);
 
   if (
