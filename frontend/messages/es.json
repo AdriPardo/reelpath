@@ -1177,7 +1177,7 @@
     },
     "secrets": {
       "title": "Secretos",
-      "description": "Claves de IA, YouTube OAuth y APIs de la plataforma. Las pagan y gestiona el operador — no cada organización."
+      "description": "App OAuth de YouTube + claves de IA de la plataforma. Cada usuario conecta su propio canal de YouTube."
     }
   },
   "settings": {
@@ -1248,7 +1248,7 @@
     },
     "platformSecrets": {
       "title": "Secretos de plataforma",
-      "desc": "Credenciales de la instancia (cifradas en base de datos). No van en el .env: el .env solo guarda infra, redirect OAuth y la clave de cifrado.",
+      "desc": "Credenciales de la instancia (cifradas en BD). YouTube: solo la app OAuth de Google; cada usuario conecta su propio canal. Claves de IA: las paga y gestiona la plataforma.",
       "ownerOnly": "Solo el propietario de la organización puede gestionar los secretos de plataforma.",
       "platformAdminOnly": "Solo los operadores de plataforma pueden gestionar estos secretos.",
       "loadError": "No se pudieron cargar los secretos",
@@ -1266,15 +1266,15 @@
       "clientIdPlaceholder": "Client ID de Google Cloud",
       "clientSecretPlaceholder": "Client Secret de Google Cloud",
       "envOnlyHint": "Viene del .env de la instancia. Guarda aquí una clave para gestionarla desde el panel (recomendado).",
-      "youtubeTitle": "YouTube OAuth (app de Google)",
-      "youtubeHint": "Client ID y Client Secret de tu proyecto en Google Cloud. El redirect URI sí puede vivir en el .env / DOMAIN.",
+      "youtubeTitle": "YouTube — app OAuth (Google Cloud)",
+      "youtubeHint": "Solo Client ID y Client Secret de la aplicación en Google Cloud. Cada usuario conecta su cuenta de YouTube desde su canal (Integraciones). La plataforma no guarda ni elige el canal del usuario.",
       "redirectLabel": "Redirect URI (cópialo en Google Cloud)",
       "redirectHint": "Registra esta URL exacta en Credenciales → URI de redirección autorizados.",
       "clientIdLabel": "Client ID",
       "clientSecretLabel": "Client Secret",
       "clearYoutube": "Eliminar app OAuth",
-      "apiKeysTitle": "API keys de plataforma",
-      "apiKeysHint": "Fallback cuando una organización no aporta BYOK. Las orgs pueden seguir usando sus propias claves en IA y generación.",
+      "apiKeysTitle": "API keys de plataforma (IA)",
+      "apiKeysHint": "DeepSeek, OpenAI, ElevenLabs y Pexels los paga y configura la plataforma. Las organizaciones no meten estas claves.",
       "openaiLabel": "OpenAI",
       "deepseekLabel": "DeepSeek",
       "elevenLabel": "ElevenLabs",
@@ -1957,8 +1957,8 @@
     "loading": "Cargando…"
   },
   "settingsExt": {
-    "publicationDesc": "YouTube se vincula por canal, cada uno con su propia cuenta.",
-    "publicationManage": "Gestiona la integración de YouTube desde cada canal.",
+    "publicationDesc": "Cada canal conecta su propia cuenta de YouTube (OAuth del usuario). La app de Google la configura el operador en Admin → Secretos.",
+    "publicationManage": "Abre un canal → Integraciones para conectar o desconectar YouTube.",
     "apikeysDesc": "Preferencias de generación de tu organización (modelo, voz, imágenes). Las claves de API las gestiona la plataforma en Admin → Secretos.",
     "apikeysStatus": "Estado:",
     "apikeysOwn": "Clave propia configurada",

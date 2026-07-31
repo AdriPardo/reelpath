@@ -174,13 +174,7 @@ export function SettingsPlatformSecretsPanel() {
 
   return (
     <div className="settings-platform-secrets">
-      <section className="settings-section">
-        <header className="settings-section-header">
-          <h2>{t('title')}</h2>
-          <p className="settings-section-desc">{t('desc')}</p>
-        </header>
-      </section>
-
+      {/* Título lo pone Admin → Secretos; aquí solo bloques. */}
       <section className="settings-section platform-secret-block">
         <div className="platform-secret-block-head">
           <h3>{t('youtubeTitle')}</h3>

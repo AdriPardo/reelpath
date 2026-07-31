@@ -1177,7 +1177,7 @@
     },
     "secrets": {
       "title": "Secrets",
-      "description": "AI keys, YouTube OAuth, and platform APIs. Paid and managed by the operator — not each organization."
+      "description": "YouTube OAuth app + platform AI keys. Each user connects their own YouTube channel."
     }
   },
   "settings": {
@@ -1248,7 +1248,7 @@
     },
     "platformSecrets": {
       "title": "Platform secrets",
-      "desc": "Instance credentials (encrypted at rest). They do not belong in .env — .env only holds infra, OAuth redirect, and the encryption key.",
+      "desc": "Instance credentials (encrypted in the DB). YouTube: only the Google OAuth app; each user connects their own channel. AI keys: paid and managed by the platform.",
       "ownerOnly": "Only the organization owner can manage platform secrets.",
       "platformAdminOnly": "Only platform operators can manage these secrets.",
       "loadError": "Could not load secrets",
@@ -1266,15 +1266,15 @@
       "clientIdPlaceholder": "Google Cloud Client ID",
       "clientSecretPlaceholder": "Google Cloud Client Secret",
       "envOnlyHint": "Comes from the instance .env. Save a key here to manage it from the panel (recommended).",
-      "youtubeTitle": "YouTube OAuth (Google app)",
-      "youtubeHint": "Client ID and Client Secret from your Google Cloud project. The redirect URI may live in .env / DOMAIN.",
+      "youtubeTitle": "YouTube — OAuth app (Google Cloud)",
+      "youtubeHint": "Only the Google Cloud app Client ID and Client Secret. Each user connects their YouTube account from their channel (Integrations). The platform does not store or choose the user's channel.",
       "redirectLabel": "Redirect URI (copy into Google Cloud)",
       "redirectHint": "Register this exact URL under Credentials → Authorized redirect URIs.",
       "clientIdLabel": "Client ID",
       "clientSecretLabel": "Client Secret",
       "clearYoutube": "Remove OAuth app",
-      "apiKeysTitle": "Platform API keys",
-      "apiKeysHint": "Fallback when an organization has no BYOK. Orgs can still use their own keys under AI & generation.",
+      "apiKeysTitle": "Platform API keys (AI)",
+      "apiKeysHint": "DeepSeek, OpenAI, ElevenLabs, and Pexels are paid and configured by the platform. Organizations do not enter these keys.",
       "openaiLabel": "OpenAI",
       "deepseekLabel": "DeepSeek",
       "elevenLabel": "ElevenLabs",
@@ -1957,8 +1957,8 @@
     "loading": "Loading…"
   },
   "settingsExt": {
-    "publicationDesc": "YouTube is linked per channel, each with its own account.",
-    "publicationManage": "Manage YouTube integration from each channel.",
+    "publicationDesc": "Each channel connects its own YouTube account (user OAuth). The Google app is set by the operator in Admin → Secrets.",
+    "publicationManage": "Open a channel → Integrations to connect or disconnect YouTube.",
     "apikeysDesc": "Generation preferences for your organization (model, voice, images). API keys are managed by the platform in Admin → Secrets.",
     "apikeysStatus": "Status:",
     "apikeysOwn": "Custom key configured",
