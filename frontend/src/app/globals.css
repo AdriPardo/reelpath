@@ -7337,7 +7337,7 @@ th { color: var(--muted); font-size: 0.75rem; font-weight: 600; letter-spacing: 
   flex-wrap: wrap;
   gap: 0.5rem;
   align-items: center;
-  margin-bottom: 1.25rem;
+  margin-bottom: 0;
 }
 
 /* ── Skeleton loaders (perceived performance) ──────────────── */
