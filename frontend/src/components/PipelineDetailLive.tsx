@@ -67,6 +67,7 @@ function IdeaScoreBreakdown({
 export function PipelineDetailLive({ initial }: { initial: PipelineRunDetail }) {
   const locale = useLocale();
   const t = useTranslations('pipelines.detail');
+  const tp = useTranslations('pipelines');
   const tc = useTranslations('common');
   const router = useRouter();
   const dateLocale = locale === 'en' ? 'en-GB' : 'es-ES';
@@ -97,7 +98,7 @@ export function PipelineDetailLive({ initial }: { initial: PipelineRunDetail }) 
 
   const video = pipeline.videos?.[0];
   const forcedTopic = pipeline.metadata?.forcedTopic;
-  const pipelineTitle = forcedTopic ?? video?.title ?? pipeline.channel?.name ?? 'Pipeline';
+  const pipelineTitle = forcedTopic ?? video?.title ?? pipeline.channel?.name ?? tp('untitled');
   const canCancel = isPipelineCancellable(pipeline.status, video);
   const elapsed = usePipelineElapsedLabel(pipeline.createdAt, pipeline.completedAt);
   const stepperOptions = channelStepperOptions(pipeline.channel);
@@ -128,7 +129,7 @@ export function PipelineDetailLive({ initial }: { initial: PipelineRunDetail }) 
   return (
     <>
       {live && (
-        <div className="control-room-live live-indicator-pulse" aria-live="polite">
+        <div className="pipeline-live-banner live-indicator-pulse" aria-live="polite">
           <span className="generaciones-live-dot" aria-hidden="true" />
           {pipeline.currentStep === 'split_shorts' && preReviewClipSplit
             ? stepperOptions.shortsMode === 'mixed'
@@ -146,7 +147,7 @@ export function PipelineDetailLive({ initial }: { initial: PipelineRunDetail }) 
         </div>
       )}
 
-      <div className="pipeline-detail-hero card control-room-hero">
+      <div className="pipeline-detail-hero card">
         <div className="pipeline-detail-hero-main">
           <div className="pipeline-detail-hero-head">
             <StatusBadge status={pipeline.status} kind="pipeline" />
@@ -188,7 +189,7 @@ export function PipelineDetailLive({ initial }: { initial: PipelineRunDetail }) 
             )}
         </div>
 
-        <dl className="pipeline-detail-meta detail-list control-room-meta">
+        <dl className="pipeline-detail-meta detail-list">
           <dt>{t('currentStep')}</dt>
           <dd>{pipeline.currentStep ? getPipelineStepLabel(pipeline.currentStep, stepperOptions) : '—'}</dd>
           <dt>{t('created')}</dt>
@@ -208,13 +209,11 @@ export function PipelineDetailLive({ initial }: { initial: PipelineRunDetail }) 
           {video && (
             <>
               <dt>{tc('video')}</dt>
-              <dd>
+              <dd className="pipeline-detail-video-dd">
                 <Link href={`/videos/${video.id}`} className="pipeline-video-link">
                   {video.title}
                 </Link>
-                <span style={{ marginLeft: '0.5rem' }}>
-                  <StatusBadge status={video.reviewStatus} />
-                </span>
+                <StatusBadge status={video.reviewStatus} />
               </dd>
             </>
           )}
@@ -324,7 +323,7 @@ export function PipelineDetailLive({ initial }: { initial: PipelineRunDetail }) 
             {pipeline.ideas.map((idea) => (
               <article
                 key={idea.id}
-                className={`idea-card idea-card-studio${idea.isSelected ? ' idea-card-selected' : ''}`}
+                className={`idea-card${idea.isSelected ? ' idea-card-selected' : ''}`}
               >
                 <div className="idea-card-head">
                   <strong>{idea.title}</strong>

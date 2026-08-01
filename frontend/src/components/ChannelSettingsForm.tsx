@@ -207,8 +207,8 @@ export function ChannelSettingsForm({
 
   return (
     <form className="channel-settings-form" onSubmit={save} aria-label={t('formAria')}>
-      <fieldset className="settings-fieldset channel-profile-fieldset">
-        <legend>{t('brandAudienceLegend')}</legend>
+      <details className="settings-section settings-fieldset channel-profile-fieldset" open>
+        <summary className="settings-section-summary">{t('brandAudienceLegend')}</summary>
         <div className="channel-profile-grid">
           <label className="modal-field channel-profile-field" htmlFor={brandId}>
             <span className="field-label">{t('brandNameLabel')}</span>
@@ -253,10 +253,10 @@ export function ChannelSettingsForm({
             />
           </label>
         </div>
-      </fieldset>
+      </details>
 
-      <fieldset className="settings-fieldset">
-        <legend>{t('contentGuideLegend')}</legend>
+      <details className="settings-section settings-fieldset" open>
+        <summary className="settings-section-summary">{t('contentGuideLegend')}</summary>
         <label className="modal-field" htmlFor={forbiddenId}>
           <span className="field-label-row">
             <span>{t('forbiddenLabel')}</span>
@@ -301,10 +301,10 @@ export function ChannelSettingsForm({
             rows={2}
           />
         </label>
-      </fieldset>
+      </details>
 
-      <fieldset className="settings-fieldset">
-        <legend>{t('opsLegend')}</legend>
+      <details className="settings-section settings-fieldset">
+        <summary className="settings-section-summary">{t('opsLegend')}</summary>
         <label className="modal-field">
           <span className="field-label-row">
             <span>{t('languageLabel')}</span>
@@ -561,11 +561,11 @@ export function ChannelSettingsForm({
             provider={effectiveProvider}
           />
         </div>
-      </fieldset>
+      </details>
 
       {(config.videoFormat === 'long' || !config.videoFormat) && (
-        <fieldset className="settings-fieldset">
-          <legend>{t('scriptLegend')}</legend>
+        <details className="settings-section settings-fieldset">
+          <summary className="settings-section-summary">{t('scriptLegend')}</summary>
           <label className="modal-field">
             <span className="field-label-row">
               <span>{t('scriptModeLabel')}</span>
@@ -582,12 +582,12 @@ export function ChannelSettingsForm({
               <option value="monolithic">{t('scriptModeMonolithic')}</option>
             </select>
           </label>
-        </fieldset>
+        </details>
       )}
 
       {(config.videoFormat === 'long' || !config.videoFormat) && (
-        <fieldset className="settings-fieldset">
-          <legend>{t('durationLegend')}</legend>
+        <details className="settings-section settings-fieldset">
+          <summary className="settings-section-summary">{t('durationLegend')}</summary>
           <label className="modal-field">
             <span className="field-label-row">
               <span>{t('durationMinLabel')}</span>
@@ -616,11 +616,11 @@ export function ChannelSettingsForm({
               onChange={(e) => setField('targetDurationMaxSec', Number(e.target.value))}
             />
           </label>
-        </fieldset>
+        </details>
       )}
 
-      <fieldset className="settings-fieldset">
-        <legend>{t('retentionLegend')}</legend>
+      <details className="settings-section settings-fieldset">
+        <summary className="settings-section-summary">{t('retentionLegend')}</summary>
         <label className="modal-checkbox">
           <input
             type="checkbox"
@@ -632,10 +632,10 @@ export function ChannelSettingsForm({
             <InfoTooltip content={t('retentionModeTooltip')} />
           </span>
         </label>
-      </fieldset>
+      </details>
 
-      <fieldset className="settings-fieldset">
-        <legend>{t('visualLegend')}</legend>
+      <details className="settings-section settings-fieldset">
+        <summary className="settings-section-summary">{t('visualLegend')}</summary>
         <label className="modal-field">
           <span className="field-label-row">
             <span>{t('footageLabel')}</span>
@@ -653,10 +653,10 @@ export function ChannelSettingsForm({
             <option value="mixed">{t('footageMixed')}</option>
           </select>
         </label>
-      </fieldset>
+      </details>
 
-      <fieldset className="settings-fieldset">
-        <legend>{t('motionLegend')}</legend>
+      <details className="settings-section settings-fieldset">
+        <summary className="settings-section-summary">{t('motionLegend')}</summary>
         <label className="modal-field">
           <span className="field-label-row">
             <span>{t('motionIntensityLabel')}</span>
@@ -674,10 +674,10 @@ export function ChannelSettingsForm({
             <option value="dynamic">{t('motionDynamic')}</option>
           </select>
         </label>
-      </fieldset>
+      </details>
 
-      <fieldset className="settings-fieldset">
-        <legend>{t('publishingLegend')}</legend>
+      <details className="settings-section settings-fieldset">
+        <summary className="settings-section-summary">{t('publishingLegend')}</summary>
         <label className="modal-checkbox">
           <input
             type="checkbox"
@@ -846,7 +846,7 @@ export function ChannelSettingsForm({
             onChange={(e) => setField('minViralScore', Number(e.target.value))}
           />
         </label>
-      </fieldset>
+      </details>
 
       <Button type="submit" variant="secondary" disabled={loading}>
         {loading ? tc('saving') : tch('saveSettings')}

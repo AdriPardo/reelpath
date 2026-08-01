@@ -153,20 +153,6 @@ export default async function HomePage({ params }: Props) {
         />
       ) : (
         <>
-          {pendingTotal > 0 && (
-            <aside className="dashboard-attention" aria-label={t('pendingReviewSection')}>
-              <div className="dashboard-attention-text">
-                <p className="dashboard-attention-title">
-                  {t('attentionTitle', { count: pendingTotal })}
-                </p>
-                <p className="dashboard-attention-desc">{t('attentionDesc')}</p>
-              </div>
-              <ButtonLink href="/review" variant="primary" size="sm">
-                {t('attentionCta')}
-              </ButtonLink>
-            </aside>
-          )}
-
           <div className="stat-grid">
             <Link
               href="/review"
@@ -194,28 +180,14 @@ export default async function HomePage({ params }: Props) {
             </Link>
           </div>
 
-          <section className="page-section">
-            <div className="page-section-title">
-              <h2>{t('pendingReviewSection')}</h2>
-              {pendingTotal > 0 && (
+          {pendingTotal > 0 && (
+            <section className="page-section">
+              <div className="page-section-title">
+                <h2>{t('pendingReviewSection')}</h2>
                 <Link href="/review" className="btn btn-ghost btn-sm">
                   {tc('viewAll')}
                 </Link>
-              )}
-            </div>
-            {pendingPreview.length === 0 ? (
-              <EmptyState
-                compact
-                variant="review"
-                title={t('noPendingTitle')}
-                description={t('noPendingDesc')}
-                action={
-                  <ButtonLink href="/channels" variant="secondary">
-                    {tc('generateVideo')}
-                  </ButtonLink>
-                }
-              />
-            ) : (
+              </div>
               <ul className="dashboard-list">
                 {pendingPreview.map((v) => (
                   <li key={v.id} className="dashboard-list-item">
@@ -229,34 +201,20 @@ export default async function HomePage({ params }: Props) {
                   </li>
                 ))}
               </ul>
-            )}
-          </section>
+            </section>
+          )}
 
-          <section className="page-section">
-            <div className="page-section-title">
-              <h2>{t('activePipelinesSection')}</h2>
-              {activePipelinesTotal > 0 && (
+          {activePipelinesTotal > 0 && (
+            <section className="page-section">
+              <div className="page-section-title">
+                <h2>{t('activePipelinesSection')}</h2>
                 <Link href="/pipelines" className="btn btn-ghost btn-sm">
                   {tc('viewAllFem')}
                 </Link>
-              )}
-            </div>
-            {activePipelinesTotal === 0 ? (
-              <EmptyState
-                compact
-                variant="pipeline"
-                title={t('noActiveTitle')}
-                description={t('noActiveDesc')}
-                action={
-                  <ButtonLink href="/channels" variant="secondary">
-                    {tc('generateVideo')}
-                  </ButtonLink>
-                }
-              />
-            ) : (
+              </div>
               <DashboardActivePipelines initialPipelines={pipelines} />
-            )}
-          </section>
+            </section>
+          )}
 
           {scheduledPreview.length > 0 && (
             <section className="page-section">

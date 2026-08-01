@@ -797,7 +797,7 @@ textarea:focus-visible {
   margin: 0;
   font-size: 0.7rem;
   font-weight: 700;
-  text-transform: uppercase;
+  text-transform: none; letter-spacing: -0.01em;
   letter-spacing: 0.04em;
   color: var(--muted);
 }
@@ -3124,7 +3124,7 @@ th { color: var(--muted); font-size: 0.75rem; font-weight: 600; letter-spacing: 
   padding: 0.2rem 0.5rem;
   border-radius: var(--radius);
   letter-spacing: 0.08em;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .channel-card-status-active {
@@ -4475,19 +4475,75 @@ th { color: var(--muted); font-size: 0.75rem; font-weight: 600; letter-spacing: 
 .review-queue {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1rem;
   margin-top: 0;
 }
 
-.review-card.review-card-studio {
-  position: relative;
-  border: 1px solid var(--border);
-  background: var(--surface);
+.review-card-compact .review-card-layout {
+  grid-template-columns: minmax(140px, 220px) minmax(0, 1fr);
+  gap: 0;
+}
+
+.review-card-compact.review-card-shorts .review-card-layout {
+  grid-template-columns: minmax(100px, 140px) minmax(0, 1fr);
+}
+
+.review-card-compact .review-card-preview {
+  padding: 0.75rem;
+  align-items: flex-start;
+}
+
+.review-card-compact .review-card-frame {
+  border-radius: var(--radius-btn);
   box-shadow: var(--shadow-sm);
 }
 
-.review-card-glow {
-  display: none;
+.review-card-compact.review-card-shorts .review-card-preview .video-thumbnail-shorts {
+  max-width: 120px;
+  max-height: 210px;
+}
+
+.review-card-compact .review-card-panel {
+  gap: 0.65rem;
+  padding: 1rem 1.15rem;
+  justify-content: space-between;
+}
+
+.review-card-top {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.review-card-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+  margin-top: auto;
+  padding-top: 0.35rem;
+}
+
+.review-quality-details {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-btn);
+  padding: 0.35rem 0.65rem;
+  background: var(--surface-raised);
+}
+
+.review-quality-details summary {
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--muted);
+  list-style: none;
+}
+
+.review-quality-details summary::-webkit-details-marker { display: none; }
+
+.review-quality-details[open] summary {
+  margin-bottom: 0.5rem;
+  color: var(--text);
 }
 
 .review-card.card-elevated {
@@ -5415,7 +5471,7 @@ th { color: var(--muted); font-size: 0.75rem; font-weight: 600; letter-spacing: 
   flex-shrink: 0;
   font-size: 0.65rem;
   font-weight: 600;
-  text-transform: uppercase;
+  text-transform: none; letter-spacing: -0.01em;
   padding: 0.15rem 0.4rem;
   border-radius: 4px;
   background: color-mix(in srgb, var(--accent) 20%, transparent);
@@ -6682,12 +6738,12 @@ th { color: var(--muted); font-size: 0.75rem; font-weight: 600; letter-spacing: 
 }
 
 .channel-settings-form {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
-  gap: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
   width: 100%;
   max-width: none;
-  align-items: start;
+  align-items: stretch;
 }
 
 .channel-settings-form .field-effective-hint {
@@ -6930,36 +6986,80 @@ th { color: var(--muted); font-size: 0.75rem; font-weight: 600; letter-spacing: 
 
 .channel-settings-form > .btn,
 .channel-settings-form > button {
-  grid-column: 1 / -1;
-  justify-self: start;
+  align-self: flex-start;
+  margin-top: 0.35rem;
 }
 
-.settings-fieldset {
+.settings-section.settings-fieldset {
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 1.1rem 1.25rem 1.2rem;
+  padding: 0;
   margin: 0;
+  min-width: 0;
+  background: color-mix(in srgb, var(--panel) 82%, transparent);
+  grid-column: 1 / -1;
+}
+
+.settings-section-summary {
+  list-style: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  letter-spacing: -0.015em;
+  padding: 0.95rem 1.15rem;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  user-select: none;
+}
+
+.settings-section-summary::-webkit-details-marker { display: none; }
+
+.settings-section-summary::after {
+  content: '';
+  width: 0.45rem;
+  height: 0.45rem;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: rotate(45deg);
+  transition: transform 160ms var(--ease-out);
+  flex-shrink: 0;
+}
+
+.settings-section[open] > .settings-section-summary::after {
+  transform: rotate(-135deg);
+}
+
+.settings-section[open] > .settings-section-summary {
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-section[open] {
+  padding-bottom: 1.1rem;
+}
+
+.settings-section > :not(summary) {
+  margin-left: 1.15rem;
+  margin-right: 1.15rem;
+}
+
+.settings-section > :not(summary) + :not(summary) {
+  margin-top: 0.75rem;
+}
+
+.settings-section > .modal-field:first-of-type,
+.settings-section > .channel-profile-grid,
+.settings-section > .settings-field-full,
+.settings-section > .modal-checkbox:first-of-type {
+  margin-top: 1rem;
+}
+
+.settings-section > .channel-profile-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
   gap: 0.9rem 1rem;
-  align-content: start;
-  min-width: 0;
-  background: color-mix(in srgb, var(--panel) 82%, transparent);
-}
-
-.settings-fieldset > .modal-field:has(textarea),
-.settings-fieldset > .modal-checkbox,
-.settings-fieldset > .channel-profile-grid,
-.settings-fieldset > .settings-field-full {
-  grid-column: 1 / -1;
-}
-
-.settings-fieldset legend {
-  font-weight: 600;
-  font-size: 0.82rem;
-  letter-spacing: 0.01em;
-  padding: 0 0.4rem;
-  color: var(--text);
 }
 
 .channel-settings-form .modal-field {
@@ -7345,7 +7445,7 @@ th { color: var(--muted); font-size: 0.75rem; font-weight: 600; letter-spacing: 
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.12em;
-  text-transform: uppercase;
+  text-transform: none; letter-spacing: -0.01em;
   color: var(--muted);
 }
 
@@ -8926,4 +9026,113 @@ html[data-theme='light'] .voice-picker-row.is-selected {
   margin-top: 0.25rem;
 }
 
+/* ── Script editor (video detail) ─────────────────────────── */
 
+.script-editor-panel {
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.script-editor-header h3 {
+  margin: 0 0 0.35rem;
+  font-size: var(--text-section-title);
+}
+
+.script-editor-intro,
+.script-editor-status {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  max-width: 62ch;
+}
+
+.script-editor-textarea {
+  width: 100%;
+  resize: vertical;
+}
+
+.script-scene-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.script-scene-item {
+  padding: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-btn);
+  background: var(--surface-raised);
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.script-scene-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.script-scene-label {
+  font-size: 0.875rem;
+}
+
+.script-scene-actions {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.script-editor-feedback {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.script-editor-error {
+  color: var(--danger-text);
+}
+
+.pipeline-live-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: var(--space-3);
+  padding: 0.55rem 0.85rem;
+  border-radius: var(--radius-btn);
+  border: 1px solid var(--accent-border);
+  background: var(--accent-subtle);
+  color: var(--text);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.pipeline-detail-video-dd {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.integrations-intro {
+  margin: 0 0 var(--space-3);
+  color: var(--muted);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  max-width: 56ch;
+}
+
+
+.control-room-live { /* legacy alias */ }

@@ -234,13 +234,7 @@ export function ChannelDetailTabs({
         )}
 
         {current === 'integraciones' && (
-          <>
-            <div className="section-title-row">
-              <h3>{t('accountsSection')}</h3>
-              <InfoTooltip content={t('tabs.integrationsTooltip')} />
-            </div>
-            <ChannelIntegrationsPanel channelId={channel.id} integrations={integrations} />
-          </>
+          <ChannelIntegrationsPanel channelId={channel.id} integrations={integrations} />
         )}
       </div>
     </>

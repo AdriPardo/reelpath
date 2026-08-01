@@ -28,11 +28,12 @@ function formatReviewDate(iso: string, locale: string): string {
 export async function ReviewVideoCard({ video }: ReviewVideoCardProps) {
   const locale = (await getLocale()) as AppLocale;
   const tv = await getTranslations({ locale, namespace: 'videos' });
+  const tr = await getTranslations({ locale, namespace: 'review' });
   const isShorts = video.aspectRatio === '9:16';
 
   return (
     <article
-      className={`review-card card-elevated${isShorts ? ' review-card-shorts' : ' review-card-long'}`}
+      className={`review-card review-card-compact card-elevated${isShorts ? ' review-card-shorts' : ' review-card-long'}`}
     >
       <div className="review-card-layout">
         <div className="review-card-preview">
@@ -47,46 +48,46 @@ export async function ReviewVideoCard({ video }: ReviewVideoCardProps) {
         </div>
 
         <div className="review-card-panel">
-          <h3>
-            <Link href={`/videos/${video.id}`} className="video-card-title-link">
-              {video.title}
-            </Link>
-          </h3>
-
-          <div className="review-meta-chips">
-            <span className="review-meta-chip">{formatVideoLabel(video.format, locale)}</span>
-            <span className="review-meta-chip">{formatDurationCompact(video.durationSec)}</span>
-            <span className="review-meta-chip">{formatReviewDate(video.createdAt, locale)}</span>
-            <StatusBadge status={video.reviewStatus} />
-            {video.visualSummary && (
-              <VisualOriginSummaryPanel summary={video.visualSummary} compact />
-            )}
+          <div className="review-card-top">
+            <h3>
+              <Link href={`/videos/${video.id}`} className="video-card-title-link">
+                {video.title}
+              </Link>
+            </h3>
+            <div className="review-meta-chips">
+              <span className="review-meta-chip">{formatVideoLabel(video.format, locale)}</span>
+              <span className="review-meta-chip">{formatDurationCompact(video.durationSec)}</span>
+              <span className="review-meta-chip">{formatReviewDate(video.createdAt, locale)}</span>
+              <StatusBadge status={video.reviewStatus} />
+              {video.visualSummary && (
+                <VisualOriginSummaryPanel summary={video.visualSummary} compact />
+              )}
+              <VideoPublishScheduleChip
+                reviewStatus={video.reviewStatus}
+                scheduledPublishAt={video.scheduledPublishAt}
+                publishedAt={video.publishedAt}
+                youtubeVideoId={video.youtubeVideoId}
+                channel={video.channel}
+                showUnscheduled
+              />
+            </div>
           </div>
 
           {video.visualSummary?.hasPlaceholders && <VisualPlaceholderBanner />}
 
-          <div className="review-publish-schedule">
-            <VideoPublishScheduleChip
-              reviewStatus={video.reviewStatus}
-              scheduledPublishAt={video.scheduledPublishAt}
-              publishedAt={video.publishedAt}
-              youtubeVideoId={video.youtubeVideoId}
-              channel={video.channel}
-              showUnscheduled
-            />
-          </div>
-
           {video.qualityReport && (
-            <QualityReportPanel report={video.qualityReport} compact />
+            <details className="review-quality-details">
+              <summary>{tr('qualityReport.title')}</summary>
+              <QualityReportPanel report={video.qualityReport} compact />
+            </details>
           )}
 
-          <div className="action-group review-card-actions">
-            <ReviewActions videoId={video.id} channelId={video.channelId} layout="stacked" />
+          <div className="review-card-footer">
+            <ReviewActions videoId={video.id} channelId={video.channelId} layout="inline" />
+            <Link href={`/videos/${video.id}`} className="btn btn-ghost btn-sm">
+              {tv('viewDetail')}
+            </Link>
           </div>
-
-          <Link href={`/videos/${video.id}`} className="btn btn-ghost btn-sm review-card-detail-link">
-            {tv('viewDetail')} →
-          </Link>
         </div>
       </div>
     </article>

@@ -11,7 +11,6 @@ import { Chip } from '@/components/ui/Chip';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import {
   getIntegrationDisplayStatus,
-  integrationHelpText,
   INTEGRATION_SERVICE_NAMES,
   youtubePrivacyOptions,
 } from '@/lib/integration-labels';
@@ -425,10 +424,7 @@ export function ChannelIntegrationsPanel({
 
   return (
     <div className="integrations-grid">
-      <div className="section-title-row">
-        <p className="integrations-intro">{t('introShort')}</p>
-        <InfoTooltip content={integrationHelpText(locale)} />
-      </div>
+      <p className="integrations-intro">{t('intro')}</p>
       <IntegrationCard channelId={channelId} status={integrations?.youtube} locale={locale} />
     </div>
   );

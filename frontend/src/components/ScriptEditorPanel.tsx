@@ -57,8 +57,8 @@ export function ScriptEditorPanel({
   }, [load]);
 
   if (reviewStatus !== 'pending') return null;
-  if (loading) return <p className="text-muted">{t('loading')}</p>;
-  if (error) return <p className="text-muted">{error}</p>;
+  if (loading) return <p className="text-muted script-editor-status">{t('loading')}</p>;
+  if (error) return <p className="text-muted script-editor-status">{error}</p>;
   if (scenes.length === 0) return null;
 
   async function saveScript(nextScenes: ScriptScene[], nextHook = hook) {
@@ -109,33 +109,30 @@ export function ScriptEditorPanel({
   }
 
   return (
-    <div className="card script-editor-panel" style={{ marginTop: '1.5rem', padding: '1rem' }}>
-      <h3 style={{ marginTop: 0 }}>{t('title')}</h3>
-      <p className="text-muted text-sm">{t('intro')}</p>
+    <section className="script-editor-panel" aria-labelledby="script-editor-heading">
+      <header className="script-editor-header">
+        <h3 id="script-editor-heading">{t('title')}</h3>
+        <p className="script-editor-intro">{t('intro')}</p>
+      </header>
 
-      <label className="text-sm" htmlFor="script-hook">
+      <label className="form-label" htmlFor="script-hook">
         {t('hook')}
       </label>
       <textarea
         id="script-hook"
-        className="input"
+        className="form-input script-editor-textarea"
         rows={2}
         value={hook}
         onChange={(e) => setHook(e.target.value)}
         onBlur={() => void saveScript(scenes, hook)}
-        style={{ width: '100%', marginBottom: '1rem' }}
       />
 
-      <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+      <ul className="script-scene-list">
         {scenes.map((scene, i) => (
-          <li
-            key={`scene-${i}`}
-            className="card"
-            style={{ marginBottom: '0.75rem', padding: '0.75rem' }}
-          >
-            <div className="section-title-row" style={{ marginBottom: '0.5rem' }}>
-              <strong>{t('scene', { n: i + 1 })}</strong>
-              <span style={{ display: 'flex', gap: '0.25rem' }}>
+          <li key={`scene-${i}`} className="script-scene-item">
+            <div className="script-scene-toolbar">
+              <strong className="script-scene-label">{t('scene', { n: i + 1 })}</strong>
+              <div className="script-scene-actions">
                 <button
                   type="button"
                   className="btn btn-ghost btn-sm"
@@ -162,10 +159,10 @@ export function ScriptEditorPanel({
                 >
                   {regenerating === i ? '…' : t('regenerate')}
                 </button>
-              </span>
+              </div>
             </div>
             <textarea
-              className="input"
+              className="form-input script-editor-textarea"
               rows={3}
               value={scene.narration}
               onChange={(e) => {
@@ -175,18 +172,17 @@ export function ScriptEditorPanel({
                 setScenes(next);
               }}
               onBlur={() => void saveScript(scenes, hook)}
-              style={{ width: '100%' }}
             />
           </li>
         ))}
       </ul>
 
-      {message && <p className="text-sm text-muted">{message}</p>}
+      {message && <p className="script-editor-feedback text-muted">{message}</p>}
       {error && (
-        <p className="text-sm" role="alert" style={{ color: 'var(--danger)' }}>
+        <p className="script-editor-feedback script-editor-error" role="alert">
           {error}
         </p>
       )}
-    </div>
+    </section>
   );
 }
