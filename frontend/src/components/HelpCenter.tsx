@@ -420,7 +420,6 @@ export function HelpCenter() {
   return (
     <div className="help-center">
       <header className="help-hero card">
-        <p className="help-eyebrow">{PLATFORM.eyebrow}</p>
         <h1>{t('title')}</h1>
         <p className="help-intro">{t('intro', { platform: PLATFORM.name })}</p>
         <label className="help-search">

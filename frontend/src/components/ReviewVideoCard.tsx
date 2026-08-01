@@ -27,7 +27,6 @@ function formatReviewDate(iso: string, locale: string): string {
 
 export async function ReviewVideoCard({ video }: ReviewVideoCardProps) {
   const locale = (await getLocale()) as AppLocale;
-  const t = await getTranslations({ locale, namespace: 'review' });
   const tv = await getTranslations({ locale, namespace: 'videos' });
   const isShorts = video.aspectRatio === '9:16';
 
@@ -50,8 +49,6 @@ export async function ReviewVideoCard({ video }: ReviewVideoCardProps) {
         </div>
 
         <div className="review-card-panel">
-          <span className="review-card-eyebrow">{t('cardEyebrow')}</span>
-
           <h3>
             <Link href={`/videos/${video.id}`} className="video-card-title-link">
               {video.title}

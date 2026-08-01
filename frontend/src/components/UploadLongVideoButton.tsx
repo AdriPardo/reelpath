@@ -184,15 +184,14 @@ export function UploadLongVideoButton({ channelId }: { channelId: string }) {
 
       <header className="upload-long-header">
         <div className="upload-long-title-row">
-          <span className="upload-long-eyebrow">{t('importEyebrow')}</span>
+          <h3 id={`upload-long-heading-${channelId}`} className="upload-long-title">
+            {t('title')}
+          </h3>
           <InfoTooltip
             content={t('tooltip', { max: MAX_SIZE_MB })}
             ariaLabel={t('tooltipAria')}
           />
         </div>
-        <h3 id={`upload-long-heading-${channelId}`} className="upload-long-title">
-          {t('title')}
-        </h3>
         <p className="upload-long-desc">{t('desc')}</p>
       </header>
 

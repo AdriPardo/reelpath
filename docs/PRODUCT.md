@@ -136,7 +136,7 @@ Pasada de calidad transversal para que la app se sienta premium y pulida. No fue
 - [x] Páginas 404 / error con marca
 - [x] Títulos de pestaña sin marca duplicada
 - [ ] Redirigir registro al Dashboard (hecho en código)
-- [ ] Subtítulos PageHeader unificados en lenguaje creador
+- [x] Subtítulos PageHeader unificados en lenguaje creador
 
 ### Fase B — Conexión real (2–4 semanas)
 

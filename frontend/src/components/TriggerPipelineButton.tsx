@@ -81,7 +81,6 @@ export function TriggerPipelineButton({ channelId }: { channelId: string }) {
       <div className="studio-panel-glow" aria-hidden="true" />
 
       <header className="studio-header">
-        <span className="studio-eyebrow">{t('eyebrow')}</span>
         <h3 id="studio-heading" className="studio-title">
           {t('newGeneration')}
         </h3>
