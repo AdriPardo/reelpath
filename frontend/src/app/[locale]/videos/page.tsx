@@ -77,14 +77,15 @@ export default async function VideosPage({ params, searchParams }: Props) {
         <Suspense fallback={<SkeletonTabs count={6} />}>
           <VideoFilters />
         </Suspense>
-        <Suspense fallback={<div className="skeleton skeleton-chip" style={{ width: '10rem', height: '2.5rem' }} aria-hidden="true" />}>
-          <ChannelFilter channels={channels} basePath="/videos" />
-        </Suspense>
+        <div className="videos-toolbar-aside">
+          <Suspense fallback={<div className="skeleton skeleton-chip" style={{ width: '10rem', height: '2.5rem' }} aria-hidden="true" />}>
+            <ChannelFilter channels={channels} basePath="/videos" />
+          </Suspense>
+          <Suspense fallback={<div className="skeleton" style={{ height: '2.5rem', width: '14rem', borderRadius: 8 }} aria-hidden="true" />}>
+            <VideoSearch />
+          </Suspense>
+        </div>
       </div>
-
-      <Suspense fallback={<div className="skeleton" style={{ height: '2.75rem', maxWidth: 420, borderRadius: 10, marginBottom: '1rem' }} aria-hidden="true" />}>
-        <VideoSearch />
-      </Suspense>
 
       {loadError ? (
         <EmptyState

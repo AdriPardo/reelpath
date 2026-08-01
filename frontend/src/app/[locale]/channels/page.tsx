@@ -60,16 +60,18 @@ export default async function ChannelsPage({ params }: Props) {
           }
         />
       ) : channels.length === 0 ? (
-        <section className="channels-empty-hero" aria-labelledby="channels-empty-title">
-          <h2 id="channels-empty-title">{t('emptyTitle')}</h2>
-          <p className="channels-empty-desc">{t('emptyDesc')}</p>
-          <div className="card-elevated create-channel-panel page-narrow-sm">
-            <CreateChannelForm mode="first" />
-          </div>
-        </section>
+        <EmptyState
+          variant="channels"
+          title={t('emptyTitle')}
+          description={t('emptyDesc')}
+          action={
+            <div className="empty-state-form">
+              <CreateChannelForm mode="first" />
+            </div>
+          }
+        />
       ) : (
         <>
-          <p className="channels-intro text-muted">{t('intro')}</p>
           <div className="channels-grid">
             {channels.map((ch) => (
               <ChannelCard key={ch.id} channel={ch} stats={statsByChannel[ch.id]} />

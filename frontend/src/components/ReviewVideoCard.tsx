@@ -32,10 +32,8 @@ export async function ReviewVideoCard({ video }: ReviewVideoCardProps) {
 
   return (
     <article
-      className={`review-card review-card-studio card-elevated${isShorts ? ' review-card-shorts' : ' review-card-long'}`}
+      className={`review-card card-elevated${isShorts ? ' review-card-shorts' : ' review-card-long'}`}
     >
-      <div className="review-card-glow" aria-hidden="true" />
-
       <div className="review-card-layout">
         <div className="review-card-preview">
           <div className="review-card-frame">

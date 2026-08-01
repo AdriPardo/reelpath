@@ -620,9 +620,9 @@
       "languageLabel": "Language",
       "languageTooltip": "Language for scripts, ideas, and voiceover on this channel.",
       "ideasPerRunLabel": "Ideas per run",
-      "ideasPerRunTooltip": "How many ideas the pipeline generates each run.",
+      "ideasPerRunTooltip": "How many ideas each generation run produces.",
       "autoPublishLabel": "Auto-publish (skip review)",
-      "autoPublishTooltip": "If enabled and review is not required, the video publishes when the pipeline finishes.",
+      "autoPublishTooltip": "If enabled and review is not required, the video publishes when generation finishes.",
       "shortsClipMaxLabel": "Max Short duration (seconds)",
       "shortsClipMaxTooltip": "Cap when splitting or generating vertical Shorts for this channel.",
       "maxScenesLongLabel": "Max scenes (long video)",
@@ -693,7 +693,7 @@
       "plannerLegend": "Publication planner",
       "plannerFormAria": "Publication planner settings",
       "plannerEnabledLabel": "Enable automatic planner",
-      "plannerEnabledTooltip": "Automatically assigns the best date and time when approving or launching a pipeline. Manual scheduling still takes priority.",
+      "plannerEnabledTooltip": "Automatically assigns the best date and time when approving or launching a generation. Manual scheduling still takes priority.",
       "timezoneLabel": "Timezone",
       "timezoneTooltip": "The planner calculates dates and times using this channel timezone.",
       "maxLongsLabel": "Max long videos per week",
@@ -718,7 +718,7 @@
       "plannerConfigOpenHint": "Days, timezone, and Shorts slots",
       "plannerConfigClosedHint": "Turn it on to propose dates automatically",
       "autoGenerateLabel": "Automatic video generation",
-      "autoGenerateTooltip": "Starts pipelines on its own based on the planner preferred days. Requires the planner to be enabled.",
+      "autoGenerateTooltip": "Starts generations on its own based on the planner preferred days. Requires the planner to be enabled.",
       "autoGenerateLeadLabel": "Lead time before publish (days)",
       "autoGenerateLeadTooltip": "How many days before the publish slot the video is generated (0 = same day).",
       "autoGenerateLeadHint": "E.g. lead 1 and Friday 19:00 → generates on Thursday.",
@@ -831,12 +831,12 @@
       "empty": "No Shorts for this video yet.",
       "mixedTitle": "Shorts / Promotional teasers",
       "dedicatedTitle": "Promotional teasers",
-      "pendingPipeline": "Shorts are generated automatically after rendering the long video. If the pipeline is still running, return in a few minutes or check generation details.",
+      "pendingPipeline": "Shorts are generated automatically after rendering the long video. If generation is still running, return in a few minutes or check its details.",
       "mixedDesc": "Includes cuts from the long video and AI-generated promotional teasers.",
       "dedicatedDesc": "Vertical teasers generated with their own script from the long video.",
       "splitDesc": "Vertical Shorts generated from this video.",
-      "emptyPending": "No Shorts generated yet. If the pipeline is running, they will appear after splitting or teaser generation.",
-      "autoEmpty": "Shorts are generated automatically after rendering the long video. If the pipeline is still running, return in a few minutes or check the generation detail."
+      "emptyPending": "No Shorts generated yet. If generation is running, they will appear after splitting or teaser generation.",
+      "autoEmpty": "Shorts are generated automatically after rendering the long video. If generation is still running, return in a few minutes or check its details."
     },
     "clips": {
       "download": "Download",
@@ -860,7 +860,7 @@
       "mixedDesc": "Includes cuts from the long video and AI-generated promotional teasers.",
       "dedicatedDesc": "Vertical teasers generated with their own script from the long video.",
       "defaultDesc": "Vertical Shorts generated from this video.",
-      "emptyDefault": "No Shorts generated yet. If the pipeline is running, they will appear after the split or teaser generation step."
+      "emptyDefault": "No Shorts generated yet. If generation is running, they will appear after the split or teaser generation step."
     },
     "republish": {
       "retry": "Retry YouTube publishing",
@@ -1110,7 +1110,7 @@
     "resumeFromStep": "Resumed at {step}",
     "resumeError": "Error resuming",
     "fallbackTitle": "Video generation",
-    "backToList": "← Back to generations"
+    "backToList": "Back to generations"
   },
   "admin": {
     "title": "Platform admin",
@@ -1125,8 +1125,8 @@
       "loadError": "Could not load overview",
       "activeOrgs": "Active orgs",
       "totalUsers": "Users",
-      "pipelines24h": "Pipelines 24h",
-      "pipelines7d": "Pipelines 7d",
+      "pipelines24h": "Generations 24h",
+      "pipelines7d": "Generations 7d",
       "pipelinesFailed24h": "Failed 24h",
       "videosThisMonth": "Videos this month",
       "trialOrgs": "Trials",
@@ -1154,7 +1154,7 @@
       "back": "← Back",
       "members": "Members",
       "active": "Active",
-      "pipelines24h": "Pipelines 24h",
+      "pipelines24h": "Generations 24h",
       "failed": "failed",
       "subscription": "Subscription"
     },
@@ -1244,7 +1244,7 @@
       "cancelError": "Could not cancel",
       "noMembers": "No members.",
       "dangerZone": "Danger zone",
-      "purgeDescription": "Purge all channels and generated content (pipelines, videos, per-channel credentials). This action cannot be undone.",
+      "purgeDescription": "Purge all channels and generated content (generations, videos, per-channel credentials). This action cannot be undone.",
       "purgeButton": "Purge organization content",
       "purgeTitle": "Purge organization content?",
       "purgeConfirmHint": "To confirm, type DELETE_ORG_CONTENT. Channels, videos, and runs will be deleted along with associated storage.",
@@ -1967,7 +1967,7 @@
   },
   "channelDetail": {
     "nicheSubtitle": "Niche: {niche} — configure content and integrations",
-    "backToChannels": "← Back to channels",
+    "backToChannels": "Back to channels",
     "loading": "Loading…"
   },
   "settingsExt": {

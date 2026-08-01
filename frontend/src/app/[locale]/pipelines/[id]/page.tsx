@@ -52,7 +52,7 @@ export default async function PipelineDetailPage({
   const title = pipelinePageTitle(pipeline) || t('fallbackTitle');
 
   return (
-    <>
+    <div className="page-content">
       <PageHeader
         title={title}
         subtitle={pipeline.channel?.name ?? t('unknownChannel')}
@@ -64,6 +64,6 @@ export default async function PipelineDetailPage({
       />
 
       <PipelineDetailLive initial={pipeline} />
-    </>
+    </div>
   );
 }

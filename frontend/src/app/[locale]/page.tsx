@@ -117,7 +117,7 @@ export default async function HomePage({ params }: Props) {
         subtitle={dashboardSubtitle}
         actions={
           hasChannels ? (
-            <ButtonLink href="/channels" variant="primary">
+            <ButtonLink href={firstChannelId ? `/channels/${firstChannelId}` : '/channels'} variant="primary">
               {tc('generateVideo')}
             </ButtonLink>
           ) : (

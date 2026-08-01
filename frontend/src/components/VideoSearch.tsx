@@ -34,7 +34,7 @@ export function VideoSearch() {
     >
       <input
         type="search"
-        className="topic-input video-search-input"
+        className="form-input video-search-input"
         placeholder={t('searchPlaceholder')}
         value={value}
         onChange={(e) => setValue(e.target.value)}

@@ -48,7 +48,7 @@ export default async function ChannelDetailPage({
   if (!channel || !integrations) notFound();
 
   return (
-    <>
+    <div className="page-content">
       <PageHeader
         title={channel.name}
         subtitle={t('nicheSubtitle', { niche: channel.niche })}
@@ -62,6 +62,6 @@ export default async function ChannelDetailPage({
       <Suspense fallback={<SkeletonPanel lines={5} />}>
         <ChannelDetailTabs channel={channel} integrations={integrations} />
       </Suspense>
-    </>
+    </div>
   );
 }

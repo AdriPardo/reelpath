@@ -101,10 +101,6 @@ export function ChannelDetailTabs({
   return (
     <>
       <div className="channel-status-strip">
-        <div className="channel-status-strip-text">
-          <span className="channel-status-strip-label">{t('statusLabel')}</span>
-          <span className="channel-status-strip-name">{channel.name}</span>
-        </div>
         <div className="channel-status-strip-chips" aria-label={t('tabs.statusStripAria')}>
           {summaryChips.map((chip) => (
             <Chip key={chip.label} variant={chip.variant} size="sm">

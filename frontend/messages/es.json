@@ -620,9 +620,9 @@
       "languageLabel": "Idioma",
       "languageTooltip": "Idioma de guiones, ideas y locución para este canal.",
       "ideasPerRunLabel": "Ideas por generación",
-      "ideasPerRunTooltip": "Cuántas ideas genera el pipeline en cada ejecución.",
+      "ideasPerRunTooltip": "Cuántas ideas genera cada ejecución.",
       "autoPublishLabel": "Publicar automáticamente (sin revisión)",
-      "autoPublishTooltip": "Si está activo y no hay revisión requerida, el vídeo se publica al terminar el pipeline.",
+      "autoPublishTooltip": "Si está activo y no hay revisión requerida, el vídeo se publica al terminar la generación.",
       "shortsClipMaxLabel": "Duración máx. por Short (segundos)",
       "shortsClipMaxTooltip": "Tope al cortar o generar Shorts verticales desde este canal.",
       "maxScenesLongLabel": "Máx. escenas (vídeo largo)",
@@ -693,7 +693,7 @@
       "plannerLegend": "Planificador de publicación",
       "plannerFormAria": "Configuración del planificador de publicación",
       "plannerEnabledLabel": "Activar planificador automático",
-      "plannerEnabledTooltip": "Asigna automáticamente la mejor fecha y hora al aprobar o lanzar un pipeline. La programación manual sigue teniendo prioridad.",
+      "plannerEnabledTooltip": "Asigna automáticamente la mejor fecha y hora al aprobar o lanzar una generación. La programación manual sigue teniendo prioridad.",
       "timezoneLabel": "Zona horaria",
       "timezoneTooltip": "El planificador calcula fechas y horas usando esta zona horaria del canal.",
       "maxLongsLabel": "Máx. vídeos largos por semana",
@@ -718,7 +718,7 @@
       "plannerConfigOpenHint": "Días, zona horaria y slots de Shorts",
       "plannerConfigClosedHint": "Actívalo para proponer fechas automáticamente",
       "autoGenerateLabel": "Generación automática de vídeos",
-      "autoGenerateTooltip": "Dispara solos los pipelines según los días preferidos del planificador. Requiere planificador activo.",
+      "autoGenerateTooltip": "Lanza generaciones solas según los días preferidos del planificador. Requiere planificador activo.",
       "autoGenerateLeadLabel": "Margen antes de publicar (días)",
       "autoGenerateLeadTooltip": "Cuántos días antes del slot de publicación se genera el vídeo (0 = el mismo día).",
       "autoGenerateLeadHint": "Ej.: margen 1 y viernes 19:00 → se genera el jueves.",
@@ -831,12 +831,12 @@
       "empty": "Aún no hay Shorts para este vídeo.",
       "mixedTitle": "Shorts / Teasers promocionales",
       "dedicatedTitle": "Teasers promocionales",
-      "pendingPipeline": "Los Shorts se generan automáticamente tras renderizar el vídeo largo. Si el pipeline sigue en curso, vuelve a esta página en unos minutos o consulta el detalle de la generación.",
+      "pendingPipeline": "Los Shorts se generan automáticamente tras renderizar el vídeo largo. Si la generación sigue en curso, vuelve en unos minutos o consulta su detalle.",
       "mixedDesc": "Incluye cortes del vídeo largo y teasers promocionales generados con IA.",
       "dedicatedDesc": "Teasers verticales generados con guion propio a partir del vídeo largo.",
       "splitDesc": "Shorts verticales generados a partir de este vídeo.",
-      "emptyPending": "Aún no hay Shorts generados. Si el pipeline está en curso, aparecerán tras el paso de división o generación de teasers.",
-      "autoEmpty": "Los Shorts se generan automáticamente tras renderizar el vídeo largo. Si el pipeline sigue en curso, vuelve a esta página en unos minutos o consulta el detalle de la generación."
+      "emptyPending": "Aún no hay Shorts generados. Si la generación está en curso, aparecerán tras el paso de división o teasers.",
+      "autoEmpty": "Los Shorts se generan automáticamente tras renderizar el vídeo largo. Si la generación sigue en curso, vuelve en unos minutos o consulta su detalle."
     },
     "clips": {
       "download": "Descargar",
@@ -860,7 +860,7 @@
       "mixedDesc": "Incluye cortes del vídeo largo y teasers promocionales generados con IA.",
       "dedicatedDesc": "Teasers verticales generados con guion propio a partir del vídeo largo.",
       "defaultDesc": "Shorts verticales generados a partir de este vídeo.",
-      "emptyDefault": "Aún no hay Shorts generados. Si el pipeline está en curso, aparecerán tras el paso de división o generación de teasers."
+      "emptyDefault": "Aún no hay Shorts generados. Si la generación está en curso, aparecerán tras el paso de división o teasers."
     },
     "republish": {
       "retry": "Reintentar publicación en YouTube",
@@ -1104,13 +1104,13 @@
     "retryCompact": "Reintentar",
     "cancelTitle": "¿Cancelar generación?",
     "cancelSubtitle": "Se detendrá «{title}» y se eliminarán los trabajos pendientes en cola. Los vídeos ya publicados en YouTube no se borrarán.",
-    "cancelled": "Pipeline cancelado",
-    "cancelError": "No se pudo cancelar el pipeline",
+    "cancelled": "Generación cancelada",
+    "cancelError": "No se pudo cancelar la generación",
     "cancelCompact": "Cancelar",
     "resumeFromStep": "Reanudado en {step}",
     "resumeError": "Error al reanudar",
     "fallbackTitle": "Generación de vídeo",
-    "backToList": "← Volver a generaciones"
+    "backToList": "Volver a generaciones"
   },
   "admin": {
     "title": "Admin de plataforma",
@@ -1125,8 +1125,8 @@
       "loadError": "No se pudo cargar el resumen",
       "activeOrgs": "Orgs activas",
       "totalUsers": "Usuarios",
-      "pipelines24h": "Pipelines 24h",
-      "pipelines7d": "Pipelines 7d",
+      "pipelines24h": "Generaciones 24h",
+      "pipelines7d": "Generaciones 7d",
       "pipelinesFailed24h": "Fallidos 24h",
       "videosThisMonth": "Vídeos este mes",
       "trialOrgs": "Trials",
@@ -1154,7 +1154,7 @@
       "back": "← Volver",
       "members": "Miembros",
       "active": "Activo",
-      "pipelines24h": "Pipelines 24h",
+      "pipelines24h": "Generaciones 24h",
       "failed": "fallidos",
       "subscription": "Suscripción"
     },
@@ -1244,7 +1244,7 @@
       "cancelError": "No se pudo cancelar",
       "noMembers": "No hay miembros.",
       "dangerZone": "Zona de peligro",
-      "purgeDescription": "Purga todos los canales y el contenido generado (pipelines, vídeos, credenciales por canal). Esta acción no se puede deshacer.",
+      "purgeDescription": "Purga todos los canales y el contenido generado (generaciones, vídeos, credenciales por canal). Esta acción no se puede deshacer.",
       "purgeButton": "Purgar contenido de la organización",
       "purgeTitle": "¿Purgar contenido de la organización?",
       "purgeConfirmHint": "Para confirmar, escribe DELETE_ORG_CONTENT. Se borrarán canales, vídeos y ejecuciones, y se limpiará el almacenamiento asociado.",
@@ -1967,7 +1967,7 @@
   },
   "channelDetail": {
     "nicheSubtitle": "Nicho: {niche} — configura contenido e integraciones",
-    "backToChannels": "← Volver a canales",
+    "backToChannels": "Volver a canales",
     "loading": "Cargando…"
   },
   "settingsExt": {

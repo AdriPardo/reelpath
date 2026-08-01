@@ -137,17 +137,21 @@ export function PipelinesLiveTable({
       </div>
 
       <div className="pipeline-filter-bar">
-        {filters.map(({ key, label, count }) => (
-          <button
-            key={key}
-            type="button"
-            className={`pipeline-filter-chip${filter === key ? ' pipeline-filter-chip-active' : ''}`}
-            onClick={() => setFilter(key)}
-          >
-            {label}
-            {count > 0 && <span className="pipeline-filter-count">{count}</span>}
-          </button>
-        ))}
+        <div className="filter-tabs" role="tablist" aria-label={t('stats.summaryAria')}>
+          {filters.map(({ key, label, count }) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={filter === key}
+              className={`filter-tab${filter === key ? ' filter-tab-active' : ''}`}
+              onClick={() => setFilter(key)}
+            >
+              {label}
+              {count > 0 && <span className="pipeline-filter-count">{count}</span>}
+            </button>
+          ))}
+        </div>
         {channelOptions.length > 1 && (
           <div className="channel-filter pipeline-channel-filter">
             <label htmlFor="pipeline-channel-filter" className="channel-filter-label">
