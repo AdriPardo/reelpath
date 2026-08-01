@@ -150,16 +150,16 @@ TrendSnapshot (simulado)
 
 ## Pipeline end-to-end
 
-1. **Scheduler** (cron job / API trigger) crea `PipelineRun` para canal activo
+1. **Scheduler** — trigger manual/API, o **auto-generación** (`autoGenerateEnabled` + días del planificador, sweep horario en el worker) crea `PipelineRun` para canal activo
 2. **Idea Generator** produce N ideas; **Content Scorer** las rankea
 3. **Selector** elige top-1 (configurable threshold)
 4. **Script Generator** crea guion + variantes de hook
 5. **Media Generator** TTS por escena, stock Pexels o imágenes IA (DALL-E), SRT; metadata `visualOrigin` por escena
 6. **Video Renderer** aplica template JSON → FFmpeg
 7. Si `reviewRequired`: estado `pending_review`; si no, auto-approve
-8. **Publisher** sube a YouTube (o mock)
+8. **Publisher** sube a YouTube (o mock); el **planificador** asigna `scheduledPublishAt` (heurística o insights de analytics)
 9. **Analytics** poll métricas periódicamente
-10. **Feedback loop** actualiza pesos A/B en Prompt Engine
+10. **Feedback loop** actualiza pesos A/B en Prompt Engine y refina horas óptimas del planificador
 
 ## Extensibilidad: nuevos formatos de vídeo
 

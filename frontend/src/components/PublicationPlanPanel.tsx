@@ -31,6 +31,13 @@ interface PublicationCalendar {
   nextAvailableSlot: string | null;
   unscheduledCount?: number;
   plannerFeedback?: Array<{ message: string; severity: 'info' | 'warning' }>;
+  insightsSource?: 'heuristic' | 'analytics';
+  insights?: {
+    confident?: boolean;
+    bestHours?: number[];
+    sampleCount?: number;
+    source?: string;
+  };
 }
 
 function toDatetimeLocalValue(iso: string): string {
@@ -253,6 +260,17 @@ export function PublicationPlanPanel({
             <span className="planner-tz" title={timezone}>
               {t('timezone', { tz: timezone })}
             </span>
+            {plan?.insights?.confident && plan.insights.bestHours?.[0] != null && (
+              <span className="planner-status planner-status--on" title={t('insightsTitle')}>
+                {t('insightsOptimalHour', {
+                  hour: String(plan.insights.bestHours[0]).padStart(2, '0'),
+                  count: plan.insights.sampleCount ?? 0,
+                })}
+              </span>
+            )}
+            {plan?.insightsSource === 'heuristic' && (
+              <span className="text-muted text-sm">{t('insightsHeuristic')}</span>
+            )}
           </div>
           {plan?.nextAvailableSlot && (
             <p className="planner-next-slot text-muted text-sm">

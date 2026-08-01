@@ -228,6 +228,8 @@ export function ChannelDetailTabs({
                 shortPreferredSlots: config.shortPreferredSlots as
                   | Array<{ hour: number; minute: number }>
                   | undefined,
+                autoGenerateEnabled: config.autoGenerateEnabled as boolean | undefined,
+                autoGenerateLeadDays: config.autoGenerateLeadDays as number | undefined,
               }}
             />
           </div>

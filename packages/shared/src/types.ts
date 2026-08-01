@@ -107,6 +107,10 @@ export interface ChannelConfig {
   minDaysBetweenLongs?: number;
   /** Horarios preferidos para Shorts extra (default 12:30 y 19:00). */
   shortPreferredSlots?: Array<{ hour: number; minute: number }>;
+  /** Genera pipelines solos según días del planificador (con margen). */
+  autoGenerateEnabled?: boolean;
+  /** Días de antelación respecto al slot de publicación (0–3, default 1). */
+  autoGenerateLeadDays?: number;
   /** Guion monolítico (1 llamada) o por bloques (outline + chunks). Default: chunked para long. */
   scriptGenerationMode?: 'monolithic' | 'chunked';
   /** Intensidad global del Ken Burns / motion por escena (default normal). */
@@ -274,6 +278,7 @@ export const QUEUE_NAMES = {
   RENDER: 'autotube-render',
   PUBLISH: 'autotube-publish',
   ANALYTICS: 'autotube-analytics',
+  MAINTENANCE: 'autotube-maintenance',
 } as const;
 
 export const PIPELINE_STEPS = [

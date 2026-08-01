@@ -178,3 +178,35 @@ export async function cancelPipelineJobsForRun(
 
   return { removed, active };
 }
+
+export type MaintenanceJobPayload = {
+  kind: 'auto_generate_sweep';
+};
+
+export function getMaintenanceQueue(): Queue<MaintenanceJobPayload> {
+  return getQueue(QUEUE_NAMES.MAINTENANCE) as Queue<MaintenanceJobPayload>;
+}
+
+export function createMaintenanceWorker(
+  processor: (job: Job<MaintenanceJobPayload>) => Promise<void>,
+): Worker<MaintenanceJobPayload> {
+  return new Worker<MaintenanceJobPayload>(QUEUE_NAMES.MAINTENANCE, processor, {
+    connection: getRedisConnection(),
+    concurrency: 1,
+  });
+}
+
+/** Programa el sweep de auto-generación cada hora (idempotente). */
+export async function ensureAutoGenerateSweepSchedule(): Promise<void> {
+  const queue = getMaintenanceQueue();
+  await queue.add(
+    'auto_generate_sweep',
+    { kind: 'auto_generate_sweep' },
+    {
+      jobId: 'auto_generate_sweep_hourly',
+      repeat: { every: 60 * 60 * 1000 },
+      removeOnComplete: { count: 20 },
+      removeOnFail: { count: 20 },
+    },
+  );
+}

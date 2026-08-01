@@ -7,8 +7,9 @@ import {
   resolveDefaultShortCount,
   applyRetentionFeedbackToCalendar,
   type PublicationCalendar,
+  type ChannelPublishInsights,
 } from '@autotube/shared';
-import { buildRetentionByPublishHour } from '@autotube/analytics';
+import { buildRetentionByPublishHour, deriveChannelPublishInsights } from '@autotube/analytics';
 import {
   publicationPlanVideoWhere,
   reconcileOverdueYoutubeScheduledVideos,
@@ -42,7 +43,8 @@ export async function resolveChannelAutoPublishAt(
   excludeVideoId?: string,
 ): Promise<Date | null> {
   const existing = await fetchChannelScheduledLongDates(channelId, excludeVideoId);
-  return resolveAutoScheduledPublishAt(config, explicit, existing);
+  const insights = await deriveChannelPublishInsights(channelId);
+  return resolveAutoScheduledPublishAt(config, explicit, existing, insights);
 }
 
 export type PublicationPlanEntryWithMeta = PublicationCalendar['entries'][number] & {
@@ -54,6 +56,7 @@ export type PublicationPlanResponse = Omit<PublicationCalendar, 'entries'> & {
   entries: PublicationPlanEntryWithMeta[];
   /** Vídeos sin fecha futura a los que se pueden aplicar sugerencias. */
   unscheduledCount: number;
+  insights?: ChannelPublishInsights;
 };
 
 export async function getChannelPublicationPlan(channelId: string): Promise<PublicationPlanResponse> {
@@ -81,6 +84,7 @@ export async function getChannelPublicationPlan(channelId: string): Promise<Publ
       .map((v) => v.id),
   );
 
+  const insights = await deriveChannelPublishInsights(channelId);
   const calendar = buildPublicationCalendar(
     config,
     videos.map((v) => ({
@@ -88,7 +92,7 @@ export async function getChannelPublicationPlan(channelId: string): Promise<Publ
       title: v.title,
       scheduledAt: v.scheduledPublishAt ?? new Date(0),
     })),
-    { shortCountPerVideo: shortCount },
+    { shortCountPerVideo: shortCount, insights },
   );
 
   const { channelAvgRetention, retentionByHour } = await buildRetentionByPublishHour(channelId);
@@ -100,6 +104,7 @@ export async function getChannelPublicationPlan(channelId: string): Promise<Publ
 
   return {
     ...withFeedback,
+    insights,
     unscheduledCount: videos.length - persistedIds.size,
     entries: withFeedback.entries.map((entry) => ({
       ...entry,
@@ -140,6 +145,7 @@ export async function applyChannelPublicationPlan(channelId: string): Promise<{
     },
   });
 
+  const insights = await deriveChannelPublishInsights(channelId);
   const shortCount = resolveDefaultShortCount(config);
   const calendar = buildPublicationCalendar(
     config,
@@ -148,7 +154,7 @@ export async function applyChannelPublicationPlan(channelId: string): Promise<{
       title: v.title,
       scheduledAt: v.scheduledPublishAt ?? new Date(0),
     })),
-    { shortCountPerVideo: shortCount },
+    { shortCountPerVideo: shortCount, insights },
   );
 
   const videoById = new Map(videos.map((v) => [v.id, v]));
@@ -184,5 +190,6 @@ export async function previewNextPublishSlot(channelId: string): Promise<Date | 
   const config = parseChannelConfig(channel.config);
   if (!config.publishPlannerEnabled) return null;
   const existing = await fetchChannelScheduledLongDates(channelId);
-  return computeNextPublishSlot(config, existing);
+  const insights = await deriveChannelPublishInsights(channelId);
+  return computeNextPublishSlot(config, existing, { insights });
 }

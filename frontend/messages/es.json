@@ -238,7 +238,7 @@
     "priceStudio": "399 EUR/mes"
   },
   "dashboard": {
-    "title": "Panel de inicio",
+    "title": "Inicio",
     "greeting": "Hola, {name}",
     "subtitleNoChannels": "{org} — Crea tu primer canal para empezar",
     "subtitleOnboarding": "{org} — Termina la configuración y genera tu primer vídeo",
@@ -296,7 +296,7 @@
   },
   "channels": {
     "title": "Canales",
-    "subtitle": "Gestiona nichos, cuentas conectadas y genera vídeos",
+    "subtitle": "Configura nichos, conecta YouTube y lanza generaciones",
     "addChannel": "Añadir canal",
     "loadError": "No se pudieron cargar los canales",
     "emptyTitle": "Crea tu primer canal",
@@ -526,6 +526,9 @@
       "disabledHintAction": "Abre «Planificador de publicación» abajo, actívalo y guarda.",
       "statusOn": "Activo",
       "timezone": "{tz}",
+      "insightsTitle": "Horario óptimo según métricas del canal",
+      "insightsOptimalHour": "Óptimo del canal: {hour}:00 ({count} vídeos)",
+      "insightsHeuristic": "Usando heurística (aún pocos datos)",
       "nextSlot": "Próximo hueco: {date}",
       "tooltip": "El calendario propone fechas según zona horaria, días preferidos y vídeos en cola. Aplicar fechas solo guarda en Reelpath; no publica en YouTube.",
       "emptyTitle": "Cola vacía esta semana",
@@ -714,6 +717,11 @@
       "shortSlotRemove": "Quitar",
       "plannerConfigOpenHint": "Días, zona horaria y slots de Shorts",
       "plannerConfigClosedHint": "Actívalo para proponer fechas automáticamente",
+      "autoGenerateLabel": "Generación automática de vídeos",
+      "autoGenerateTooltip": "Dispara solos los pipelines según los días preferidos del planificador. Requiere planificador activo.",
+      "autoGenerateLeadLabel": "Margen antes de publicar (días)",
+      "autoGenerateLeadTooltip": "Cuántos días antes del slot de publicación se genera el vídeo (0 = el mismo día).",
+      "autoGenerateLeadHint": "Ej.: margen 1 y viernes 19:00 → se genera el jueves.",
       "publishingLegend": "Publicación",
       "reviewRequiredLabel": "Requiere revisión humana antes de publicar",
       "reviewRequiredTooltip": "Si está activo, el vídeo necesitará aprobación manual antes de publicarse.",
@@ -747,7 +755,7 @@
   },
   "videos": {
     "title": "Vídeos",
-    "subtitle": "Biblioteca de todo el contenido generado con IA",
+    "subtitle": "Tu biblioteca de vídeos largos y Shorts",
     "loadError": "No se pudo cargar la biblioteca",
     "noResults": "Sin resultados para «{query}»",
     "noFiltered": "Sin vídeos {filter}",
@@ -923,7 +931,7 @@
   },
   "review": {
     "title": "Revisión",
-    "subtitle": "Aprueba tus vídeos antes de publicarlos en YouTube",
+    "subtitle": "Aprueba o programa antes de publicar en YouTube",
     "subtitleWithCount": "{count, plural, one {# vídeo pendiente de aprobación} other {# vídeos pendientes de aprobación}}",
     "loadError": "No se pudo cargar la cola de revisión",
     "emptyTitle": "Cola vacía",
@@ -1001,7 +1009,7 @@
   },
   "pipelines": {
     "title": "Generaciones",
-    "subtitle": "Sigue cada producción desde el guion hasta la revisión",
+    "subtitle": "Sigue cada producción en tiempo real",
     "loadError": "No se pudieron cargar las generaciones",
     "emptyTitle": "Aún no hay producciones",
     "emptyDesc": "Ve a un canal y pulsa «Generar vídeo» para crear tu primer vídeo.",

@@ -307,3 +307,16 @@ adminRouter.get('/billing', async (_req, res) => {
     note: 'Detalle de cargos e invoices en Stripe Dashboard',
   });
 });
+
+adminRouter.post('/auto-generate/run', async (_req, res) => {
+  const { getMaintenanceQueue } = await import('@autotube/job-queue');
+  const job = await getMaintenanceQueue().add(
+    'auto_generate_sweep',
+    { kind: 'auto_generate_sweep' },
+    { jobId: `auto_generate_sweep_manual_${Date.now()}` },
+  );
+  res.status(202).json({
+    message: 'Sweep de auto-generación encolado',
+    jobId: job.id,
+  });
+});

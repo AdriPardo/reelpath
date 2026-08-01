@@ -1,6 +1,12 @@
 import 'dotenv/config';
-import { createPipelineWorker } from '@autotube/job-queue';
+import {
+  closeQueues,
+  createMaintenanceWorker,
+  createPipelineWorker,
+  ensureAutoGenerateSweepSchedule,
+} from '@autotube/job-queue';
 import { processPipelineJob } from './pipeline.js';
+import { runAutoGenerateSweep } from './auto-generate-sweep.js';
 import { captureWorkerError, initSentryForWorker, Sentry } from './sentry.js';
 
 initSentryForWorker();
@@ -13,6 +19,23 @@ const worker = createPipelineWorker(async (job) => {
 
 worker.on('failed', (job, err) => {
   console.error(`[worker] Job failed: ${job?.id}`, err.message);
+  captureWorkerError(err, job ?? undefined);
+});
+
+const maintenanceWorker = createMaintenanceWorker(async (job) => {
+  if (job.data.kind !== 'auto_generate_sweep') {
+    console.warn(`[worker] Unknown maintenance job: ${job.name}`);
+    return;
+  }
+  console.info('[worker] auto_generate_sweep start');
+  const result = await runAutoGenerateSweep();
+  console.info(
+    `[worker] auto_generate_sweep done checked=${result.checked} triggered=${result.triggered} skipped=${result.skipped}`,
+  );
+});
+
+maintenanceWorker.on('failed', (job, err) => {
+  console.error(`[worker] Maintenance job failed: ${job?.id}`, err.message);
   captureWorkerError(err, job ?? undefined);
 });
 
@@ -36,6 +59,12 @@ worker.on('ready', () => {
     } catch (err) {
       console.warn('[worker] No se pudieron cargar secretos de plataforma:', err);
     }
+    try {
+      await ensureAutoGenerateSweepSchedule();
+      console.log('[worker] auto_generate_sweep scheduled (hourly)');
+    } catch (err) {
+      console.warn('[worker] No se pudo programar auto_generate_sweep:', err);
+    }
   })();
 });
 
@@ -49,7 +78,8 @@ async function shutdown(signal: string): Promise<void> {
   const forceExit = setTimeout(() => process.exit(1), 5000);
   forceExit.unref();
 
-  await worker.close(true);
+  await Promise.all([worker.close(true), maintenanceWorker.close(true)]);
+  await closeQueues();
   clearTimeout(forceExit);
   process.exit(0);
 }

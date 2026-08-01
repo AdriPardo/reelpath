@@ -1,19 +1,19 @@
 # Planificador de publicación (Publication Planner)
 
-Módulo MVP para maximizar visualizaciones programando vídeos largos y Shorts en horarios óptimos para audiencia hispanohablante (ES/LATAM).
+Módulo para maximizar visualizaciones programando vídeos largos y Shorts en horarios óptimos (heurística ES/LATAM + override por analytics del canal).
 
-## Estado actual (MVP)
+## Estado actual
 
 | Componente | Ubicación | Estado |
 |------------|-----------|--------|
-| Tipos + config canal | `packages/shared/src/types.ts`, `config-system` | ✅ |
-| Servicio de cálculo | `packages/shared/src/publication-planner.ts` | ✅ |
+| Tipos + config canal | `packages/shared`, `config-system` | ✅ |
+| Cálculo de slots | `packages/shared/src/publication-planner.ts` | ✅ |
+| Insights analytics | `publish-insights.ts` + `deriveChannelPublishInsights` | ✅ |
 | API calendario | `GET /api/channels/:id/publication-plan` | ✅ |
-| Auto-schedule al aprobar | `POST /api/videos/:id/approve` | ✅ |
-| Auto-schedule al disparar pipeline | `POST /api/pipelines/trigger` | ✅ |
-| Shorts con horarios óptimos | `worker/pipeline.ts` + `youtube-publisher/shorts.ts` | ✅ |
-| UI config + calendario | `ChannelSettingsForm`, pestaña Planificación | ✅ |
-| Feedback analytics → horarios | — | 🔜 Fase 2 |
+| Auto-schedule al aprobar / trigger | `resolveChannelAutoPublishAt` | ✅ |
+| Shorts con horarios | worker + youtube-publisher | ✅ |
+| Auto-generación con margen | worker sweep horario | ✅ |
+| UI config + calendario | Planificación del canal | ✅ |
 
 ## Configuración por canal (`ChannelConfig`)
 
@@ -22,123 +22,66 @@ Módulo MVP para maximizar visualizaciones programando vídeos largos y Shorts e
 | `publishPlannerEnabled` | `false` | Activa asignación automática de fechas |
 | `timezone` | `Europe/Madrid` | Zona horaria IANA |
 | `maxLongsPerWeek` | `1` | Máximo de largos por semana ISO |
-| `preferredPublishHour` | `19` | Hora local para vídeos largos (0-23) |
-| `preferredPublishDays` | `[5]` | Días preferidos (0=dom … 6=sáb). Varios días = varios slots/semana |
+| `preferredPublishHour` | `19` | Hora local heurística (0-23); se sustituye si hay insights confidentes |
+| `preferredPublishDays` | `[5]` | Días preferidos (0=dom … 6=sáb). Hard filter |
 | `minDaysBetweenLongs` | `ceil(7/maxLongsPerWeek)` | Separación mínima entre largos |
-| `shortPreferredSlots` | `[{12:30}, {19:00}]` | Horarios para Shorts extra |
+| `shortPreferredSlots` | `[{12:30}, {19:00}]` | Horarios Shorts extra |
+| `autoGenerateEnabled` | `false` | Dispara pipelines solos según el planificador |
+| `autoGenerateLeadDays` | `1` | Días de margen antes del slot (0–3) |
 
-### Estrategia recomendada (2 largos/semana + monetización)
+## Insights (analytics → slots)
 
-Canales seed (`fraude-corporativo`, `curiosidades-historia`) usan:
+Con ≥ **5** vídeos con `AnalyticsSnapshot` real:
 
-| Parámetro | Valor | Motivo |
-|-----------|-------|--------|
-| `maxLongsPerWeek` | `2` | Ritmo sostenible para monetización |
-| `preferredPublishDays` | `[2, 5]` | Martes y viernes 19:00 — prime time ES |
-| `minDaysBetweenLongs` | `3` | Espacio entre martes→viernes |
-| `shortsMode` | `mixed` | Cortes del largo + teasers funnel |
-| `shortsPerVideo` | `6` | 3 cortes + 3 teasers promocionales |
-| `longShortsFromVideo` | `3` | Partes distribuidas (inicio/medio/final) |
-| `shortsPublishIntervalDays` | `1` | Un Short por día tras el largo (~6 días de embudo) |
-| `reviewRequired` | `true` | Control de calidad antes de publicar |
+1. Se puntúa cada hora/día (retención 50% + views 30% + CTR 20%).
+2. `preferredPublishHour` → mejor hora del canal.
+3. `preferredPublishDays` se **reordenan** por score (no se eliminan días marcados).
+4. Shorts pueden heredar slots derivados de las mejores horas.
 
-No hace falta `publishPlannerSlots`: varios días se modelan con `preferredPublishDays` + `maxLongsPerWeek`.
+Sin suficientes datos se usa la heurística ES/LATAM (viernes ~19:00, Shorts 12:30/19:00).
 
-## Algoritmo MVP
+## Auto-generación con margen
 
-### Vídeos largos — `computeNextPublishSlot()`
+```
+Sweep horario (BullMQ maintenance)
+  → canales autoGenerateEnabled + publishPlannerEnabled
+  → próximo slot (planner + insights)
+  → si hoy >= slot − leadDays y no hay pipeline/vídeo para ese día
+  → enqueuePipeline(metadata.scheduledPublishAt = slot)
+```
 
-1. Partir de `now + 60s` (margen mínimo de YouTube).
-2. Buscar el próximo día en `preferredPublishDays` a `preferredPublishHour:00` en `timezone`.
-3. Validar restricciones:
-   - No más de `maxLongsPerWeek` largos en la misma semana ISO.
-   - Al menos `minDaysBetweenLongs` desde otro largo programado.
-4. Si no hay hueco en 56 días, fallback: último programado + `minDaysBetweenLongs`.
+- Máximo **1** pipeline nuevo por canal por pasada.
+- Idempotencia: no repite si ya hay vídeo programado ese día local o un run `source=auto_generate` reciente para el mismo slot.
+- Requiere YouTube conectado si `publishYoutube !== false`.
+- Admin: `POST /api/admin/auto-generate/run`
+- Script: `npx tsx scripts/auto-generate-sweep.ts`
 
-### Shorts — `computeShortPublishSlots()`
-
-- **Short 0**: mismo momento que el vídeo largo.
-- **Shorts 1+**: recorre `shortPreferredSlots` (12:30, 19:00) en días siguientes, con mínimo 30 min entre slots.
-
-### Calendario — `buildPublicationCalendar()`
-
-- Incluye vídeos en cola (`pending`, `approved`, `scheduled`).
-- Vídeos ya programados: muestra fecha actual + Shorts derivados.
-- Vídeos sin fecha: propone slots secuenciales respetando restricciones.
+Ejemplo: viernes 19:00 + margen 1 → se genera el **jueves**.
 
 ## Integración pipeline
 
 ```
-Usuario aprueba/dispara pipeline
-  ├─ ¿Fecha manual? → usar manual (prioridad)
-  └─ ¿publishPlannerEnabled? → computeNextPublishSlot()
+Usuario aprueba / dispara / auto-generate
+  ├─ ¿Fecha manual? → usar manual
+  └─ ¿publishPlannerEnabled? → computeNextPublishSlot(+insights)
        └─ metadata.scheduledPublishAt / Video.scheduledPublishAt
 
 publish_youtube_shorts
-  ├─ ¿publishPlannerEnabled? → computeShortPublishSlots()
-  └─ else → intervalDays (comportamiento anterior)
+  ├─ ¿publishPlannerEnabled? → computeShortPublishSlots(+insights)
+  └─ else → intervalDays
 ```
-
-**Compatibilidad:** scheduling manual sigue funcionando; el planificador solo actúa cuando no hay fecha explícita.
 
 ## API
 
 ### `GET /api/channels/:id/publication-plan`
 
-```json
-{
-  "channelTimezone": "Europe/Madrid",
-  "plannerEnabled": true,
-  "nextAvailableSlot": "2026-07-17T17:00:00.000Z",
-  "entries": [
-    {
-      "videoId": "clx…",
-      "title": "El misterio de…",
-      "scheduledAt": "2026-07-17T17:00:00.000Z",
-      "recommendation": "Publica el viernes a las 19:00 (Europe/Madrid)",
-      "shorts": [
-        { "orderIndex": 0, "scheduledAt": "…", "label": "Short 1: con el vídeo largo" },
-        { "orderIndex": 1, "scheduledAt": "…", "label": "Short 2: sábado 12:30" }
-      ]
-    }
-  ]
-}
-```
+Incluye `insights` / `insightsSource` (`heuristic` | `analytics`) y feedback de retención por slot.
 
-## Fase 2 — Analytics feedback loop
+### `POST /api/admin/auto-generate/run`
 
-Cuando haya suficientes `AnalyticsSnapshot` reales:
+Encola un sweep inmediato (platform admin).
 
-1. **`deriveBestPublishHours(channelId)`**
-   - Agrupar snapshots por hora de publicación (`publishedAt`).
-   - Ponderar por views, CTR, retención.
-   - Devolver top 3 horas por tipo (largo / short).
+## Fuera de alcance (aún)
 
-2. **Override dinámico**
-   - Si confianza > umbral (≥5 vídeos con datos reales), sustituir `preferredPublishHour` heurístico.
-
-3. **YouTube Analytics API**
-   - Métrica `views` por `dayOfWeek` + `hour` (requiere scope ampliado).
-   - Guardar en `ChannelAnalyticsProfile` (modelo futuro).
-
-4. **Ajuste post-publicación**
-   - Job semanal que reprograma vídeos aún no publicados si analytics cambian.
-
-## Investigación de referencia (ES/LATAM)
-
-| Tipo | Horario recomendado | Fuente |
-|------|---------------------|--------|
-| Vídeo largo | Viernes 18:00–20:00 CET | Prime time fin de semana |
-| Short 1 | Con el largo | Maximiza impulso inicial |
-| Short 2+ | 12:30 / 19:00 local | Mediodía + tarde (móvil) |
-
-Defaults del MVP alineados con estas heurísticas; se refinan con datos reales del canal en Fase 2.
-
-## Tests recomendados
-
-Estos checks ya están cubiertos en `packages/shared/src/publication-planner*.test.ts` (Vitest) y se ejecutan con `npm run test -w @autotube/shared`:
-
-- `computeNextPublishSlot` respeta `maxLongsPerWeek` y `minDaysBetweenLongs`.
-- `zonedLocalToUtc` con DST (Europe/Madrid marzo/octubre).
-- Manual override no es sobreescrito por planner.
-- Shorts usan slots del planner solo cuando `publishPlannerEnabled=true`.
+- Reprogramar vídeos ya en YouTube si cambian analytics.
+- Métricas YouTube Analytics `dayOfWeek×hour` con scope extra (usamos snapshots propios).

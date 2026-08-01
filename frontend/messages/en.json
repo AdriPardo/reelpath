@@ -238,7 +238,7 @@
     "priceStudio": "€399/month"
   },
   "dashboard": {
-    "title": "Dashboard",
+    "title": "Home",
     "greeting": "Hi, {name}",
     "subtitleNoChannels": "{org} — Create your first channel to get started",
     "subtitleOnboarding": "{org} — Finish setup and generate your first video",
@@ -296,7 +296,7 @@
   },
   "channels": {
     "title": "Channels",
-    "subtitle": "Manage niches, connected accounts, and generate videos",
+    "subtitle": "Set up niches, connect YouTube, and start generations",
     "addChannel": "Add channel",
     "loadError": "Could not load channels",
     "emptyTitle": "Create your first channel",
@@ -526,6 +526,9 @@
       "disabledHintAction": "Open «Publication planner» below, turn it on, and save.",
       "statusOn": "On",
       "timezone": "{tz}",
+      "insightsTitle": "Best hour from channel metrics",
+      "insightsOptimalHour": "Channel best: {hour}:00 ({count} videos)",
+      "insightsHeuristic": "Using heuristic (not enough data yet)",
       "nextSlot": "Next open slot: {date}",
       "tooltip": "Dates follow timezone, preferred days, and queued videos. Applying dates only saves in Reelpath; it does not publish to YouTube.",
       "emptyTitle": "Nothing queued this week",
@@ -714,6 +717,11 @@
       "shortSlotRemove": "Remove",
       "plannerConfigOpenHint": "Days, timezone, and Shorts slots",
       "plannerConfigClosedHint": "Turn it on to propose dates automatically",
+      "autoGenerateLabel": "Automatic video generation",
+      "autoGenerateTooltip": "Starts pipelines on its own based on the planner preferred days. Requires the planner to be enabled.",
+      "autoGenerateLeadLabel": "Lead time before publish (days)",
+      "autoGenerateLeadTooltip": "How many days before the publish slot the video is generated (0 = same day).",
+      "autoGenerateLeadHint": "E.g. lead 1 and Friday 19:00 → generates on Thursday.",
       "publishingLegend": "Publishing",
       "reviewRequiredLabel": "Requires human review before publishing",
       "reviewRequiredTooltip": "If enabled, the video will need manual approval before publishing.",
@@ -747,7 +755,7 @@
   },
   "videos": {
     "title": "Videos",
-    "subtitle": "Library of all AI-generated content",
+    "subtitle": "Your library of long videos and Shorts",
     "loadError": "Could not load library",
     "noResults": "No results for «{query}»",
     "noFiltered": "No {filter} videos",
@@ -923,7 +931,7 @@
   },
   "review": {
     "title": "Review",
-    "subtitle": "Approve your videos before publishing to YouTube",
+    "subtitle": "Approve or schedule before publishing to YouTube",
     "subtitleWithCount": "{count, plural, one {# video pending approval} other {# videos pending approval}}",
     "loadError": "Could not load review queue",
     "emptyTitle": "Queue empty",
@@ -1001,7 +1009,7 @@
   },
   "pipelines": {
     "title": "Generations",
-    "subtitle": "Track each production from script to review",
+    "subtitle": "Follow each production in real time",
     "loadError": "Could not load generations",
     "emptyTitle": "No productions yet",
     "emptyDesc": "Go to a channel and click «Generate video» to create your first video.",

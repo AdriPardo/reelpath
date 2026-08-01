@@ -19,6 +19,8 @@ type PlannerFormConfig = Pick<
   | 'preferredPublishDays'
   | 'minDaysBetweenLongs'
   | 'shortPreferredSlots'
+  | 'autoGenerateEnabled'
+  | 'autoGenerateLeadDays'
 >;
 
 const WEEKDAY_KEYS = [
@@ -90,6 +92,8 @@ export function ChannelPlannerSettings({
     minDaysBetweenLongs:
       initialConfig.minDaysBetweenLongs ?? Math.ceil(7 / (initialConfig.maxLongsPerWeek ?? 1)),
     shortPreferredSlots: initialConfig.shortPreferredSlots,
+    autoGenerateEnabled: initialConfig.autoGenerateEnabled === true,
+    autoGenerateLeadDays: initialConfig.autoGenerateLeadDays ?? 1,
   });
   const [slotInputs, setSlotInputs] = useState(() =>
     slotsToStrings(initialConfig.shortPreferredSlots),
@@ -134,6 +138,8 @@ export function ChannelPlannerSettings({
         ? config.preferredPublishDays
         : [5],
       shortPreferredSlots: stringsToSlots(slotInputs),
+      autoGenerateEnabled: config.autoGenerateEnabled === true && config.publishPlannerEnabled === true,
+      autoGenerateLeadDays: Math.min(3, Math.max(0, Number(config.autoGenerateLeadDays ?? 1))),
     };
     try {
       await api(`/api/channels/${channelId}`, {
@@ -178,6 +184,46 @@ export function ChannelPlannerSettings({
               <InfoTooltip content={t('plannerEnabledTooltip')} />
             </span>
           </label>
+
+          {enabled && (
+            <>
+              <label className="modal-checkbox">
+                <input
+                  type="checkbox"
+                  checked={config.autoGenerateEnabled === true}
+                  onChange={() =>
+                    setConfig((c) => ({ ...c, autoGenerateEnabled: !c.autoGenerateEnabled }))
+                  }
+                />
+                <span className="checkbox-label-row">
+                  <span>{t('autoGenerateLabel')}</span>
+                  <InfoTooltip content={t('autoGenerateTooltip')} />
+                </span>
+              </label>
+              {config.autoGenerateEnabled === true && (
+                <label className="modal-field">
+                  <span className="field-label-row">
+                    <span>{t('autoGenerateLeadLabel')}</span>
+                    <InfoTooltip content={t('autoGenerateLeadTooltip')} />
+                  </span>
+                  <input
+                    type="number"
+                    className="topic-input"
+                    min={0}
+                    max={3}
+                    value={config.autoGenerateLeadDays ?? 1}
+                    onChange={(e) =>
+                      setConfig((c) => ({
+                        ...c,
+                        autoGenerateLeadDays: Number(e.target.value),
+                      }))
+                    }
+                  />
+                  <span className="text-muted text-sm">{t('autoGenerateLeadHint')}</span>
+                </label>
+              )}
+            </>
+          )}
 
           {enabled && (
             <div className="planner-config-grid">

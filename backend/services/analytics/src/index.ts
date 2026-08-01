@@ -12,8 +12,9 @@ import {
   type YouTubeMetricsResult,
 } from './youtube-analytics.js';
 import { buildRetentionByPublishHour } from './retention-by-hour.js';
+import { deriveChannelPublishInsights } from './derive-publish-insights.js';
 
-export { buildRetentionByPublishHour };
+export { buildRetentionByPublishHour, deriveChannelPublishInsights };
 
 export type { VideoMetrics } from './types.js';
 import type { VideoMetrics } from './types.js';

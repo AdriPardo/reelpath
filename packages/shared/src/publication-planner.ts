@@ -1,4 +1,8 @@
 import type { ChannelConfig } from './types.js';
+import {
+  applyInsightsToPlannerConfig,
+  type ChannelPublishInsights,
+} from './publish-insights.js';
 
 /** Configuración efectiva del planificador (defaults incluidos). */
 export interface PublicationPlannerConfig {
@@ -43,6 +47,8 @@ export interface PublicationCalendar {
   entries: VideoPublicationPlan[];
   nextAvailableSlot: Date | null;
   plannerFeedback?: PlannerSlotFeedback[];
+  /** heuristic = defaults del canal; analytics = override por métricas reales. */
+  insightsSource?: 'heuristic' | 'analytics';
 }
 
 const DEFAULT_TIMEZONE = 'Europe/Madrid';
@@ -78,6 +84,13 @@ export function resolvePlannerConfig(config: ChannelConfig): PublicationPlannerC
   };
 }
 
+export function resolvePlannerConfigWithInsights(
+  config: ChannelConfig,
+  insights?: ChannelPublishInsights | null,
+): PublicationPlannerConfig {
+  return applyInsightsToPlannerConfig(resolvePlannerConfig(config), insights);
+}
+
 function clampInt(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) return min;
   return Math.min(max, Math.max(min, Math.round(value)));
@@ -108,7 +121,7 @@ interface ZonedParts {
   weekday: number;
 }
 
-function getZonedParts(date: Date, timeZone: string): ZonedParts {
+export function getZonedParts(date: Date, timeZone: string): ZonedParts {
   const fmt = new Intl.DateTimeFormat('en-US', {
     timeZone,
     year: 'numeric',
@@ -211,14 +224,19 @@ function isSlotAllowed(
 
 /**
  * Calcula el próximo hueco óptimo para publicar un vídeo largo.
- * Reglas MVP: días preferidos + hora en timezone del canal, sin saturar la semana.
+ * Reglas: días preferidos + hora en timezone del canal, sin saturar la semana.
+ * Con insights confidentes, usa hora/días reordenados por analytics.
  */
 export function computeNextPublishSlot(
   config: ChannelConfig,
   existingScheduledVideos: Date[],
-  options?: { referenceDate?: Date; minLeadMs?: number },
+  options?: {
+    referenceDate?: Date;
+    minLeadMs?: number;
+    insights?: ChannelPublishInsights | null;
+  },
 ): Date {
-  const planner = resolvePlannerConfig(config);
+  const planner = resolvePlannerConfigWithInsights(config, options?.insights);
   const now = options?.referenceDate ?? new Date();
   const minLead = options?.minLeadMs ?? MIN_LEAD_MS;
   const earliest = new Date(now.getTime() + minLead);
@@ -274,11 +292,12 @@ export function computeShortPublishSlots(
   baseTime: Date,
   shortCount: number,
   config: ChannelConfig,
+  insights?: ChannelPublishInsights | null,
 ): Date[] {
   if (shortCount <= 0) return [];
   if (shortCount === 1) return [baseTime];
 
-  const planner = resolvePlannerConfig(config);
+  const planner = resolvePlannerConfigWithInsights(config, insights);
   const slots: Date[] = [baseTime];
   const baseParts = getZonedParts(baseTime, planner.timezone);
   let previous = baseTime;
@@ -343,9 +362,11 @@ export function buildPublicationCalendar(
   options?: {
     shortCountPerVideo?: number;
     referenceDate?: Date;
+    insights?: ChannelPublishInsights | null;
   },
 ): PublicationCalendar {
-  const planner = resolvePlannerConfig(config);
+  const insights = options?.insights;
+  const planner = resolvePlannerConfigWithInsights(config, insights);
   const shortCount = options?.shortCountPerVideo ?? resolveDefaultShortCount(config);
 
   if (!planner.publishPlannerEnabled) {
@@ -354,6 +375,7 @@ export function buildPublicationCalendar(
       plannerEnabled: false,
       entries: [],
       nextAvailableSlot: null,
+      insightsSource: 'heuristic',
     };
   }
 
@@ -368,7 +390,7 @@ export function buildPublicationCalendar(
   const entries: VideoPublicationPlan[] = [];
 
   for (const video of alreadyScheduled) {
-    const shortDates = computeShortPublishSlots(video.scheduledAt, shortCount, config);
+    const shortDates = computeShortPublishSlots(video.scheduledAt, shortCount, config, insights);
     entries.push({
       videoId: video.videoId,
       title: video.title,
@@ -385,10 +407,11 @@ export function buildPublicationCalendar(
   for (const video of unscheduled) {
     const slot = computeNextPublishSlot(config, assigned, {
       referenceDate: options?.referenceDate,
+      insights,
     });
     assigned.push(slot);
 
-    const shortDates = computeShortPublishSlots(slot, shortCount, config);
+    const shortDates = computeShortPublishSlots(slot, shortCount, config, insights);
     entries.push({
       videoId: video.videoId,
       title: video.title,
@@ -404,6 +427,7 @@ export function buildPublicationCalendar(
 
   const nextAvailableSlot = computeNextPublishSlot(config, assigned, {
     referenceDate: options?.referenceDate,
+    insights,
   });
 
   return {
@@ -411,6 +435,7 @@ export function buildPublicationCalendar(
     plannerEnabled: true,
     entries,
     nextAvailableSlot,
+    insightsSource: insights?.confident ? 'analytics' : 'heuristic',
   };
 }
 
@@ -431,10 +456,11 @@ export function resolveAutoScheduledPublishAt(
   config: ChannelConfig,
   explicit: Date | null | undefined,
   existingScheduled: Date[],
+  insights?: ChannelPublishInsights | null,
 ): Date | null {
   if (explicit) return explicit;
   if (!resolvePlannerConfig(config).publishPlannerEnabled) return null;
-  return computeNextPublishSlot(config, existingScheduled);
+  return computeNextPublishSlot(config, existingScheduled, { insights });
 }
 
 /** Retención media por hora de publicación (0-23) en timezone del canal. */

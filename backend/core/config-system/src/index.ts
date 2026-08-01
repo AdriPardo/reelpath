@@ -290,6 +290,8 @@ export const channelConfigSchema = z.object({
       }),
     )
     .optional(),
+  autoGenerateEnabled: z.boolean().default(false),
+  autoGenerateLeadDays: z.coerce.number().int().min(0).max(3).default(1),
   scriptGenerationMode: z.enum(['monolithic', 'chunked']).optional(),
   videoMotionIntensity: z.enum(['subtle', 'normal', 'dynamic']).optional(),
   visualSourceMode: z.enum(['image', 'stock', 'mixed']).optional(),
