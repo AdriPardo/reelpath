@@ -369,14 +369,8 @@
       }
     },
     "studio": {
-      "controlRoom": "Sala de control",
-      "topic": "Tema",
-      "production": "Producción",
-      "review": "Revisión",
-      "eyebrow": "Sala de control",
       "newGeneration": "Nueva generación",
       "description": "Indica un tema o deja que la IA elija según tu nicho. Cuando termine, podrás revisar el vídeo antes de publicarlo.",
-      "flowAria": "Flujo de generación",
       "topicLabel": "Tema del vídeo",
       "topicPlaceholder": "Los secretos del Imperio Romano…",
       "topicHint": "Opcional. Si lo dejas vacío, elegimos un tema acorde a tu nicho.",
@@ -393,7 +387,6 @@
       "success": "Vídeo subido correctamente",
       "uploading": "Subiendo…",
       "selectFile": "Seleccionar archivo",
-      "importEyebrow": "Importar contenido",
       "tooltip": "Sube un MP4 (mín. 30 s, máx. {max} MB). Genera Shorts automáticamente con el flujo de cortes, sin regenerar guion. Requiere formato largo y YouTube Shorts activados en el canal.",
       "tooltipAria": "Información sobre subida de vídeo largo",
       "desc": "Arrastra un MP4 o selecciónalo desde tu equipo. Generaremos Shorts automáticamente a partir del vídeo, sin regenerar el guion.",
@@ -751,6 +744,13 @@
       "shortsIntervalTooltip": "El primer Short puede salir al aprobar el vídeo largo y los siguientes se programan con este intervalo. Usa 0 para publicarlos todos a la vez.",
       "minViralLabel": "Puntuación mínima de viralidad (0 = sin filtro)",
       "minViralTooltip": "Si la idea inicial queda por debajo de este umbral, el sistema puede regenerar propuestas hasta intentar alcanzar una opción más prometedora."
+    },
+    "createPanel": {
+      "title": "Crear contenido",
+      "subtitle": "Genera con IA o sube un MP4 para recortar Shorts.",
+      "generate": "Generar con IA",
+      "upload": "Subir MP4",
+      "modesAria": "Modo de creación"
     }
   },
   "videos": {

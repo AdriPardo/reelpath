@@ -1,14 +1,13 @@
 'use client';
 
 import { ChannelAnalyticsPanel } from '@/components/ChannelAnalyticsPanel';
+import { ChannelCreatePanel } from '@/components/ChannelCreatePanel';
 import { PublicationPlanPanel } from '@/components/PublicationPlanPanel';
 import { ChannelDeleteButton } from '@/components/ChannelDeleteButton';
 import { ChannelGeneralForm } from '@/components/ChannelGeneralForm';
 import { ChannelIntegrationsPanel } from '@/components/ChannelIntegrationsPanel';
 import { ChannelPlannerSettings } from '@/components/ChannelPlannerSettings';
 import { ChannelSettingsForm } from '@/components/ChannelSettingsForm';
-import { TriggerPipelineButton } from '@/components/TriggerPipelineButton';
-import { UploadLongVideoButton } from '@/components/UploadLongVideoButton';
 import { Chip } from '@/components/ui/Chip';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import type { ChannelDetail, ChannelIntegrationsResponse } from '@/lib/api';
@@ -110,8 +109,7 @@ export function ChannelDetailTabs({
         </div>
       </div>
 
-      <TriggerPipelineButton channelId={channel.id} />
-      <UploadLongVideoButton channelId={channel.id} />
+      <ChannelCreatePanel channelId={channel.id} />
 
       <div className="filter-tabs" role="tablist" aria-label={tt('sectionsAria')}>
         {tabs.map(({ value, label }) => (
@@ -143,8 +141,8 @@ export function ChannelDetailTabs({
 
         {current === 'contenido' && (
           <>
-            <div className="section-title-row" style={{ marginBottom: '0.5rem' }}>
-              <h3 style={{ margin: 0 }}>{t('contentSection')}</h3>
+            <div className="section-title-row">
+              <h3>{t('contentSection')}</h3>
               <InfoTooltip content={t('tabs.settingsTooltip')} />
             </div>
             <ChannelSettingsForm
@@ -201,7 +199,7 @@ export function ChannelDetailTabs({
         {current === 'planificacion' && (
           <div className="planner-tab">
             <div className="section-title-row planner-tab-title">
-              <h3 style={{ margin: 0 }}>{t('calendarSection')}</h3>
+              <h3>{t('calendarSection')}</h3>
               <InfoTooltip content={t('tabs.calendarTooltip')} />
             </div>
             <PublicationPlanPanel
@@ -237,8 +235,8 @@ export function ChannelDetailTabs({
 
         {current === 'integraciones' && (
           <>
-            <div className="section-title-row" style={{ marginBottom: '0.75rem' }}>
-              <h3 style={{ margin: 0 }}>{t('accountsSection')}</h3>
+            <div className="section-title-row">
+              <h3>{t('accountsSection')}</h3>
               <InfoTooltip content={t('tabs.integrationsTooltip')} />
             </div>
             <ChannelIntegrationsPanel channelId={channel.id} integrations={integrations} />

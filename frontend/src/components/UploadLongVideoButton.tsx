@@ -66,7 +66,13 @@ function uploadWithProgress(
   });
 }
 
-export function UploadLongVideoButton({ channelId }: { channelId: string }) {
+export function UploadLongVideoButton({
+  channelId,
+  embedded = false,
+}: {
+  channelId: string;
+  embedded?: boolean;
+}) {
   const t = useTranslations('channels.uploadLong');
   const inputRef = useRef<HTMLInputElement>(null);
   const titleId = useId();
@@ -179,21 +185,34 @@ export function UploadLongVideoButton({ channelId }: { channelId: string }) {
   }
 
   return (
-    <section className="upload-long-panel" aria-labelledby={`upload-long-heading-${channelId}`}>
-      <div className="upload-long-panel-glow" aria-hidden="true" />
+    <section
+      className={embedded ? 'upload-long-embedded' : 'upload-long-panel'}
+      aria-labelledby={embedded ? undefined : `upload-long-heading-${channelId}`}
+    >
+      {!embedded && (
+        <header className="upload-long-header">
+          <div className="upload-long-title-row">
+            <h3 id={`upload-long-heading-${channelId}`} className="upload-long-title">
+              {t('title')}
+            </h3>
+            <InfoTooltip
+              content={t('tooltip', { max: MAX_SIZE_MB })}
+              ariaLabel={t('tooltipAria')}
+            />
+          </div>
+          <p className="upload-long-desc">{t('desc')}</p>
+        </header>
+      )}
 
-      <header className="upload-long-header">
-        <div className="upload-long-title-row">
-          <h3 id={`upload-long-heading-${channelId}`} className="upload-long-title">
-            {t('title')}
-          </h3>
+      {embedded && (
+        <p className="upload-long-desc upload-long-desc-embedded">
+          {t('desc')}{' '}
           <InfoTooltip
             content={t('tooltip', { max: MAX_SIZE_MB })}
             ariaLabel={t('tooltipAria')}
           />
-        </div>
-        <p className="upload-long-desc">{t('desc')}</p>
-      </header>
+        </p>
+      )}
 
       {phase === 'success' && videoId ? (
         <div className="upload-long-result upload-long-result-success" role="status">
@@ -217,7 +236,7 @@ export function UploadLongVideoButton({ channelId }: { channelId: string }) {
             <input
               id={titleId}
               type="text"
-              className="upload-long-title-input"
+              className="upload-long-title-input form-input"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={t('titlePlaceholder')}
@@ -318,7 +337,7 @@ export function UploadLongVideoButton({ channelId }: { channelId: string }) {
 
           <button
             type="button"
-            className="btn btn-primary btn-lg upload-long-cta"
+            className="btn btn-primary upload-long-cta"
             disabled={!selectedFile || uploading}
             onClick={handleUploadClick}
           >

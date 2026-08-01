@@ -131,6 +131,8 @@ export default function RegisterPage() {
             <Link href={LEGAL_URLS.terms}>{tc('terms')}</Link>
             <span aria-hidden="true">·</span>
             <Link href={LEGAL_URLS.privacy}>{tc('privacy')}</Link>
+            <span aria-hidden="true">·</span>
+            <a href={`mailto:${PLATFORM.contactEmail}`}>{tc('contact')}</a>
           </footer>
         </div>
       </section>

@@ -13,7 +13,13 @@ function minScheduleInputValue(): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export function TriggerPipelineButton({ channelId }: { channelId: string }) {
+export function TriggerPipelineButton({
+  channelId,
+  embedded = false,
+}: {
+  channelId: string;
+  embedded?: boolean;
+}) {
   const locale = useLocale();
   const t = useTranslations('channels.studio');
   const tc = useTranslations('channels.card');
@@ -76,97 +82,86 @@ export function TriggerPipelineButton({ channelId }: { channelId: string }) {
     }
   }
 
-  return (
-    <section className="studio-panel" aria-labelledby="studio-heading">
-      <div className="studio-panel-glow" aria-hidden="true" />
+  const form = (
+    <div className="studio-form">
+      {!embedded && (
+        <header className="studio-header">
+          <h3 id="studio-heading" className="studio-title">
+            {t('newGeneration')}
+          </h3>
+          <p className="studio-desc">{t('description')}</p>
+        </header>
+      )}
 
-      <header className="studio-header">
-        <h3 id="studio-heading" className="studio-title">
-          {t('newGeneration')}
-        </h3>
-        <p className="studio-desc">{t('description')}</p>
-      </header>
+      <div className="studio-field">
+        <label htmlFor={topicId} className="studio-field-label">
+          {t('topicLabel')}
+        </label>
+        <input
+          id={topicId}
+          type="text"
+          className="studio-topic-input form-input"
+          placeholder={t('topicPlaceholder')}
+          value={topic}
+          onChange={(e) => setTopic(e.target.value)}
+          maxLength={200}
+          disabled={loading}
+        />
+        <p className="studio-field-hint">{t('topicHint')}</p>
+      </div>
 
-      <ol className="studio-flow" aria-label={t('flowAria')}>
-        <li className="studio-flow-step studio-flow-step-active">
-          <span className="studio-flow-num" aria-hidden="true">01</span>
-          <span className="studio-flow-label">{t('topic')}</span>
-        </li>
-        <li className="studio-flow-connector" aria-hidden="true" />
-        <li className="studio-flow-step">
-          <span className="studio-flow-num" aria-hidden="true">02</span>
-          <span className="studio-flow-label">{t('production')}</span>
-        </li>
-        <li className="studio-flow-connector" aria-hidden="true" />
-        <li className="studio-flow-step">
-          <span className="studio-flow-num" aria-hidden="true">03</span>
-          <span className="studio-flow-label">{t('review')}</span>
-        </li>
-      </ol>
-
-      <div className="studio-form">
-        <div className="studio-field">
-          <label htmlFor={topicId} className="studio-field-label">
-            {t('topicLabel')}
+      <details
+        className="studio-advanced"
+        open={scheduleEnabled}
+        onToggle={(e) => {
+          const open = (e.target as HTMLDetailsElement).open;
+          setScheduleEnabled(open);
+          if (open && !scheduleAt) {
+            setScheduleAt(minScheduleInputValue());
+          }
+        }}
+      >
+        <summary className="studio-advanced-summary">{t('scheduleSummary')}</summary>
+        <div className="studio-advanced-body">
+          <label htmlFor={scheduleId} className="studio-field-label">
+            {t('dateTime')}
           </label>
           <input
-            id={topicId}
-            type="text"
-            className="studio-topic-input"
-            placeholder={t('topicPlaceholder')}
-            value={topic}
-            onChange={(e) => setTopic(e.target.value)}
-            maxLength={200}
+            id={scheduleId}
+            type="datetime-local"
+            className="studio-schedule-input form-input"
+            value={scheduleAt}
+            min={minScheduleInputValue()}
+            onChange={(e) => setScheduleAt(e.target.value)}
             disabled={loading}
           />
-          <p className="studio-field-hint">{t('topicHint')}</p>
+          <p className="studio-field-hint">{t('scheduleHint')}</p>
         </div>
+      </details>
 
-        <details
-          className="studio-advanced"
-          open={scheduleEnabled}
-          onToggle={(e) => {
-            const open = (e.target as HTMLDetailsElement).open;
-            setScheduleEnabled(open);
-            if (open && !scheduleAt) {
-              setScheduleAt(minScheduleInputValue());
-            }
-          }}
-        >
-          <summary className="studio-advanced-summary">{t('scheduleSummary')}</summary>
-          <div className="studio-advanced-body">
-            <label htmlFor={scheduleId} className="studio-field-label">
-              {t('dateTime')}
-            </label>
-            <input
-              id={scheduleId}
-              type="datetime-local"
-              className="studio-schedule-input"
-              value={scheduleAt}
-              min={minScheduleInputValue()}
-              onChange={(e) => setScheduleAt(e.target.value)}
-              disabled={loading}
-            />
-            <p className="studio-field-hint">{t('scheduleHint')}</p>
-          </div>
-        </details>
+      <button
+        type="button"
+        className="btn btn-primary studio-cta"
+        onClick={trigger}
+        disabled={loading}
+      >
+        {loading ? (
+          <>
+            <span className="studio-cta-spinner" aria-hidden="true" />
+            {t('startingProduction')}
+          </>
+        ) : (
+          t('startGeneration')
+        )}
+      </button>
+    </div>
+  );
 
-        <button
-          type="button"
-          className="btn btn-primary btn-lg studio-cta"
-          onClick={trigger}
-          disabled={loading}
-        >
-          {loading ? (
-            <>
-              <span className="studio-cta-spinner" aria-hidden="true" />
-              {t('startingProduction')}
-            </>
-          ) : (
-            t('startGeneration')
-          )}
-        </button>
-      </div>
+  if (embedded) return form;
+
+  return (
+    <section className="studio-panel" aria-labelledby="studio-heading">
+      {form}
     </section>
   );
 }

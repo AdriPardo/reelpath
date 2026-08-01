@@ -369,14 +369,8 @@
       }
     },
     "studio": {
-      "controlRoom": "Control room",
-      "topic": "Topic",
-      "production": "Production",
-      "review": "Review",
-      "eyebrow": "Control room",
       "newGeneration": "New generation",
       "description": "Enter a topic or let AI choose based on your niche. When done, you can review the video before publishing.",
-      "flowAria": "Generation flow",
       "topicLabel": "Video topic",
       "topicPlaceholder": "The secrets of the Roman Empire…",
       "topicHint": "Optional. If left empty, we pick a topic matching your niche.",
@@ -393,7 +387,6 @@
       "success": "Video uploaded successfully",
       "uploading": "Uploading…",
       "selectFile": "Select file",
-      "importEyebrow": "Import content",
       "tooltip": "Upload an MP4 (min. 30 s, max. {max} MB). Automatically generates Shorts via the split flow without regenerating the script. Requires long-form format and YouTube Shorts enabled on the channel.",
       "tooltipAria": "Long video upload information",
       "desc": "Drag an MP4 or select it from your device. We will automatically generate Shorts from the video without regenerating the script.",
@@ -751,6 +744,13 @@
       "shortsIntervalTooltip": "The first Short can publish when the long video is approved and subsequent ones are scheduled at this interval. Use 0 to publish all at once.",
       "minViralLabel": "Minimum virality score (0 = no filter)",
       "minViralTooltip": "If the initial idea falls below this threshold, the system may regenerate proposals to reach a more promising option."
+    },
+    "createPanel": {
+      "title": "Create content",
+      "subtitle": "Generate with AI or upload an MP4 to cut Shorts.",
+      "generate": "Generate with AI",
+      "upload": "Upload MP4",
+      "modesAria": "Creation mode"
     }
   },
   "videos": {
