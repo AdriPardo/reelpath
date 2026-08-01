@@ -188,7 +188,6 @@
     "stepPublishDesc": "Publish to YouTube instantly or schedule a date. Long-form and vertical Shorts.",
     "pricing": "Pricing & plans",
     "pricingCopy": "Start with a 14-day free trial. When you're ready, pick the monthly plan that fits your publishing pace.",
-    "monthlySubscription": "Monthly subscription",
     "pricingAside": "Monthly plans cover production, review, and YouTube publishing.",
     "faq": "Frequently asked questions",
     "faqAiQ": "Does YouTube penalize AI-made content?",
@@ -231,11 +230,15 @@
     "planStudioVideos": "Unlimited",
     "planStudioChannels": "Unlimited",
     "planStudioCta": "Talk to sales",
-    "planFeatureVideos": "Videos",
-    "planFeatureChannels": "Channels",
     "priceCreator": "€79/month",
     "pricePro": "€149/month",
-    "priceStudio": "€399/month"
+    "priceStudio": "€399/month",
+    "priceCreatorValue": "€79",
+    "priceCreatorPeriod": "/month",
+    "priceProValue": "€149",
+    "priceProPeriod": "/month",
+    "priceStudioValue": "€399",
+    "priceStudioPeriod": "/month"
   },
   "dashboard": {
     "title": "Home",

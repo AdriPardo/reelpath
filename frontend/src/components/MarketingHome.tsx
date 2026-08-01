@@ -69,28 +69,31 @@ export function MarketingHome() {
     {
       id: 'starter',
       name: t('planCreator'),
-      priceLabel: t('priceCreator'),
-      videos: t('planCreatorVideos'),
-      channels: t('planCreatorChannels'),
+      desc: t('planCreatorDesc'),
+      amount: t('priceCreatorValue'),
+      period: t('priceCreatorPeriod'),
+      bullets: [t('planCreatorBullet1'), t('planCreatorBullet2'), t('planCreatorBullet3')],
       ctaLabel: t('planCreatorCta'),
       featured: false,
     },
     {
       id: 'pro',
       name: t('planPro'),
-      priceLabel: t('pricePro'),
+      desc: t('planProDesc'),
+      amount: t('priceProValue'),
+      period: t('priceProPeriod'),
       badge: t('planProBadge'),
-      videos: t('planProVideos'),
-      channels: t('planProChannels'),
+      bullets: [t('planProBullet1'), t('planProBullet2'), t('planProBullet3')],
       ctaLabel: t('planProCta'),
       featured: true,
     },
     {
       id: 'unlimited',
       name: t('planStudio'),
-      priceLabel: t('priceStudio'),
-      videos: t('planStudioVideos'),
-      channels: t('planStudioChannels'),
+      desc: t('planStudioDesc'),
+      amount: t('priceStudioValue'),
+      period: t('priceStudioPeriod'),
+      bullets: [t('planStudioBullet1'), t('planStudioBullet2'), t('planStudioBullet3')],
       ctaLabel: t('planStudioCta'),
       featured: false,
     },
@@ -115,7 +118,7 @@ export function MarketingHome() {
             {PLATFORM.name}
           </p>
           <h1 className="home-title home-hero-enter" style={{ ['--home-delay' as string]: '80ms' }}>
-            <span className="home-title-accent">{t('heroOutcome')}</span>
+            {t('heroOutcome')}
           </h1>
           <p className="home-tagline home-hero-enter" style={{ ['--home-delay' as string]: '160ms' }}>
             {t('heroSupport')}
@@ -283,92 +286,56 @@ export function MarketingHome() {
         </div>
       </section>
 
-      <section className="home-section home-shell" aria-labelledby="home-pricing">
-        <div className="home-section-heading home-reveal">
-          <h2 id="home-pricing" className="home-section-title">
-            {t('pricing')}
-          </h2>
-          <p className="home-section-copy">{t('pricingCopy')}</p>
-        </div>
+      <section className="home-section home-bleed home-band home-pricing-section" aria-labelledby="home-pricing">
+        <div className="home-shell">
+          <div className="home-section-heading home-reveal">
+            <h2 id="home-pricing" className="home-section-title">
+              {t('pricing')}
+            </h2>
+            <p className="home-section-copy">{t('pricingCopy')}</p>
+          </div>
 
-        <div className="home-pricing-block home-reveal">
-          <div className="home-pricing-label">{t('monthlySubscription')}</div>
-          <div className="home-pricing-compare" role="table" aria-label={t('pricing')}>
-            <div className="home-pricing-compare-row home-pricing-compare-names" role="row">
-              {PLANS.map((plan) => (
-                <div
-                  key={`${plan.id}-name`}
-                  role="columnheader"
-                  className={`home-pricing-cell${plan.featured ? ' is-featured' : ''}`}
-                >
-                  <div className="home-pricing-top">
+          <div className="home-pricing-grid" role="list">
+            {PLANS.map((plan, i) => (
+              <article
+                key={plan.id}
+                role="listitem"
+                className={`home-plan-card home-reveal${plan.featured ? ' is-featured' : ''}`}
+                style={{ ['--home-delay' as string]: `${i * 80}ms` }}
+              >
+                <header className="home-plan-head">
+                  <div className="home-plan-name-row">
                     <h3>{plan.name}</h3>
                     {'badge' in plan && plan.badge ? (
                       <span className="home-pricing-badge">{plan.badge}</span>
                     ) : null}
                   </div>
-                </div>
-              ))}
-            </div>
+                  <p className="home-plan-desc">{plan.desc}</p>
+                </header>
 
-            <div className="home-pricing-compare-row home-pricing-compare-prices" role="row">
-              {PLANS.map((plan) => (
-                <div
-                  key={`${plan.id}-price`}
-                  role="cell"
-                  className={`home-pricing-cell home-pricing-price${plan.featured ? ' is-featured' : ''}`}
-                >
-                  {plan.priceLabel}
-                </div>
-              ))}
-            </div>
+                <p className="home-plan-price">
+                  <span className="home-plan-amount">{plan.amount}</span>
+                  <span className="home-plan-period">{plan.period}</span>
+                </p>
 
-            <div className="home-pricing-compare-row home-pricing-compare-feature" role="row">
-              {PLANS.map((plan) => (
-                <div
-                  key={`${plan.id}-videos`}
-                  role="cell"
-                  className={`home-pricing-cell${plan.featured ? ' is-featured' : ''}`}
-                >
-                  <span className="home-pricing-feature-label">{t('planFeatureVideos')}</span>
-                  <span className="home-pricing-feature-value">{plan.videos}</span>
-                </div>
-              ))}
-            </div>
+                <ul className="home-pricing-list">
+                  {plan.bullets.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
 
-            <div className="home-pricing-compare-row home-pricing-compare-feature" role="row">
-              {PLANS.map((plan) => (
-                <div
-                  key={`${plan.id}-channels`}
-                  role="cell"
-                  className={`home-pricing-cell${plan.featured ? ' is-featured' : ''}`}
+                <Link
+                  href={plan.id === 'unlimited' ? `mailto:${PLATFORM.contactEmail}` : '/register'}
+                  className={`home-pricing-cta ${plan.featured ? 'btn btn-primary' : 'btn btn-secondary'}`}
                 >
-                  <span className="home-pricing-feature-label">{t('planFeatureChannels')}</span>
-                  <span className="home-pricing-feature-value">{plan.channels}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="home-pricing-compare-row home-pricing-compare-ctas" role="row">
-              {PLANS.map((plan) => (
-                <div
-                  key={`${plan.id}-cta`}
-                  role="cell"
-                  className={`home-pricing-cell${plan.featured ? ' is-featured' : ''}`}
-                >
-                  <Link
-                    href={plan.id === 'unlimited' ? `mailto:${PLATFORM.contactEmail}` : '/register'}
-                    className={`home-pricing-cta ${plan.featured ? 'btn btn-primary' : 'btn btn-secondary'}`}
-                  >
-                    {plan.ctaLabel}
-                  </Link>
-                </div>
-              ))}
-            </div>
+                  {plan.ctaLabel}
+                </Link>
+              </article>
+            ))}
           </div>
-        </div>
 
-        <p className="home-pricing-aside home-reveal">{t('pricingAside')}</p>
+          <p className="home-pricing-aside home-reveal">{t('pricingAside')}</p>
+        </div>
       </section>
 
       <section className="home-section home-shell" aria-labelledby="home-faq">

@@ -188,7 +188,6 @@
     "stepPublishDesc": "Publica en YouTube al momento o programa la fecha. Largos y Shorts verticales.",
     "pricing": "Precios y planes",
     "pricingCopy": "Empieza con 14 días de prueba gratuita. Cuando estés listo, elige el plan mensual que encaje con tu ritmo de publicación.",
-    "monthlySubscription": "Suscripción mensual",
     "pricingAside": "Los planes mensuales cubren producción, revisión y publicación en YouTube.",
     "faq": "Preguntas frecuentes",
     "faqAiQ": "¿YouTube penaliza el contenido hecho con IA?",
@@ -231,11 +230,15 @@
     "planStudioVideos": "Ilimitados",
     "planStudioChannels": "Ilimitados",
     "planStudioCta": "Hablar con ventas",
-    "planFeatureVideos": "Vídeos",
-    "planFeatureChannels": "Canales",
     "priceCreator": "79 EUR/mes",
     "pricePro": "149 EUR/mes",
-    "priceStudio": "399 EUR/mes"
+    "priceStudio": "399 EUR/mes",
+    "priceCreatorValue": "79",
+    "priceCreatorPeriod": "EUR/mes",
+    "priceProValue": "149",
+    "priceProPeriod": "EUR/mes",
+    "priceStudioValue": "399",
+    "priceStudioPeriod": "EUR/mes"
   },
   "dashboard": {
     "title": "Inicio",
