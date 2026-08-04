@@ -14,7 +14,7 @@ import {
   type MotionPreset,
   type VisualOrigin,
 } from '@autotube/shared';
-import { getAudioDuration } from './ffmpeg-utils.js';
+import { getAudioDuration, isNearSilentAudio } from './ffmpeg-utils.js';
 import {
   generateSpeech,
   writeSceneSubtitle,
@@ -102,7 +102,12 @@ export async function generateMedia(params: {
     const videoPath = path.join(baseDir, `scene-${scene.index}-video.mp4`);
     const subtitlePath = path.join(baseDir, `scene-${scene.index}.ass`);
 
-    if (!(await pathExists(audioPath))) {
+    if (!(await pathExists(audioPath)) || (await isNearSilentAudio(audioPath))) {
+      if (await pathExists(audioPath)) {
+        console.warn(
+          `[media-generator] scene=${scene.index} audio casi silencioso — regenerando TTS`,
+        );
+      }
       await generateSpeech(scene.narration, audioPath, {
         language: params.language,
         retentionMode,
