@@ -12,7 +12,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import type { AuthSession } from '@/context/AuthContext';
-import { checkApiHealth, type Channel, type PaginatedResponse, type PipelineRun, type Video } from '@/lib/api';
+import { type Channel, type PaginatedResponse, type PipelineRun, type Video } from '@/lib/api';
 import { serverApi } from '@/lib/api-server';
 import { formatDateTime } from '@/lib/format-publish-date';
 
@@ -42,7 +42,6 @@ export default async function HomePage({ params }: Props) {
   const t = await getTranslations({ locale, namespace: 'dashboard' });
   const tc = await getTranslations({ locale, namespace: 'common' });
 
-  const apiOnline = await checkApiHealth();
   let session: AuthSession | null = null;
   let channels: Channel[] = [];
   let pendingVideos: Video[] = [];
@@ -52,35 +51,35 @@ export default async function HomePage({ params }: Props) {
   let pipelines: PipelineRun[] = [];
   let activePipelinesTotal = 0;
 
-  if (apiOnline) {
-    try {
-      const results = await Promise.allSettled([
-        serverApi<AuthSession>('/api/auth/me'),
-        serverApi<Channel[]>('/api/channels?light=1'),
-        serverApi<PaginatedResponse<Video>>('/api/videos?reviewStatus=pending&page=1&limit=10'),
-        serverApi<PaginatedResponse<Video>>(
-          '/api/videos?reviewStatus=scheduled&upcoming=true&page=1&limit=3',
-        ),
-        serverApi<PaginatedResponse<PipelineRun>>('/api/pipelines?active=true&page=1&limit=20'),
-      ]);
+  // No gatear sesión con checkApiHealth: en Docker el health público puede fallar
+  // (hairpin) y la home renderiza MarketingHome → en móvil parece logout.
+  try {
+    const results = await Promise.allSettled([
+      serverApi<AuthSession>('/api/auth/me'),
+      serverApi<Channel[]>('/api/channels?light=1'),
+      serverApi<PaginatedResponse<Video>>('/api/videos?reviewStatus=pending&page=1&limit=10'),
+      serverApi<PaginatedResponse<Video>>(
+        '/api/videos?reviewStatus=scheduled&upcoming=true&page=1&limit=3',
+      ),
+      serverApi<PaginatedResponse<PipelineRun>>('/api/pipelines?active=true&page=1&limit=20'),
+    ]);
 
-      if (results[0].status === 'fulfilled') session = results[0].value;
-      if (results[1].status === 'fulfilled') channels = results[1].value;
-      if (results[2].status === 'fulfilled') {
-        pendingVideos = results[2].value.items;
-        pendingTotal = results[2].value.total;
-      }
-      if (results[3].status === 'fulfilled') {
-        scheduledVideos = results[3].value.items;
-        scheduledTotal = results[3].value.total;
-      }
-      if (results[4].status === 'fulfilled') {
-        pipelines = results[4].value.items;
-        activePipelinesTotal = results[4].value.total;
-      }
-    } catch {
-      // fetch parcial fallido
+    if (results[0].status === 'fulfilled') session = results[0].value;
+    if (results[1].status === 'fulfilled') channels = results[1].value;
+    if (results[2].status === 'fulfilled') {
+      pendingVideos = results[2].value.items;
+      pendingTotal = results[2].value.total;
     }
+    if (results[3].status === 'fulfilled') {
+      scheduledVideos = results[3].value.items;
+      scheduledTotal = results[3].value.total;
+    }
+    if (results[4].status === 'fulfilled') {
+      pipelines = results[4].value.items;
+      activePipelinesTotal = results[4].value.total;
+    }
+  } catch {
+    // fetch parcial fallido
   }
 
   const orgName = session?.organization.name ?? tc('workspace');

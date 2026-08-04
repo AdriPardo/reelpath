@@ -2,7 +2,8 @@ import { NextRequest } from 'next/server';
 import { decodeAuthCookieValue } from '@/lib/auth-cookie-utils';
 import { AUTH_COOKIE } from '@/lib/auth-constants';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_URL =
+  process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 export async function GET(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
   const { path } = await context.params;

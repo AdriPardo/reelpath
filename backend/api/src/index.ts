@@ -36,9 +36,41 @@ const app = express();
 app.set('trust proxy', 1);
 
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+
+function isPrivateNetworkOrigin(origin: string): boolean {
+  try {
+    const host = new URL(origin).hostname;
+    if (host === 'localhost' || host === '127.0.0.1' || host === '[::1]') return true;
+    if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host)) return true;
+    if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(host)) return true;
+    if (/^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(host)) return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+const staticCorsOrigins = new Set([
+  config.FRONTEND_URL,
+  'http://localhost:3001',
+  'http://localhost:3000',
+]);
+
 app.use(
   cors({
-    origin: [config.FRONTEND_URL, 'http://localhost:3001', 'http://localhost:3000'],
+    origin(origin, callback) {
+      // Same-origin / non-browser: no Origin header.
+      if (!origin || staticCorsOrigins.has(origin)) {
+        callback(null, true);
+        return;
+      }
+      // Dev/mobile LAN: phone hits http://192.168.x.x:3000 while API is :4000.
+      if (config.NODE_ENV !== 'production' && isPrivateNetworkOrigin(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(null, false);
+    },
     credentials: true,
   }),
 );

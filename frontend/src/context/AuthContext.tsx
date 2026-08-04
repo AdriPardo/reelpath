@@ -15,6 +15,7 @@ import { SkeletonHeader, SkeletonStats } from '@/components/ui/Skeleton';
 import { api } from '@/lib/api';
 import { parseApiError } from '@/lib/user-messages';
 import { clearToken, isAuthRequired, setToken } from '@/lib/auth';
+import { API_URL } from '@/lib/api-url';
 import { isPublicPath } from '@/lib/public-paths';
 import type { AppLocale } from '@/i18n/routing';
 
@@ -99,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(
     async (email: string, password: string) => {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/auth/login`, {
+      const res = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -131,20 +132,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password: string;
       name?: string;
     }) => {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/auth/register`,
-        {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: data.email,
-            password: data.password,
-            name: data.name,
-            locale,
-          }),
-        },
-      );
+      const res = await fetch(`${API_URL}/api/auth/register`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password,
+          name: data.name,
+          locale,
+        }),
+      });
       if (!res.ok) {
         const text = await res.text();
         let message = parseApiError(text, t('registerFailed'), locale as 'es' | 'en');
@@ -166,7 +164,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(() => {
-    void fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/auth/logout`, {
+    void fetch(`${API_URL}/api/auth/logout`, {
       method: 'POST',
       credentials: 'include',
     }).catch(() => undefined);

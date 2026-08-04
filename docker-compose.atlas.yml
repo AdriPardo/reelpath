@@ -125,6 +125,7 @@ services:
         NEXT_PUBLIC_AUTH_REQUIRED: "true"
     environment:
       NODE_ENV: production
+      INTERNAL_API_URL: http://api:4000
     depends_on:
       - api
     restart: unless-stopped

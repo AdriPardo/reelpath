@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, type RefObject } from 'react';
 import { useTranslations } from 'next-intl';
-import { Link } from '@/i18n/navigation';
+import { Link, useRouter } from '@/i18n/navigation';
+import { SkeletonHeader, SkeletonStats } from '@/components/ui/Skeleton';
+import { useAuth } from '@/context/AuthContext';
 import { DEMO_CHANNEL, LEGAL_URLS, PLATFORM } from '@/lib/site-brand';
 
 function useHomeMotion(rootRef: RefObject<HTMLElement | null>) {
@@ -33,8 +35,31 @@ function useHomeMotion(rootRef: RefObject<HTMLElement | null>) {
 export function MarketingHome() {
   const t = useTranslations('landing');
   const tc = useTranslations('common');
+  const { session, loading } = useAuth();
+  const router = useRouter();
+  const refreshed = useRef(false);
   const rootRef = useRef<HTMLDivElement>(null);
   useHomeMotion(rootRef);
+
+  // Cliente con sesión + RSC landing (cookie/SSR): revalidar una vez; si sigue, entrar a /channels.
+  useEffect(() => {
+    if (loading || !session || refreshed.current) return;
+    refreshed.current = true;
+    router.refresh();
+    const timer = window.setTimeout(() => {
+      router.replace('/channels');
+    }, 1200);
+    return () => window.clearTimeout(timer);
+  }, [loading, session, router]);
+
+  if (loading || session) {
+    return (
+      <div className="page-content" aria-busy="true" aria-label={tc('loadingSession')}>
+        <SkeletonHeader />
+        <SkeletonStats count={3} />
+      </div>
+    );
+  }
 
   const STEPS = [
     { num: '01', title: t('stepProduction'), desc: t('stepProductionDesc') },
