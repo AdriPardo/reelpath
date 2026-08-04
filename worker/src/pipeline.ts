@@ -11,7 +11,7 @@ import { generateScript } from '@autotube/script-generator';
 import type { ChannelConfig, PipelineJobPayload, PipelineRunMetadata, ScriptVariant } from '@autotube/shared';
 import { computeShortPublishSlots, parseScheduledPublishAt, resolveDefaultShortCount, resolveMixedShortsCounts, resolvePlannerConfig, resolveSplitShortsCount } from '@autotube/shared';
 import { renderVideo, splitVideoForShorts } from '@autotube/video-renderer';
-import { publishToYouTube, publishYouTubeShortsClips } from '@autotube/youtube-publisher';
+import { publishToYouTube, publishYouTubeShortsClips, deleteYouTubeVideoApi, resolveYouTubeCredentialsForChannel } from '@autotube/youtube-publisher';
 import { syncVideoAnalytics } from '@autotube/analytics';
 import { generateDedicatedShort } from './dedicated-short.js';
 import { notifyPipelineReadyForReview } from './pipeline-notify.js';
@@ -305,6 +305,17 @@ async function runPipelineStep(
           videoMotionIntensity: config.videoMotionIntensity,
         });
 
+        const repairMeta = run.metadata as { repairAudioRepublish?: boolean } | null;
+        if (repairMeta?.repairAudioRepublish) {
+          // Reparación de vídeo mudo: saltar shorts/review y republicar el long.
+          await enqueuePipelineStep(
+            { pipelineRunId, channelId, youtubeOnly: true },
+            'publish',
+            { replace: true },
+          );
+          break;
+        }
+
         const clipSplit = needsVerticalClipSplit(config);
 
         if (config.reviewRequired && clipSplit) {
@@ -377,6 +388,59 @@ async function runPipelineStep(
 
         const publishYoutube = config.publishYoutube !== false;
         const clipSplit = needsVerticalClipSplit(config) && !youtubeOnly;
+
+        const repairMeta = run.metadata as {
+          repairAudioRepublish?: boolean;
+          previousYoutubeVideoId?: string | null;
+        } | null;
+
+        if (repairMeta?.repairAudioRepublish && publishYoutube) {
+          const previousId =
+            repairMeta.previousYoutubeVideoId ??
+            (
+              await prisma.video.findUnique({
+                where: { id: video.id },
+                select: { youtubeVideoId: true },
+              })
+            )?.youtubeVideoId ??
+            null;
+
+          await prisma.video.update({
+            where: { id: video.id },
+            data: {
+              youtubeVideoId: null,
+              publishedAt: null,
+              reviewStatus: 'approved',
+              scheduledPublishAt: null,
+            },
+          });
+
+          const published = await publishToYouTube(video.id);
+
+          if (previousId && !previousId.startsWith('mock_') && published.youtubeVideoId !== previousId) {
+            const creds = await resolveYouTubeCredentialsForChannel(channelId);
+            if (creds) {
+              try {
+                await deleteYouTubeVideoApi(previousId, creds);
+              } catch (err) {
+                console.warn(
+                  `[pipeline] No se pudo borrar YouTube anterior ${previousId}:`,
+                  err instanceof Error ? err.message : err,
+                );
+              }
+            }
+          }
+
+          const meta = { ...((run.metadata as Record<string, unknown> | null) ?? {}) };
+          delete meta.repairAudioRepublish;
+          delete meta.previousYoutubeVideoId;
+          await prisma.pipelineRun.update({
+            where: { id: pipelineRunId },
+            data: { metadata: meta },
+          });
+          await updatePipelineStatus(pipelineRunId, 'completed', 'publish');
+          break;
+        }
 
         const existingSchedule = (
           await prisma.video.findUnique({

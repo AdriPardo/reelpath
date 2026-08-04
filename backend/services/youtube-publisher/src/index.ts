@@ -9,7 +9,7 @@ import { uploadThumbnailToYouTubeApi, uploadToYouTubeApi, setYouTubeVideoPrivacy
 import { formatYouTubeShortMetadata } from './metadata.js';
 import { publishYouTubeShortsClips } from './shorts.js';
 
-export { uploadThumbnailToYouTubeApi, setYouTubeVideoPrivacy } from './upload.js';
+export { uploadThumbnailToYouTubeApi, setYouTubeVideoPrivacy, deleteYouTubeVideoApi } from './upload.js';
 export {
   hasYouTubeCredentials,
   createYouTubeOAuth,

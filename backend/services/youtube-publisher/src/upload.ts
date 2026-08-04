@@ -30,6 +30,20 @@ export async function setYouTubeVideoPrivacy(
   console.info(`[youtube] Privacy set to ${privacyStatus}: https://youtube.com/watch?v=${youtubeVideoId}`);
 }
 
+/** Borra un vídeo de YouTube (p.ej. Short programado o long mudo a reemplazar). */
+export async function deleteYouTubeVideoApi(
+  youtubeVideoId: string,
+  creds: ResolvedYouTubeCredentials,
+): Promise<void> {
+  const youtube = createYouTubeClient(creds);
+  try {
+    await youtube.videos.delete({ id: youtubeVideoId });
+  } catch (err) {
+    throw formatYouTubeAuthError(err);
+  }
+  console.info(`[youtube] Deleted: https://youtube.com/watch?v=${youtubeVideoId}`);
+}
+
 export async function uploadToYouTubeApi(
   video: {
     filePath: string;

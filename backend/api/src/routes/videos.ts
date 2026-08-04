@@ -11,6 +11,7 @@ import { deletePipelineRunCompletely, deleteVideoLocalFilesOnly } from '../lib/p
 import { resolveChannelAutoPublishAt } from '../lib/publication-plan.js';
 import { assertOrgCanPublish, PlanLimitError, planLimitErrorBody } from '../lib/plan-limits.js';
 import { queueVideoYouTubePublish, retryVideoYouTubePublish, retryVideoYouTubeShorts } from '../lib/video-publish.js';
+import { cancelScheduledShorts, repairVideoAudioAndRepublish } from '../lib/video-repair.js';
 import {
   deleteSceneAssets,
   enqueueSceneRerender,
@@ -18,7 +19,7 @@ import {
 } from '../lib/script-editor.js';
 import { attachVisualSummaries, attachVisualSummary } from '../lib/visual-summary.js';
 import { assertChannelInOrg, assertVideoInOrg } from '../lib/tenant.js';
-import { authMiddleware, orgChannelIds, orgScope } from '../middleware/auth.js';
+import { authMiddleware, orgChannelIds, orgScope, requireAdmin } from '../middleware/auth.js';
 import { paginatedResponse, parsePagination } from '../lib/pagination.js';
 
 export const videosRouter = Router();
@@ -700,4 +701,40 @@ videosRouter.post('/:id/delete-local-files', async (req, res) => {
     message: 'Archivos locales eliminados; el registro y enlace YouTube se conservan',
     freedPaths,
   });
+});
+
+/** Regenera TTS+render y vuelve a subir el long a YouTube (borra el anterior). */
+videosRouter.post('/:id/repair-audio', requireAdmin, async (req, res) => {
+  const access = await checkVideoAccess(req.params.id, orgScope(req));
+  if (access !== 'allowed') {
+    rejectVideoAccess(res, access);
+    return;
+  }
+  try {
+    const result = await repairVideoAudioAndRepublish(req.params.id);
+    res.json(result);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'No se pudo reparar el audio';
+    res.status(message === 'Video not found' ? 404 : 500).json({ error: message });
+  }
+});
+
+/** Borra Shorts programados de YouTube + BD. */
+videosRouter.post('/:id/cancel-scheduled-shorts', requireAdmin, async (req, res) => {
+  const access = await checkVideoAccess(req.params.id, orgScope(req));
+  if (access !== 'allowed') {
+    rejectVideoAccess(res, access);
+    return;
+  }
+  try {
+    const result = await cancelScheduledShorts(req.params.id);
+    res.json({
+      id: req.params.id,
+      message: `Eliminados ${result.deleted.length} Shorts programados`,
+      ...result,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'No se pudieron cancelar los Shorts';
+    res.status(message === 'Video not found' ? 404 : 500).json({ error: message });
+  }
 });
