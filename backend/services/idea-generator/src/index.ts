@@ -54,6 +54,90 @@ function pickGlobalBest(current: RankedIdea | null, candidate: RankedIdea | unde
   return current;
 }
 
+const FORCED_TOPIC_STOPWORDS = new Set([
+  'que',
+  'una',
+  'uno',
+  'unos',
+  'unas',
+  'del',
+  'las',
+  'los',
+  'por',
+  'para',
+  'con',
+  'sin',
+  'como',
+  'sobre',
+  'entre',
+  'the',
+  'and',
+]);
+
+function tokenizeTopic(text: string): string[] {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length > 2 && !FORCED_TOPIC_STOPWORDS.has(w));
+}
+
+/** Overlap de tokens entre tema forzado e idea (0–1). */
+export function forcedTopicMatchScore(
+  idea: { title: string; hook: string; angle: string },
+  forcedTopic: string,
+): number {
+  const topicTokens = tokenizeTopic(forcedTopic);
+  if (topicTokens.length === 0) return 0;
+  const haystack = tokenizeTopic(`${idea.title} ${idea.hook} ${idea.angle}`);
+  const set = new Set(haystack);
+  let hits = 0;
+  for (const t of topicTokens) {
+    if (set.has(t)) hits += 1;
+  }
+  return hits / topicTokens.length;
+}
+
+async function selectForcedTopicIdea(
+  pipelineRunId: string,
+  forcedTopic: string,
+): Promise<Awaited<ReturnType<typeof selectBestIdea>>> {
+  const ideas = await prisma.videoIdea.findMany({ where: { pipelineRunId } });
+  if (ideas.length === 0) return null;
+
+  let best = ideas[0]!;
+  let bestScore = forcedTopicMatchScore(best, forcedTopic);
+  for (const idea of ideas.slice(1)) {
+    const score = forcedTopicMatchScore(idea, forcedTopic);
+    if (
+      score > bestScore ||
+      (score === bestScore && idea.viralScore > best.viralScore)
+    ) {
+      best = idea;
+      bestScore = score;
+    }
+  }
+
+  // Exigir señal mínima (p.ej. "dreux"+"1560" o título cercano).
+  if (bestScore < 0.25) return null;
+
+  await prisma.videoIdea.updateMany({
+    where: { pipelineRunId },
+    data: { isSelected: false },
+  });
+  await prisma.videoIdea.update({
+    where: { id: best.id },
+    data: { isSelected: true },
+  });
+
+  console.info(
+    `[idea-generator] Tema forzado → idea "${best.title.slice(0, 60)}" (match=${bestScore.toFixed(2)})`,
+  );
+  return best;
+}
+
 async function persistSelectedIdea(
   pipelineRunId: string,
   idea: RankedIdea,
@@ -240,6 +324,21 @@ export async function ensureSelectedIdea(params: {
   const minViralScore = params.config.minViralScore ?? 0;
   const maxRetries = getIdeaMaxRetries(params.config.maxIdeaRetries);
   const usedTopics = await fetchUsedTopics(params.channelId, params.pipelineRunId);
+
+  const runMeta = await prisma.pipelineRun.findUnique({
+    where: { id: params.pipelineRunId },
+    select: { metadata: true },
+  });
+  const forcedTopic =
+    typeof (runMeta?.metadata as Record<string, unknown> | null)?.forcedTopic === 'string'
+      ? String((runMeta?.metadata as Record<string, unknown>).forcedTopic)
+      : null;
+
+  // Tema forzado: elegir la idea alineada, sin gate de viral score.
+  if (forcedTopic) {
+    const matched = await selectForcedTopicIdea(params.pipelineRunId, forcedTopic);
+    if (matched) return matched;
+  }
 
   let globalBest: RankedIdea | null = null;
 
