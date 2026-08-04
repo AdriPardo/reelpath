@@ -436,7 +436,7 @@ async function runPipelineStep(
           delete meta.previousYoutubeVideoId;
           await prisma.pipelineRun.update({
             where: { id: pipelineRunId },
-            data: { metadata: meta },
+            data: { metadata: meta as object },
           });
           await updatePipelineStatus(pipelineRunId, 'completed', 'publish');
           break;

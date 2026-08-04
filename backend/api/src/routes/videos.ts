@@ -705,13 +705,14 @@ videosRouter.post('/:id/delete-local-files', async (req, res) => {
 
 /** Regenera TTS+render y vuelve a subir el long a YouTube (borra el anterior). */
 videosRouter.post('/:id/repair-audio', requireAdmin, async (req, res) => {
-  const access = await checkVideoAccess(req.params.id, orgScope(req));
+  const videoId = String(req.params.id);
+  const access = await checkVideoAccess(videoId, orgScope(req));
   if (access !== 'allowed') {
     rejectVideoAccess(res, access);
     return;
   }
   try {
-    const result = await repairVideoAudioAndRepublish(req.params.id);
+    const result = await repairVideoAudioAndRepublish(videoId);
     res.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'No se pudo reparar el audio';
@@ -721,15 +722,16 @@ videosRouter.post('/:id/repair-audio', requireAdmin, async (req, res) => {
 
 /** Borra Shorts programados de YouTube + BD. */
 videosRouter.post('/:id/cancel-scheduled-shorts', requireAdmin, async (req, res) => {
-  const access = await checkVideoAccess(req.params.id, orgScope(req));
+  const videoId = String(req.params.id);
+  const access = await checkVideoAccess(videoId, orgScope(req));
   if (access !== 'allowed') {
     rejectVideoAccess(res, access);
     return;
   }
   try {
-    const result = await cancelScheduledShorts(req.params.id);
+    const result = await cancelScheduledShorts(videoId);
     res.json({
-      id: req.params.id,
+      id: videoId,
       message: `Eliminados ${result.deleted.length} Shorts programados`,
       ...result,
     });
