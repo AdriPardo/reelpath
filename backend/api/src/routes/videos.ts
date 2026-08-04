@@ -11,7 +11,7 @@ import { deletePipelineRunCompletely, deleteVideoLocalFilesOnly } from '../lib/p
 import { resolveChannelAutoPublishAt } from '../lib/publication-plan.js';
 import { assertOrgCanPublish, PlanLimitError, planLimitErrorBody } from '../lib/plan-limits.js';
 import { queueVideoYouTubePublish, retryVideoYouTubePublish, retryVideoYouTubeShorts } from '../lib/video-publish.js';
-import { cancelScheduledShorts, repairVideoAudioAndRepublish } from '../lib/video-repair.js';
+import { cancelScheduledShorts, deleteChannelYouTubeVideo, repairVideoAudioAndRepublish } from '../lib/video-repair.js';
 import {
   deleteSceneAssets,
   enqueueSceneRerender,
@@ -25,6 +25,38 @@ import { paginatedResponse, parsePagination } from '../lib/pagination.js';
 export const videosRouter = Router();
 
 videosRouter.use(authMiddleware);
+
+/** Borra un vídeo de YouTube del canal (ops; p.ej. long mudo o Short huérfano). */
+videosRouter.post('/delete-youtube', requireAdmin, async (req, res) => {
+  const body = z
+    .object({
+      channelId: z.string().min(1),
+      youtubeVideoId: z.string().min(5).max(64),
+    })
+    .safeParse(req.body ?? {});
+  if (!body.success) {
+    return res.status(400).json({ error: 'channelId y youtubeVideoId requeridos' });
+  }
+
+  const orgId = orgScope(req);
+  if (orgId && !(await assertChannelInOrg(body.data.channelId, orgId))) {
+    return res.status(404).json({ error: 'Channel not found' });
+  }
+
+  try {
+    await deleteChannelYouTubeVideo(body.data.channelId, body.data.youtubeVideoId);
+    res.json({
+      deleted: true,
+      channelId: body.data.channelId,
+      youtubeVideoId: body.data.youtubeVideoId,
+      message: 'Vídeo eliminado de YouTube',
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'No se pudo borrar en YouTube';
+    res.status(400).json({ error: message });
+  }
+});
+
 
 type VideoAccess = 'allowed' | 'not_found' | 'forbidden';
 
@@ -76,6 +108,8 @@ async function respondRetryYouTubePublish(
 
 const approveVideoSchema = z.object({
   scheduledPublishAt: z.string().min(1).optional(),
+  /** Si true, publica ya (ignora planificador del canal). */
+  publishNow: z.boolean().optional(),
 });
 
 const updateVideoSchema = z.object({
@@ -437,12 +471,14 @@ videosRouter.post('/:id/approve', async (req, res) => {
 
   const channel = await prisma.channel.findUnique({ where: { id: existing.channelId } });
   const config = parseChannelConfig(channel?.config);
-  const scheduledPublishAt = await resolveChannelAutoPublishAt(
-    existing.channelId,
-    config,
-    fromBody ?? fromPersisted,
-    existing.id,
-  );
+  const scheduledPublishAt = body.data.publishNow
+    ? null
+    : await resolveChannelAutoPublishAt(
+        existing.channelId,
+        config,
+        fromBody ?? fromPersisted,
+        existing.id,
+      );
 
   const result = await queueVideoYouTubePublish(existing, scheduledPublishAt);
 
@@ -462,6 +498,18 @@ videosRouter.post('/:id/reject', async (req, res) => {
   if (video.reviewStatus === 'published') {
     return res.status(400).json({
       error: 'No se puede rechazar un vídeo ya publicado; usa eliminación manual si aplica',
+    });
+  }
+
+  // Tras repair puede quedar un registro vacío; no borrar todo el pipeline.
+  const siblingCount = await prisma.video.count({ where: { pipelineRunId: video.pipelineRunId } });
+  if (siblingCount > 1 && !video.filePath) {
+    await prisma.video.delete({ where: { id: video.id } });
+    return res.json({
+      deleted: true,
+      id: video.id,
+      pipelineRunId: video.pipelineRunId,
+      message: 'Registro huérfano eliminado; pipeline y demás vídeos conservados',
     });
   }
 
@@ -740,3 +788,4 @@ videosRouter.post('/:id/cancel-scheduled-shorts', requireAdmin, async (req, res)
     res.status(message === 'Video not found' ? 404 : 500).json({ error: message });
   }
 });
+

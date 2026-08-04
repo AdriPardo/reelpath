@@ -285,6 +285,59 @@ pipelinesRouter.post('/:id/resume', async (req, res) => {
   }
 });
 
+/** Selecciona una idea concreta y avanza a generate_script (ops / tema forzado). */
+pipelinesRouter.post('/:id/select-idea', async (req, res) => {
+  const orgId = orgScope(req);
+  if (!(await assertPipelineInOrg(req.params.id, orgId))) {
+    return res.status(404).json({ error: 'Pipeline run not found' });
+  }
+
+  const body = z.object({ ideaId: z.string().min(1) }).safeParse(req.body ?? {});
+  if (!body.success) {
+    return res.status(400).json({ error: 'ideaId requerido' });
+  }
+
+  const run = await prisma.pipelineRun.findUnique({ where: { id: req.params.id } });
+  if (!run) return res.status(404).json({ error: 'Pipeline run not found' });
+
+  const idea = await prisma.videoIdea.findFirst({
+    where: { id: body.data.ideaId, pipelineRunId: run.id },
+  });
+  if (!idea) return res.status(404).json({ error: 'Idea no encontrada en este pipeline' });
+
+  await prisma.videoIdea.updateMany({
+    where: { pipelineRunId: run.id },
+    data: { isSelected: false },
+  });
+  await prisma.videoIdea.update({
+    where: { id: idea.id },
+    data: { isSelected: true },
+  });
+
+  await prisma.pipelineRun.update({
+    where: { id: run.id },
+    data: {
+      status: 'generating_script',
+      currentStep: 'generate_script',
+      error: null,
+      completedAt: null,
+    },
+  });
+
+  await enqueuePipelineStep(
+    { pipelineRunId: run.id, channelId: run.channelId },
+    'generate_script',
+    { replace: true },
+  );
+
+  res.json({
+    id: run.id,
+    ideaId: idea.id,
+    title: idea.title,
+    message: 'Idea seleccionada; generando guion',
+  });
+});
+
 const patchScriptSchema = z.object({
   hook: z.string().min(1).max(300).optional(),
   scenes: z

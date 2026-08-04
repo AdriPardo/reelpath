@@ -583,21 +583,43 @@ export async function renderVideo(params: {
     return { filePath: outputPath, durationSec: finalDuration, thumbnailPath };
   }
 
-  const video = await prisma.video.create({
-    data: {
-      pipelineRunId: params.pipelineRunId,
-      channelId: params.channelId,
-      title: params.title,
-      description: params.description,
-      tags: params.tags,
-      filePath: outputPath,
-      thumbnailPath,
-      format: params.format,
-      aspectRatio: params.aspectRatio,
-      durationSec: finalDuration,
-      reviewStatus: params.reviewRequired ? 'pending' : 'approved',
-    },
+  const videoData = {
+    title: params.title,
+    description: params.description,
+    tags: params.tags,
+    filePath: outputPath,
+    thumbnailPath,
+    format: params.format,
+    aspectRatio: params.aspectRatio,
+    durationSec: finalDuration,
+    reviewStatus: params.reviewRequired ? 'pending' : 'approved',
+  };
+
+  // Repair/re-render: actualizar el Video existente del pipeline (evitar duplicados).
+  const existing = await prisma.video.findFirst({
+    where: { pipelineRunId: params.pipelineRunId },
+    orderBy: { createdAt: 'asc' },
   });
+
+  const video = existing
+    ? await prisma.video.update({ where: { id: existing.id }, data: videoData })
+    : await prisma.video.create({
+        data: {
+          pipelineRunId: params.pipelineRunId,
+          channelId: params.channelId,
+          ...videoData,
+        },
+      });
+
+  if (existing) {
+    await prisma.video.deleteMany({
+      where: {
+        pipelineRunId: params.pipelineRunId,
+        id: { not: existing.id },
+        filePath: '',
+      },
+    });
+  }
 
   return { videoId: video.id, filePath: outputPath, durationSec: finalDuration };
 }

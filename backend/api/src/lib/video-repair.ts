@@ -143,3 +143,16 @@ export async function cancelScheduledShorts(videoId: string): Promise<{
 
   return { deleted, skipped };
 }
+
+/** Borra un vídeo concreto de YouTube del canal (ops). */
+export async function deleteChannelYouTubeVideo(
+  channelId: string,
+  youtubeVideoId: string,
+): Promise<void> {
+  if (!youtubeVideoId || youtubeVideoId.startsWith('mock_')) {
+    throw new Error('ID de YouTube inválido');
+  }
+  const creds = await resolveYouTubeCredentialsForChannel(channelId);
+  if (!creds) throw new Error('YouTube no conectado para este canal');
+  await deleteYouTubeVideoApi(youtubeVideoId, creds);
+}

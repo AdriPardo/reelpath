@@ -195,7 +195,16 @@ async function runPipelineStep(
   const config = parseChannelConfig(run.channel.config);
 
   async function requireApprovedVideo(pipelineRunId: string): Promise<{ id: string; reviewStatus: string }> {
-    const video = await prisma.video.findFirstOrThrow({ where: { pipelineRunId } });
+    // Preferir el registro con fichero real (tras repair puede haber huérfanos vacíos).
+    const video =
+      (await prisma.video.findFirst({
+        where: { pipelineRunId, filePath: { not: '' } },
+        orderBy: { createdAt: 'desc' },
+      })) ??
+      (await prisma.video.findFirstOrThrow({
+        where: { pipelineRunId },
+        orderBy: { createdAt: 'desc' },
+      }));
     const publishable = new Set(['approved', 'published', 'scheduled']);
     if (config.reviewRequired && !publishable.has(video.reviewStatus)) {
       console.info(`[pipeline] Video ${video.id} awaiting approval (status=${video.reviewStatus})`);
