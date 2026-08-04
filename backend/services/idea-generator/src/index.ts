@@ -100,10 +100,7 @@ export function forcedTopicMatchScore(
   return hits / topicTokens.length;
 }
 
-async function selectForcedTopicIdea(
-  pipelineRunId: string,
-  forcedTopic: string,
-): Promise<Awaited<ReturnType<typeof selectBestIdea>>> {
+async function selectForcedTopicIdea(pipelineRunId: string, forcedTopic: string) {
   const ideas = await prisma.videoIdea.findMany({ where: { pipelineRunId } });
   if (ideas.length === 0) return null;
 
@@ -336,7 +333,33 @@ export async function ensureSelectedIdea(params: {
 
   // Tema forzado: elegir la idea alineada, sin gate de viral score.
   if (forcedTopic) {
-    const matched = await selectForcedTopicIdea(params.pipelineRunId, forcedTopic);
+    let matched = await selectForcedTopicIdea(params.pipelineRunId, forcedTopic);
+    if (!matched) {
+      // LLM a veces ignora el tema: sintetizar idea a partir del forcedTopic.
+      console.warn(
+        `[idea-generator] Sin match para tema forzado; sintetizando idea: ${forcedTopic.slice(0, 80)}`,
+      );
+      matched = await persistSelectedIdea(
+        params.pipelineRunId,
+        {
+          title: clampYouTubeTitle(forcedTopic),
+          hook: forcedTopic,
+          angle: `Documental sobre: ${forcedTopic}`,
+          targetAudience: params.config.targetAudience || 'Adultos curiosos',
+          trendAlignment: 0.9,
+          viralScore: Math.max(minViralScore, 90),
+          rationale: 'Tema forzado por el operador',
+          scoreBreakdown: {
+            total: Math.max(minViralScore, 90),
+            nicheFit: 90,
+            hookStrength: 90,
+            seoPotential: 90,
+            trendAlignment: 90,
+          } as ContentScoreBreakdown,
+        },
+        false,
+      );
+    }
     if (matched) return matched;
   }
 
