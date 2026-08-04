@@ -170,9 +170,18 @@ export async function generateSpeech(
     }
   }
 
-  console.warn('[media/TTS] All providers failed, using silent mock:', lastError);
-  await generateSilentAudio(outPath, estimateDuration(ttsInput));
-  return { mock: true, provider: 'mock' };
+  const detail = lastError instanceof Error ? lastError.message : String(lastError ?? 'unknown');
+  if (config.MOCK_EXTERNAL_APIS) {
+    console.warn('[media/TTS] All providers failed, using silent mock:', detail);
+    await generateSilentAudio(outPath, estimateDuration(ttsInput));
+    return { mock: true, provider: 'mock' };
+  }
+
+  // Producción: no generar vídeo mudo. Mejor fallar el pipeline con error claro.
+  throw new Error(
+    `TTS falló (${chain.map((p) => p.name).join('→')}): ${detail}. ` +
+      'Revisa Edge TTS / ElevenLabs / OpenAI en Admin → Secretos, o el proveedor TTS del canal.',
+  );
 }
 
 export async function generateSceneImage(params: {
