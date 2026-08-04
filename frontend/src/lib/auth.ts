@@ -17,25 +17,31 @@ export function getToken(): string | null {
   return readLegacyStoredToken();
 }
 
-function expireClientCookie(name: string): void {
-  document.cookie = `${name}=; path=/; max-age=0; SameSite=Lax`;
+/**
+ * Solo limpia copias legacy no-HttpOnly. Nunca llamar tras login:
+ * en WebKit móvil, `document.cookie` con el mismo nombre que la HttpOnly
+ * puede sombrear la sesión y la app parece deslogueada.
+ */
+function expireLegacyClientCookie(name: string): void {
+  if (typeof document === 'undefined') return;
+  const secure =
+    typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
+  document.cookie = `${name}=; path=/; max-age=0; SameSite=Lax${secure}`;
 }
 
-/** Tras login/register: limpia copias XSS-accesibles; la cookie HttpOnly la pone el API. */
+/** Tras login/register: limpia JWT en localStorage; la cookie HttpOnly la pone el API. */
 export function setToken(_token: string): void {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(LEGACY_TOKEN_KEY);
-  expireClientCookie(AUTH_COOKIE);
-  expireClientCookie(LEGACY_AUTH_COOKIE);
 }
 
 export function clearToken(): void {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(LEGACY_TOKEN_KEY);
-  expireClientCookie(AUTH_COOKIE);
-  expireClientCookie(LEGACY_AUTH_COOKIE);
+  expireLegacyClientCookie(AUTH_COOKIE);
+  expireLegacyClientCookie(LEGACY_AUTH_COOKIE);
 }
 
 export function isAuthRequired(): boolean {

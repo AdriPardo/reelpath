@@ -27,7 +27,11 @@ function mediaPath(apiPath: string): string {
 
 export async function checkApiHealth(): Promise<boolean> {
   try {
-    const res = await fetch(`${API_URL}/health`, { cache: 'no-store' });
+    // En RSC preferir INTERNAL_API_URL (getServerSideApiUrl) vía import dinámico evita
+    // circularidad; duplicamos la resolución aquí.
+    const base =
+      (typeof window === 'undefined' && process.env.INTERNAL_API_URL) || API_URL;
+    const res = await fetch(`${base}/health`, { cache: 'no-store' });
     return res.ok;
   } catch {
     return false;

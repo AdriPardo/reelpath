@@ -1,4 +1,4 @@
-import { API_URL } from './api-url';
+import { getServerSideApiUrl } from './api-url';
 import { authHeadersFromCookie } from './auth-cookie';
 
 export class ServerApiError extends Error {
@@ -12,7 +12,7 @@ export class ServerApiError extends Error {
 }
 
 export async function serverApi<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await fetch(`${getServerSideApiUrl()}${path}`, {
     ...init,
     credentials: 'include',
     headers: {

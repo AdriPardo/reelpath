@@ -60,6 +60,8 @@ services:
         NEXT_PUBLIC_AUTH_REQUIRED: ${NEXT_PUBLIC_AUTH_REQUIRED:-true}
     environment:
       NODE_ENV: production
+      # RSC → API en red Docker (evita hairpin a DOMAIN público).
+      INTERNAL_API_URL: http://api:4000
     restart: unless-stopped
 
   caddy:

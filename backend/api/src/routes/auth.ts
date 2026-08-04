@@ -86,7 +86,7 @@ authRouter.post('/login', authRateLimiter, async (req, res) => {
     email: user.email,
   });
 
-  setAuthCookies(res, token);
+  setAuthCookies(res, token, req);
   res.json({
     token,
     user: serializeUser(user),
@@ -96,11 +96,10 @@ authRouter.post('/login', authRateLimiter, async (req, res) => {
   });
 });
 
-authRouter.post('/logout', (_req, res) => {
-  clearAuthCookies(res);
+authRouter.post('/logout', (req, res) => {
+  clearAuthCookies(res, req);
   res.json({ ok: true });
 });
-
 authRouter.get('/me', requireAuth, async (req, res) => {
   const auth = req.auth!;
   const [user, membership] = await Promise.all([
@@ -315,7 +314,7 @@ authRouter.post('/register', authRateLimiter, async (req, res) => {
     console.warn('[auth/register] No se pudo enviar email de bienvenida:', err);
   });
 
-  setAuthCookies(res, token);
+  setAuthCookies(res, token, req);
   res.status(201).json({
     token,
     user: serializeUser(result.user),
