@@ -22,6 +22,8 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./
 COPY --from=build /app/packages ./packages
 COPY --from=build /app/backend ./backend
+# Bundled BGM library for channel track listing (uploads under STORAGE_PATH/bgm).
+COPY --from=build /app/resource ./resource
 RUN mkdir -p /app/storage
 EXPOSE 4000
 CMD ["sh", "-c", "npm run migrate:deploy:ci -w @autotube/database && npm run start -w backend-api"]
