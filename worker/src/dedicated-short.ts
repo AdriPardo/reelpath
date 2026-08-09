@@ -63,6 +63,8 @@ async function buildTeaserClip(params: {
     videoMotionIntensity: config.videoMotionIntensity,
     visualSourceMode: config.visualSourceMode,
     channelGenerateAiImages: config.generateAiImages,
+    channelFalI2vEnabled: config.falI2vEnabled,
+    channelMaxFalI2vPerVideo: config.maxFalI2vPerVideo,
     subdir,
     persist: false,
   });

@@ -25,7 +25,7 @@
     "semantic_hash": ""
   },
   "backend/api/src/index.ts": {
-    "mtime": 1786302143.8412097,
+    "mtime": 1786303317.7499056,
     "ast_hash": "18973b0aa46ff4fcb0a6e274f37d7df0",
     "semantic_hash": ""
   },
@@ -290,7 +290,7 @@
     "semantic_hash": ""
   },
   "backend/api/src/routes/platform.ts": {
-    "mtime": 1786302118.6452115,
+    "mtime": 1786303317.7539055,
     "ast_hash": "75391bdf9c0b34609f9cb039c19ede49",
     "semantic_hash": ""
   },
@@ -330,8 +330,8 @@
     "semantic_hash": ""
   },
   "backend/core/config-system/src/index.ts": {
-    "mtime": 1786302084.2252135,
-    "ast_hash": "9ea77309fca4850e3aa6b584522a9ccc",
+    "mtime": 1786303420.0779347,
+    "ast_hash": "8ef42f6cca5711bae04601267f0e4625",
     "semantic_hash": ""
   },
   "backend/core/config-system/src/org-runtime.test.ts": {
@@ -345,13 +345,13 @@
     "semantic_hash": ""
   },
   "backend/core/config-system/src/platform-secrets-runtime.ts": {
-    "mtime": 1786302083.1212134,
+    "mtime": 1786303317.7539055,
     "ast_hash": "45ef211c29dad5a669a0094164c5e24e",
     "semantic_hash": ""
   },
   "backend/core/config-system/src/product-defaults.ts": {
-    "mtime": 1786302083.0852134,
-    "ast_hash": "55de81372c30284d6f37c182ce656feb",
+    "mtime": 1786303406.5539312,
+    "ast_hash": "7a99610e302902bbbd0ac7efe4c06a90",
     "semantic_hash": ""
   },
   "backend/core/config-system/src/resolve-settings.test.ts": {
@@ -520,7 +520,7 @@
     "semantic_hash": ""
   },
   "backend/core/database/src/platform-secrets.ts": {
-    "mtime": 1786302102.5332124,
+    "mtime": 1786303317.7539055,
     "ast_hash": "bdf0f175d3b5f1c8abe1c5809d7dff23",
     "semantic_hash": ""
   },
@@ -680,8 +680,8 @@
     "semantic_hash": ""
   },
   "backend/services/media-generator/src/index.ts": {
-    "mtime": 1786295234.7100203,
-    "ast_hash": "3a1e932111d100b53f4554a7a9bdbd0f",
+    "mtime": 1786303433.6859384,
+    "ast_hash": "54b3bc44921da7d118be0677b2537780",
     "semantic_hash": ""
   },
   "backend/services/media-generator/src/png-utils.ts": {
@@ -690,7 +690,7 @@
     "semantic_hash": ""
   },
   "backend/services/media-generator/src/providers/media-providers.ts": {
-    "mtime": 1786302068.1132143,
+    "mtime": 1786303317.7539055,
     "ast_hash": "06487f60c3fea12facc4dc064a8c44e4",
     "semantic_hash": ""
   },
@@ -1190,8 +1190,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/ChannelDetailTabs.tsx": {
-    "mtime": 1786295234.7140203,
-    "ast_hash": "647b1c24bf478fb55d509e3c3ed26ab1",
+    "mtime": 1786303449.9739423,
+    "ast_hash": "65177858f5b8b90cf663c69d17af58e5",
     "semantic_hash": ""
   },
   "frontend/src/components/ChannelFilter.tsx": {
@@ -1215,8 +1215,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/ChannelSettingsForm.tsx": {
-    "mtime": 1786295234.7140203,
-    "ast_hash": "df94045891abd0d39128df8023022567",
+    "mtime": 1786303451.0059426,
+    "ast_hash": "1ce657d18f6971e80181e8021dcdca8a",
     "semantic_hash": ""
   },
   "frontend/src/components/ChannelSwitcher.tsx": {
@@ -1555,7 +1555,7 @@
     "semantic_hash": ""
   },
   "frontend/src/components/settings/SettingsPlatformSecretsPanel.tsx": {
-    "mtime": 1786302162.3852084,
+    "mtime": 1786303317.7539055,
     "ast_hash": "a2b058cead6929fd5648471542443757",
     "semantic_hash": ""
   },
@@ -1960,8 +1960,8 @@
     "semantic_hash": ""
   },
   "packages/shared/src/types.ts": {
-    "mtime": 1786295234.81802,
-    "ast_hash": "5b1f07400d9dc5d513b582a4f44054d1",
+    "mtime": 1786303406.5379312,
+    "ast_hash": "5a7994f4297ccdc6e269863f3aceb16e",
     "semantic_hash": ""
   },
   "packages/shared/src/video-encoding.test.ts": {
@@ -2040,7 +2040,7 @@
     "semantic_hash": ""
   },
   "scripts/import-platform-secrets-from-env.ts": {
-    "mtime": 1786302143.8652098,
+    "mtime": 1786303317.7659054,
     "ast_hash": "461bd410ce66c1d1ca90046a4af088d3",
     "semantic_hash": ""
   },
@@ -2090,8 +2090,8 @@
     "semantic_hash": ""
   },
   "worker/src/dedicated-short.ts": {
-    "mtime": 1786295234.81802,
-    "ast_hash": "d0771bad3da3410aa95069f21881ea26",
+    "mtime": 1786303438.1139395,
+    "ast_hash": "110c2ea41e300145a7a0618ae3ce9a9c",
     "semantic_hash": ""
   },
   "worker/src/demo.ts": {
@@ -2100,7 +2100,7 @@
     "semantic_hash": ""
   },
   "worker/src/index.ts": {
-    "mtime": 1786302143.8732097,
+    "mtime": 1786303317.7659054,
     "ast_hash": "6d243b4df8ac6e4b52aba0600baa9c81",
     "semantic_hash": ""
   },
@@ -2115,8 +2115,8 @@
     "semantic_hash": ""
   },
   "worker/src/pipeline.ts": {
-    "mtime": 1786295234.81802,
-    "ast_hash": "481ba97a8ecade820168ebf578efcc46",
+    "mtime": 1786303433.6539383,
+    "ast_hash": "cd32094a5f39216b097f47bc0cf09e47",
     "semantic_hash": ""
   },
   "worker/src/sentry.ts": {
@@ -2490,7 +2490,7 @@
     "semantic_hash": ""
   },
   "scripts/seed-platform-secrets-from-env.ts": {
-    "mtime": 1786302143.8732097,
+    "mtime": 1786303317.7659054,
     "ast_hash": "26224b3a8a1c0ed869e23baad32dca29",
     "semantic_hash": ""
   },
@@ -2505,8 +2505,8 @@
     "semantic_hash": ""
   },
   "docs/PLATFORM_AI_SECRETS.md": {
-    "mtime": 1786302186.7492065,
-    "ast_hash": "ec6affd108a3a5b592744f487eb8f947",
+    "mtime": 1786303457.5779443,
+    "ast_hash": "e643a785f4aac0b4d25c25695b5aa543",
     "semantic_hash": ""
   },
   "resource/bgm/README.md": {
@@ -2615,8 +2615,13 @@
     "semantic_hash": ""
   },
   "backend/services/media-generator/src/providers/fal-flux-image.ts": {
-    "mtime": 1786302203.1212053,
+    "mtime": 1786303317.7539055,
     "ast_hash": "6ccd00769f194b09124bfc407e8b6f42",
+    "semantic_hash": ""
+  },
+  "backend/services/media-generator/src/providers/fal-i2v.ts": {
+    "mtime": 1786303396.4819286,
+    "ast_hash": "efec11d7fb784be65ce9d6430af45ed1",
     "semantic_hash": ""
   }
 }

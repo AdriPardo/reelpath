@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { getStoragePath, isAiSceneImagesEnabled, loadEffectiveConfig } from '@autotube/config';
+import { getStoragePath, isAiSceneImagesEnabled, loadEffectiveConfig, PRODUCT_DEFAULTS } from '@autotube/config';
 import { prisma } from '@autotube/database';
 import type { ChannelConfig, MediaAssetDTO, ScriptVariant } from '@autotube/shared';
 import {
@@ -23,6 +23,7 @@ import {
   generateSpeech,
   writeSceneSubtitle,
 } from './providers/media-providers.js';
+import { buildFalI2vMotionPrompt, generateFalImageToVideo } from './providers/fal-i2v.js';
 import { pathExists, resolveSceneVisual } from './providers/stock-provider.js';
 import { resolveSceneStockQueries } from './stock-terms.js';
 
@@ -45,6 +46,10 @@ export async function generateMedia(params: {
   orgPlan?: string | null;
   /** Channel.config.generateAiImages — undefined = heredar org/env. */
   channelGenerateAiImages?: boolean | null;
+  /** Channel.config.falI2vEnabled — undefined = heredar default plataforma. */
+  channelFalI2vEnabled?: boolean | null;
+  /** Channel.config.maxFalI2vPerVideo — undefined = heredar default. */
+  channelMaxFalI2vPerVideo?: number | null;
   /** Velocidad reproducción stock B-roll (canal). */
   stockPlaybackSpeed?: number;
   /** Subfolder under pipelines/<id>/ (e.g. "short"). */
@@ -62,6 +67,17 @@ export async function generateMedia(params: {
   });
   const maxAiImages = cfg.MAX_AI_IMAGES_PER_VIDEO;
   let aiImagesUsed = 0;
+  const falKey = cfg.FAL_KEY?.trim() || cfg.FAL_API_KEY?.trim() || '';
+  const falI2vEnabled =
+    params.channelFalI2vEnabled === true ||
+    params.channelFalI2vEnabled === false
+      ? params.channelFalI2vEnabled
+      : cfg.FAL_I2V_ENABLED;
+  const maxFalI2v =
+    typeof params.channelMaxFalI2vPerVideo === 'number' && params.channelMaxFalI2vPerVideo >= 0
+      ? Math.min(8, Math.floor(params.channelMaxFalI2vPerVideo))
+      : cfg.MAX_FAL_I2V_PER_VIDEO;
+  let falI2vUsed = 0;
   const forceAiImages = cfg.FORCE_AI_IMAGES_ON_PAID && aiImagesBase && !cfg.GENERATE_DALLE_IMAGES;
   const phraseMaxLen = retentionMode ? RETENTION_PHRASE_MAX_LEN : 42;
   const baseDir = params.subdir
@@ -75,6 +91,13 @@ export async function generateMedia(params: {
         (maxAiImages > 0 ? ` (tope ${maxAiImages}/vídeo)` : ' (sin tope)') +
         (cfg.GENERATE_DALLE_IMAGES ? ' vía GENERATE_DALLE_IMAGES' : ' vía FORCE_AI_IMAGES_ON_PAID'),
     );
+  }
+  if (falI2vEnabled && falKey) {
+    console.info(
+      `[media-generator] fal image→video ON (tope ${maxFalI2v}/vídeo, model=${cfg.FAL_I2V_MODEL})`,
+    );
+  } else if (falI2vEnabled && !falKey) {
+    console.info('[media-generator] fal image→video pedido pero sin FAL_KEY — se omite');
   }
 
   const assets: MediaAssetDTO[] = [];
@@ -179,6 +202,50 @@ export async function generateMedia(params: {
         console.info(
           `[media-generator] scene=${scene.index} imagen IA (${aiImagesUsed}${maxAiImages > 0 ? `/${maxAiImages}` : ''})`,
         );
+
+        // Optional: animate hero AI stills (opening + next AI scenes) via fal i2v.
+        if (
+          falI2vEnabled &&
+          falKey &&
+          maxFalI2v > 0 &&
+          falI2vUsed < maxFalI2v &&
+          visualAssetType === 'image' &&
+          (await pathExists(imagePath))
+        ) {
+          try {
+            const i2vModel =
+              cfg.FAL_I2V_MODEL?.trim() || PRODUCT_DEFAULTS.falI2vModel;
+            const motionPrompt = buildFalI2vMotionPrompt(scene.visualPrompt, scene.narration);
+            console.info(
+              `[media-generator] scene=${scene.index} fal i2v start model=${i2vModel} (${falI2vUsed + 1}/${maxFalI2v})`,
+            );
+            const i2v = await generateFalImageToVideo({
+              apiKey: falKey,
+              model: i2vModel,
+              imagePath,
+              outPath: videoPath,
+              prompt: motionPrompt,
+              durationSec: (cfg.FAL_I2V_DURATION_SEC === '10' ? '10' : '6') as '6' | '10',
+            });
+            visualAssetType = 'video';
+            visualPath = videoPath;
+            falI2vUsed += 1;
+            stockMeta = {
+              ...(stockMeta ?? {}),
+              falI2v: true,
+              falI2vModel: i2v.model,
+              falI2vDurationSec: i2v.durationSec,
+            };
+            console.info(
+              `[media-generator] scene=${scene.index} fal i2v ok (${falI2vUsed}/${maxFalI2v})`,
+            );
+          } catch (err) {
+            console.warn(
+              `[media-generator] scene=${scene.index} fal i2v failed — keep still:`,
+              err instanceof Error ? err.message : err,
+            );
+          }
+        }
       } else if (visualOrigin === 'stock') {
         console.info(
           `[media-generator] scene=${scene.index} stock ${visual.assetType} (${visual.path})`,

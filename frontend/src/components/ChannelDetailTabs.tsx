@@ -199,6 +199,8 @@ export function ChannelDetailTabs({
                   | null
                   | undefined,
                 maxAiImagesPerVideo: config.maxAiImagesPerVideo as number | null | undefined,
+                falI2vEnabled: config.falI2vEnabled as boolean | null | undefined,
+                maxFalI2vPerVideo: config.maxFalI2vPerVideo as number | null | undefined,
                 openaiImageQuality: config.openaiImageQuality as
                   | 'low'
                   | 'medium'

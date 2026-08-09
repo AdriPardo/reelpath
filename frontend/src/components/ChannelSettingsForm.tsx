@@ -50,6 +50,8 @@ const APP_DEFAULTS = {
   maxAiImagesPerVideo: 4,
   openaiImageQuality: 'medium' as const,
   generateAiImages: false,
+  falI2vEnabled: false,
+  maxFalI2vPerVideo: 2,
 };
 
 function voicesForProvider(provider: OrgTtsProvider): TtsVoiceOption[] {
@@ -404,6 +406,8 @@ export function ChannelSettingsForm({
     if (config.maxScenesShort == null) payload.maxScenesShort = null;
     if (config.generateAiImages == null) payload.generateAiImages = null;
     if (config.maxAiImagesPerVideo == null) payload.maxAiImagesPerVideo = null;
+    if (config.falI2vEnabled == null) payload.falI2vEnabled = null;
+    if (config.maxFalI2vPerVideo == null) payload.maxFalI2vPerVideo = null;
     if (config.openaiImageQuality == null) payload.openaiImageQuality = null;
     if (config.ttsProvider == null) payload.ttsProvider = null;
     if (config.edgeTtsVoice == null) payload.edgeTtsVoice = null;
@@ -735,6 +739,60 @@ export function ChannelSettingsForm({
             <option value="high">{t('imageQualityHigh')}</option>
             <option value="auto">{t('imageQualityAuto')}</option>
           </select>
+        </label>
+        <label className="modal-field">
+          <span className="field-label-row">
+            <span>{t('falI2vLabel')}</span>
+            <InfoTooltip content={t('falI2vTooltip')} />
+          </span>
+          <select
+            className="topic-input"
+            value={
+              config.falI2vEnabled === true
+                ? 'on'
+                : config.falI2vEnabled === false
+                  ? 'off'
+                  : 'inherit'
+            }
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === 'inherit') setField('falI2vEnabled', null);
+              else setField('falI2vEnabled', v === 'on');
+            }}
+          >
+            <option value="inherit">
+              {t('falI2vInheritEffective', {
+                value: APP_DEFAULTS.falI2vEnabled ? t('falI2vOn') : t('falI2vOff'),
+              })}
+            </option>
+            <option value="on">{t('falI2vOn')}</option>
+            <option value="off">{t('falI2vOff')}</option>
+          </select>
+        </label>
+        <label className="modal-field">
+          <span className="field-label-row">
+            <span>{t('maxFalI2vLabel')}</span>
+            <InfoTooltip content={t('maxFalI2vTooltip')} />
+          </span>
+          <input
+            type="number"
+            className="topic-input"
+            min={0}
+            max={8}
+            value={config.maxFalI2vPerVideo ?? ''}
+            placeholder={t('inheritEffective', {
+              value: String(APP_DEFAULTS.maxFalI2vPerVideo),
+            })}
+            onChange={(e) => {
+              const v = e.target.value.trim();
+              setField('maxFalI2vPerVideo', v === '' ? null : Number(v));
+            }}
+          />
+          {config.maxFalI2vPerVideo == null ? (
+            <span className="field-effective-hint">
+              {t('effectiveValue', { value: String(APP_DEFAULTS.maxFalI2vPerVideo) })}
+            </span>
+          ) : null}
         </label>
         <label className="modal-field">
           <span className="field-label-row">

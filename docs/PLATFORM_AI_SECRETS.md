@@ -12,6 +12,8 @@ Reelpath **no** pide API keys de IA al end-user. Ops / Atlas las inyectan ([ADR-
 
 Imágenes de escena: con `FAL_KEY` (o secreto `fal`) se usa **FLUX 1.1 [pro]** primero; OpenAI gpt-image queda como fallback (`IMAGE_AI_PROVIDER=auto`).
 
+Opcional **image→video** (Hailuo): `FAL_I2V_ENABLED=true` o canal → «Animar imágenes IA». Tope tipico 1–2 clips/vídeo (`MAX_FAL_I2V_PER_VIDEO`).
+
 No se borran filas `PlatformSecret` en deploy ni cutover.
 
 ## Preferido: Atlas + envFrom
