@@ -11,6 +11,10 @@
     "viewAll": "Ver todos →",
     "viewAllFem": "Ver todas →",
     "generateVideo": "Generar vídeo",
+    "previous": "Anterior",
+    "next": "Siguiente",
+    "pageInfo": "Página {page} de {total}",
+    "paginationAria": "Paginación",
     "createChannel": "Crear canal",
     "goToChannels": "Ir a Canales",
     "contact": "Contacto",
@@ -264,6 +268,7 @@
     "noPendingTitle": "Sin vídeos pendientes",
     "noPendingDesc": "Cuando se genere un vídeo, aparecerá aquí para que lo apruebes antes de publicar.",
     "activePipelinesSection": "Generaciones en curso",
+    "syncingGenerations": "Actualizando generaciones…",
     "noActiveTitle": "Sin generaciones en curso",
     "noActiveDesc": "Cuando generes un vídeo, verás aquí su progreso en tiempo real.",
     "upcomingSection": "Próximas publicaciones",
@@ -474,6 +479,7 @@
       "nameUpdated": "Nombre actualizado"
     },
     "integrations": {
+      "intro": "Conecta la cuenta de YouTube donde quieres publicar el contenido de este canal. Cada canal puede tener su propia cuenta de YouTube.",
       "introShort": "Gestiona aquí la cuenta de publicación del canal.",
       "privacyTooltip": "Privacidad por defecto que se aplicará a las nuevas publicaciones de YouTube de este canal.",
       "connectedSuccess": "YouTube conectado correctamente",
