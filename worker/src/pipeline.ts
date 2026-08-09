@@ -387,6 +387,8 @@ async function runPipelineStep(
           bgmEnabled: config.bgmEnabled,
           bgmVolume: config.bgmVolume,
           bgmFile: config.bgmFile,
+          // Long: no burned-in captions. Shorts burn from SRT after split / dedicated render.
+          burnSubtitles: false,
         });
 
         const repairMeta = run.metadata as { repairAudioRepublish?: boolean } | null;
