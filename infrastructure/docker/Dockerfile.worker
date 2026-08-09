@@ -23,5 +23,7 @@ COPY --from=build /app/package.json ./
 COPY --from=build /app/packages ./packages
 COPY --from=build /app/backend ./backend
 COPY --from=build /app/worker ./worker
+# Bundled BGM library (uploads still live under STORAGE_PATH/bgm).
+COPY --from=build /app/resource ./resource
 RUN mkdir -p /app/storage
 CMD ["npm", "run", "start", "-w", "worker"]
