@@ -2106,6 +2106,9 @@
     "previewUnavailable": "Vista previa no disponible",
     "playPreview": "Reproducir muestra de {name}",
     "stopPreview": "Detener muestra de {name}",
-    "empty": "Ninguna voz coincide con la búsqueda"
+    "empty": "Ninguna voz coincide con la búsqueda",
+    "voiceCount": "{count} de {total} voces",
+    "previewEmpty": "El preview TTS vino vacío",
+    "previewPlayFailed": "No se pudo reproducir la muestra de voz"
   }
 }

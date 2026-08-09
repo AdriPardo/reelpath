@@ -2106,6 +2106,9 @@
     "previewUnavailable": "Preview unavailable",
     "playPreview": "Play sample of {name}",
     "stopPreview": "Stop sample of {name}",
-    "empty": "No voices match your search"
+    "empty": "No voices match your search",
+    "voiceCount": "{count} of {total} voices",
+    "previewEmpty": "TTS preview returned empty audio",
+    "previewPlayFailed": "Could not play the voice sample"
   }
 }
