@@ -1,11 +1,13 @@
 # Shared Atlas / Traefik host (atlasops.dev). Producción: sin mocks, auth obligatoria.
 # Deploy: docker compose -f docker-compose.atlas.yml up -d --build
 #
-# .env (seed .env.atlas.example): DOMAIN, POSTGRES_PASSWORD, PLATFORM_ADMIN_EMAILS
+# .env (seed .env.atlas.example): DOMAIN, POSTGRES_PASSWORD, PLATFORM_ADMIN_EMAILS,
+#   DEFAULT_ADMIN_EMAIL / DEFAULT_ADMIN_PASSWORD (first-boot owner; seed does not reset password)
 # Atlas envFrom (atlas.yml): AUTH_SECRET, CREDENTIALS_ENCRYPTION_KEY,
 #   ai.openai / ai.elevenlabs / ai.deepseek → OPENAI_API_KEY / ELEVENLABS_API_KEY / DEEPSEEK_API_KEY
 # Runtime resolve: Atlas env → PlatformSecret (BD fallback). End-users never paste AI keys.
 # YouTube OAuth app → Admin → Infra (PlatformSecret) or ops script.
+# API boot: migrate → SEED_DEMO=false seed (idempotent admin) → start.
 
 name: reelpath
 
@@ -42,7 +44,7 @@ services:
     build:
       context: .
       dockerfile: infrastructure/docker/Dockerfile.api
-    command: ["sh", "-c", "npm run migrate:deploy:ci -w @autotube/database && npm run start -w backend-api"]
+    command: ["sh", "-c", "npm run migrate:deploy:ci -w @autotube/database && SEED_DEMO=false npm run seed:ci -w @autotube/database && npm run start -w backend-api"]
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://autotube:${POSTGRES_PASSWORD:-autotube}@db:5432/autotube
@@ -56,6 +58,9 @@ services:
       AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET in .env}
       PLATFORM_ADMIN_EMAILS: ${PLATFORM_ADMIN_EMAILS:-}
       CREDENTIALS_ENCRYPTION_KEY: ${CREDENTIALS_ENCRYPTION_KEY:?set CREDENTIALS_ENCRYPTION_KEY in .env}
+      DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL:-adripardo72@gmail.com}
+      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-changeme}
+      SEED_DEMO: "false"
       NEXT_PUBLIC_AUTH_REQUIRED: "true"
       YOUTUBE_OAUTH_REDIRECT_URI: https://${DOMAIN:-reelpath.atlasops.dev}/api/integrations/youtube/callback
     volumes:
