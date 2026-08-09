@@ -2071,6 +2071,7 @@
     "apikeysVoiceInherit": "Inherit server · {default}",
     "apikeysVoiceInheritPlain": "Inherit server",
     "apikeysVoiceHint": "Voice applies to the selected TTS provider. Empty = server default.",
+    "apikeysVoiceHintElevenLabs": "Shows every voice on the linked ElevenLabs account (org or platform API key), including clones. Without a key you only get the short fallback list.",
     "apikeysVoiceHintAuto": "Auto prefers Edge (free) first. This list is Edge voices; switch provider to see ElevenLabs or OpenAI.",
     "apikeysVoiceCustom": "Custom ({id})",
     "apikeysImagesTitle": "AI images (DALL·E / gpt-image)",

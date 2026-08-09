@@ -152,15 +152,24 @@ export function VoicePicker({
         if (!res.ok || cancelled) return;
         const data = (await res.json()) as { voices?: VoicePickerOption[] };
         if (!data.voices?.length || cancelled) return;
-        const byId = new Map(data.voices.map((v) => [v.id, v]));
-        setEnriched(
-          voices.map((v) => {
-            const remote = byId.get(v.id);
-            return remote ? { ...v, ...remote, previewUrl: remote.previewUrl ?? v.previewUrl } : v;
-          }),
+
+        // Use full ElevenLabs catalog (or curated fallback from API), not just the 10 seed voices.
+        const byId = new Map<string, VoicePickerOption>();
+        for (const remote of data.voices) {
+          if (!remote?.id) continue;
+          byId.set(remote.id, remote);
+        }
+        // Keep any currently-selected / custom seed not returned by API.
+        for (const seed of voices) {
+          if (seed?.id && !byId.has(seed.id)) byId.set(seed.id, seed);
+        }
+
+        const next = Array.from(byId.values()).sort((a, b) =>
+          a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }),
         );
+        if (!cancelled) setEnriched(next);
       } catch {
-        /* curated list still works without remote previews */
+        /* curated list still works without remote catalog */
       }
     })();
     return () => {

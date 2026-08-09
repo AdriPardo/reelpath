@@ -26,9 +26,19 @@ export const orgRouter = Router();
 
 orgRouter.use(authMiddleware, requireAuth);
 
-type VoicePreviewCache = { at: number; map: Record<string, string> };
-let elevenLabsPreviewCache: VoicePreviewCache | null = null;
-const PREVIEW_CACHE_MS = 60 * 60 * 1000;
+type ElevenLabsVoiceDto = {
+  id: string;
+  label: string;
+  locale: string;
+  gender?: 'female' | 'male' | 'neutral';
+  description?: string;
+  accent?: string;
+  previewUrl?: string | null;
+};
+
+type VoiceCatalogCache = { at: number; keyHash: string; voices: ElevenLabsVoiceDto[] };
+let elevenLabsCatalogCache: VoiceCatalogCache | null = null;
+const CATALOG_CACHE_MS = 60 * 60 * 1000;
 
 async function resolveElevenLabsKey(orgId: string): Promise<string | null> {
   const orgKey = await resolveOrgElevenLabsApiKey(orgId);
@@ -38,30 +48,84 @@ async function resolveElevenLabsKey(orgId: string): Promise<string | null> {
   return loadConfig().ELEVENLABS_API_KEY?.trim() || null;
 }
 
-async function loadElevenLabsPreviewMap(apiKey: string): Promise<Record<string, string>> {
-  if (elevenLabsPreviewCache && Date.now() - elevenLabsPreviewCache.at < PREVIEW_CACHE_MS) {
-    return elevenLabsPreviewCache.map;
+function hashApiKey(apiKey: string): string {
+  return crypto.createHash('sha256').update(apiKey).digest('hex').slice(0, 16);
+}
+
+function mapElevenLabsGender(raw?: string): 'female' | 'male' | 'neutral' | undefined {
+  const g = (raw ?? '').trim().toLowerCase();
+  if (g === 'female' || g === 'male') return g;
+  if (g === 'neutral' || g === 'non-binary' || g === 'nonbinary') return 'neutral';
+  return undefined;
+}
+
+/** Full account catalog from ElevenLabs (premade + cloned + shared for that API key). */
+async function loadElevenLabsVoiceCatalog(apiKey: string): Promise<ElevenLabsVoiceDto[]> {
+  const keyHash = hashApiKey(apiKey);
+  if (
+    elevenLabsCatalogCache &&
+    elevenLabsCatalogCache.keyHash === keyHash &&
+    Date.now() - elevenLabsCatalogCache.at < CATALOG_CACHE_MS
+  ) {
+    return elevenLabsCatalogCache.voices;
   }
+
   const res = await fetch('https://api.elevenlabs.io/v1/voices', {
     headers: { 'xi-api-key': apiKey, Accept: 'application/json' },
   });
   if (!res.ok) {
     throw new Error(`ElevenLabs voices failed (${res.status})`);
   }
+
   const data = (await res.json()) as {
-    voices?: Array<{ voice_id?: string; preview_url?: string | null }>;
+    voices?: Array<{
+      voice_id?: string;
+      name?: string;
+      preview_url?: string | null;
+      description?: string | null;
+      category?: string | null;
+      labels?: Record<string, string | undefined>;
+    }>;
   };
-  const map: Record<string, string> = {};
+
+  const voices: ElevenLabsVoiceDto[] = [];
   for (const voice of data.voices ?? []) {
-    if (voice.voice_id && voice.preview_url) {
-      map[voice.voice_id] = voice.preview_url;
-    }
+    const id = voice.voice_id?.trim();
+    const name = voice.name?.trim();
+    if (!id || !name) continue;
+    const labels = voice.labels ?? {};
+    const accent =
+      labels.accent?.trim() ||
+      labels.language?.trim() ||
+      labels.use_case?.trim() ||
+      labels.descriptive?.trim() ||
+      (voice.category?.trim() ? voice.category.trim() : 'ElevenLabs');
+    const description =
+      voice.description?.trim() ||
+      labels.description?.trim() ||
+      labels.use_case?.trim() ||
+      undefined;
+    voices.push({
+      id,
+      label: name,
+      locale: labels.language?.trim() || 'multilingual',
+      gender: mapElevenLabsGender(labels.gender),
+      accent,
+      description,
+      previewUrl: voice.preview_url ?? null,
+    });
   }
-  elevenLabsPreviewCache = { at: Date.now(), map };
-  return map;
+
+  voices.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }));
+  elevenLabsCatalogCache = { at: Date.now(), keyHash, voices };
+  return voices;
 }
 
-/** Curated voices + ElevenLabs preview URLs when a key is available. */
+function clearElevenLabsCatalogCache(): void {
+  elevenLabsCatalogCache = null;
+}
+
+/** Full ElevenLabs catalog when a key is available; curated fallback otherwise. */
 orgRouter.get('/tts/voices', async (req, res) => {
   const orgId = orgScope(req);
   if (!orgId) {
@@ -74,29 +138,43 @@ orgRouter.get('/tts/voices', async (req, res) => {
       ? providerRaw
       : 'elevenlabs';
 
-  const curated =
-    provider === 'elevenlabs' ? ELEVENLABS_TTS_VOICES : getTtsVoicesForProvider(provider);
-
-  let previewMap: Record<string, string> = {};
-  let previewsAvailable = false;
   if (provider === 'elevenlabs') {
     try {
       const apiKey = await resolveElevenLabsKey(orgId);
       if (apiKey) {
-        previewMap = await loadElevenLabsPreviewMap(apiKey);
-        previewsAvailable = Object.keys(previewMap).length > 0;
+        const remote = await loadElevenLabsVoiceCatalog(apiKey);
+        if (remote.length > 0) {
+          return res.json({
+            provider,
+            source: 'elevenlabs',
+            previewsAvailable: remote.some((v) => Boolean(v.previewUrl)),
+            voices: remote,
+          });
+        }
       }
     } catch (err) {
-      console.warn('[org/tts/voices] preview map failed', err);
+      console.warn('[org/tts/voices] ElevenLabs catalog failed', err);
     }
+
+    return res.json({
+      provider,
+      source: 'curated',
+      previewsAvailable: false,
+      voices: ELEVENLABS_TTS_VOICES.map((v) => ({
+        ...v,
+        previewUrl: v.previewUrl ?? null,
+      })),
+    });
   }
 
+  const curated = getTtsVoicesForProvider(provider);
   res.json({
     provider,
-    previewsAvailable,
+    source: 'curated',
+    previewsAvailable: false,
     voices: curated.map((v) => ({
       ...v,
-      previewUrl: v.previewUrl ?? previewMap[v.id] ?? null,
+      previewUrl: v.previewUrl ?? null,
     })),
   });
 });
@@ -414,8 +492,10 @@ orgRouter.patch('/settings', requireAdmin, async (req, res) => {
     const rawKey = body.elevenLabsApiKey;
     if (rawKey === null || rawKey === '') {
       await deleteOrgElevenLabsApiKey(orgId);
+      clearElevenLabsCatalogCache();
     } else if (typeof rawKey === 'string' && rawKey.trim()) {
       await upsertOrgElevenLabsApiKey(orgId, rawKey.trim());
+      clearElevenLabsCatalogCache();
     } else {
       return res.status(400).json({ error: 'elevenLabsApiKey inválida' });
     }

@@ -255,7 +255,9 @@ export function SettingsApiKeysPanel() {
               <span className="text-muted text-sm">
                 {ttsProvider === 'auto'
                   ? ts('apikeysVoiceHintAuto')
-                  : ts('apikeysVoiceHint')}
+                  : ttsProvider === 'elevenlabs'
+                    ? ts('apikeysVoiceHintElevenLabs')
+                    : ts('apikeysVoiceHint')}
               </span>
             </div>
 
