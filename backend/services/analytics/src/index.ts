@@ -190,25 +190,32 @@ function buildSummaryFromSnapshots(
     }
   }
   const unique = [...latestByVideo.values()];
-  const count = unique.length || snapshots.length;
   const pool = unique.length > 0 ? unique : snapshots;
+  const count = pool.length;
 
   const totals = pool.reduce(
     (acc, s) => ({
       views: acc.views + s.views,
       watchTime: acc.watchTime + s.watchTimeMinutes,
-      ctr: acc.ctr + s.ctr,
-      retention: acc.retention + s.retention,
       avgDur: acc.avgDur + s.averageViewDurationSec,
     }),
-    { views: 0, watchTime: 0, ctr: 0, retention: 0, avgDur: 0 },
+    { views: 0, watchTime: 0, avgDur: 0 },
   );
+
+  const withSignal = pool.filter((s) => s.ctr > 0 || s.retention > 0);
+  const weightSum = withSignal.reduce((s, r) => s + Math.max(r.views, 1), 0) || 1;
+  const avgCtr = withSignal.length
+    ? withSignal.reduce((s, r) => s + r.ctr * Math.max(r.views, 1), 0) / weightSum
+    : 0;
+  const avgRetention = withSignal.length
+    ? withSignal.reduce((s, r) => s + r.retention * Math.max(r.views, 1), 0) / weightSum
+    : 0;
 
   return {
     totalViews: totals.views,
     totalWatchTimeMinutes: Math.round(totals.watchTime * 10) / 10,
-    avgCtr: count ? totals.ctr / count : 0,
-    avgRetention: count ? totals.retention / count : 0,
+    avgCtr,
+    avgRetention,
     avgViewDurationSec: count ? totals.avgDur / count : 0,
     videoCount: unique.length,
   };
@@ -255,6 +262,7 @@ export async function getChannelAnalyticsInsights(channelId: string): Promise<Yo
     };
   }
 
+  const withEngagement = summary.avgCtr > 0 || summary.avgRetention > 0;
   const ctrPct = (summary.avgCtr * 100).toFixed(1);
   const retentionPct = (summary.avgRetention * 100).toFixed(0);
   const watchHours = (summary.totalWatchTimeMinutes / 60).toFixed(1);
@@ -263,17 +271,19 @@ export async function getChannelAnalyticsInsights(channelId: string): Promise<Yo
   const bullets: string[] = [
     `${summary.totalViews.toLocaleString('es')} vistas acumuladas en ${summary.videoCount} vídeo(s) con datos.`,
     `Tiempo de visualización total: ~${watchHours} horas.`,
-    `CTR medio: ${ctrPct}% · retención media: ${retentionPct}%.`,
+    withEngagement
+      ? `CTR medio: ${ctrPct}% · retención media: ${retentionPct}%.`
+      : 'CTR/retención aún no disponibles (YouTube Analytics o espera 24–48 h tras publicar).',
     `Duración media de visualización: ${avgMin} min por sesión.`,
   ];
 
-  if (summary.avgCtr < 0.03) {
+  if (withEngagement && summary.avgCtr < 0.03) {
     bullets.push('El CTR está por debajo del 3%: prueba miniaturas y títulos más contrastados.');
-  } else if (summary.avgCtr > 0.06) {
+  } else if (withEngagement && summary.avgCtr > 0.06) {
     bullets.push('Buen CTR: las miniaturas y títulos están funcionando bien.');
   }
 
-  if (summary.avgRetention < 0.3) {
+  if (withEngagement && summary.avgRetention < 0.3) {
     bullets.push('La retención es baja: revisa ganchos de los primeros 30 segundos.');
   }
 

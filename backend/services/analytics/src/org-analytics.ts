@@ -1,4 +1,7 @@
 import { prisma } from '@autotube/database';
+import { averageEngagement } from './engagement.js';
+
+export { averageEngagement } from './engagement.js';
 
 export interface OrgAnalyticsTopVideo {
   videoId: string;
@@ -13,8 +16,12 @@ export interface OrgAnalyticsSummary {
   videoCount: number;
   channelCount: number;
   hasMockData: boolean;
-  avgCtr: number;
-  avgRetention: number;
+  /** 0–1. Null when no snapshot has real CTR/retention yet. */
+  avgCtr: number | null;
+  /** 0–1. Null when no snapshot has real CTR/retention yet. */
+  avgRetention: number | null;
+  /** Videos included in CTR/retention averages. */
+  engagementSampleCount: number;
   topVideos: OrgAnalyticsTopVideo[];
 }
 
@@ -41,8 +48,9 @@ export async function getOrgAnalyticsSummary(orgId: string): Promise<OrgAnalytic
       videoCount: 0,
       channelCount: 0,
       hasMockData: false,
-      avgCtr: 0,
-      avgRetention: 0,
+      avgCtr: null,
+      avgRetention: null,
+      engagementSampleCount: 0,
       topVideos: [],
     };
   }
@@ -98,17 +106,16 @@ export async function getOrgAnalyticsSummary(orgId: string): Promise<OrgAnalytic
   videos.sort((a, b) => b.views - a.views);
 
   const metrics = [...latestByVideo.values()];
-  const n = metrics.length || 1;
-  const avgCtr = metrics.reduce((sum, m) => sum + m.ctr, 0) / n;
-  const avgRetention = metrics.reduce((sum, m) => sum + m.retention, 0) / n;
+  const engagement = averageEngagement(metrics);
 
   return {
     totalViews: videos.reduce((sum, v) => sum + v.views, 0),
     videoCount: videos.length,
     channelCount: channels.length,
     hasMockData,
-    avgCtr: metrics.length ? avgCtr : 0,
-    avgRetention: metrics.length ? avgRetention : 0,
+    avgCtr: engagement.avgCtr,
+    avgRetention: engagement.avgRetention,
+    engagementSampleCount: engagement.sampleCount,
     topVideos: videos.slice(0, 5),
   };
 }

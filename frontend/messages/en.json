@@ -299,6 +299,7 @@
     "videosWithData": "Videos with data",
     "avgCtr": "Avg. CTR",
     "avgRetention": "Avg. retention",
+    "engagementPendingHint": "CTR and retention come from YouTube Analytics (not views alone). Click Refresh; if still empty, reconnect YouTube on the channel or wait 24–48h after publishing.",
     "topVideos": "Top videos",
     "publishConnectHint": "Publish videos and connect YouTube on your channels to see the summary here.",
     "mockData": "Mock data",
