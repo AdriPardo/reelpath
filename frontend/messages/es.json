@@ -672,7 +672,7 @@
       "imageQualityHigh": "High",
       "imageQualityAuto": "Auto",
       "falI2vLabel": "Animar imágenes IA (fal)",
-      "falI2vTooltip": "Convierte 1–2 imágenes IA en clips con movimiento (Hailuo vía fal.ai). Requiere FAL_KEY. El resto sigue stock/Ken Burns. ~0,27 $/clip de 6 s.",
+      "falI2vTooltip": "Convierte hasta N stills en clips con movimiento (Hailuo vía fal.ai). Requiere FAL_KEY. Reserva esas escenas para imagen IA (no stock). ~0,27 $/clip de 6 s. Regenera el vídeo tras activar.",
       "falI2vInheritEffective": "Heredar → {value}",
       "falI2vOn": "Activado",
       "falI2vOff": "Desactivado",

@@ -26,54 +26,107 @@ function authorize(apiKey: string): string {
 async function uploadImageToFal(apiKey: string, imagePath: string): Promise<string> {
   const buf = await fs.readFile(imagePath);
   if (!buf.length) throw new Error('Empty image for fal upload');
-  const contentType = imagePath.toLowerCase().endsWith('.jpg') ? 'image/jpeg' : 'image/png';
+  const contentType = imagePath.toLowerCase().endsWith('.jpg') || imagePath.toLowerCase().endsWith('.jpeg')
+    ? 'image/jpeg'
+    : 'image/png';
   const fileName = path.basename(imagePath) || 'scene.png';
+  const auth = authorize(apiKey);
 
-  const initRes = await fetch('https://rest.alpha.fal.ai/storage/upload/initiate', {
-    method: 'POST',
-    headers: {
-      Authorization: authorize(apiKey),
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify({
-      file_name: fileName,
-      content_type: contentType,
-    }),
-  });
-  const initText = await initRes.text();
-  if (!initRes.ok) {
-    // Fallback: data URI (works for smaller files).
-    console.warn(
-      `[fal-i2v] upload initiate failed (${initRes.status}); using data URI fallback`,
-    );
-    return `data:${contentType};base64,${buf.toString('base64')}`;
-  }
-
-  let initiated: { upload_url?: string; file_url?: string };
+  // 1) Direct CDN upload (preferred; avoids huge data URIs).
   try {
-    initiated = JSON.parse(initText) as typeof initiated;
-  } catch {
-    return `data:${contentType};base64,${buf.toString('base64')}`;
+    const direct = await fetch('https://fal.media/files/v1/upload', {
+      method: 'POST',
+      headers: {
+        Authorization: auth,
+        'Content-Type': contentType,
+        'X-Fal-File-Name': fileName,
+        Accept: 'application/json',
+      },
+      body: buf,
+    });
+    const directText = await direct.text();
+    if (direct.ok) {
+      const parsed = JSON.parse(directText) as {
+        access_url?: string;
+        url?: string;
+        file_url?: string;
+      };
+      const url = parsed.access_url || parsed.url || parsed.file_url;
+      if (url?.trim()) return url.trim();
+    } else {
+      console.warn(`[fal-i2v] fal.media upload failed (${direct.status}): ${directText.slice(0, 160)}`);
+    }
+  } catch (err) {
+    console.warn(
+      '[fal-i2v] fal.media upload error:',
+      err instanceof Error ? err.message : err,
+    );
   }
 
-  if (!initiated.upload_url || !initiated.file_url) {
-    return `data:${contentType};base64,${buf.toString('base64')}`;
+  // 2) Initiate + PUT (legacy alpha storage).
+  try {
+    const initRes = await fetch(
+      'https://rest.alpha.fal.ai/storage/upload/initiate?storage_type=fal-cdn-v3',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: auth,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          file_name: fileName,
+          content_type: contentType,
+        }),
+      },
+    );
+    const initText = await initRes.text();
+    if (initRes.ok) {
+      const initiated = JSON.parse(initText) as {
+        upload_url?: string;
+        file_url?: string;
+      };
+      if (initiated.upload_url && initiated.file_url) {
+        const put = await fetch(initiated.upload_url, {
+          method: 'PUT',
+          headers: { 'Content-Type': contentType },
+          body: buf,
+        });
+        if (put.ok) return initiated.file_url;
+        console.warn(`[fal-i2v] upload PUT failed (${put.status})`);
+      }
+    } else {
+      console.warn(`[fal-i2v] upload initiate failed (${initRes.status}): ${initText.slice(0, 160)}`);
+    }
+  } catch (err) {
+    console.warn(
+      '[fal-i2v] upload initiate error:',
+      err instanceof Error ? err.message : err,
+    );
   }
 
-  const put = await fetch(initiated.upload_url, {
-    method: 'PUT',
-    headers: { 'Content-Type': contentType },
-    body: buf,
-  });
-  if (!put.ok) {
-    throw new Error(`fal upload PUT failed (${put.status})`);
+  // 3) Last resort: data URI (may fail for large PNGs on some models).
+  if (buf.length > 4_500_000) {
+    throw new Error(
+      `fal upload failed and image too large for data URI (${buf.length} bytes)`,
+    );
   }
-  return initiated.file_url;
+  console.warn('[fal-i2v] falling back to data URI for image_url');
+  return `data:${contentType};base64,${buf.toString('base64')}`;
 }
 
 async function sleep(ms: number): Promise<void> {
   await new Promise((r) => setTimeout(r, ms));
+}
+
+function isTerminalSuccess(status?: string): boolean {
+  const s = (status ?? '').toUpperCase();
+  return s === 'COMPLETED' || s === 'OK' || s === 'SUCCESS';
+}
+
+function isTerminalFailure(status?: string): boolean {
+  const s = (status ?? '').toUpperCase();
+  return s === 'FAILED' || s === 'CANCELLED' || s === 'ERROR';
 }
 
 /**
@@ -114,6 +167,7 @@ export async function generateFalImageToVideo(params: FalI2vParams): Promise<{
     request_id?: string;
     status_url?: string;
     response_url?: string;
+    video?: { url?: string };
   };
   try {
     submitted = JSON.parse(submitText) as typeof submitted;
@@ -121,16 +175,25 @@ export async function generateFalImageToVideo(params: FalI2vParams): Promise<{
     throw new Error('fal i2v submit returned non-JSON');
   }
 
+  // Rare sync response with video already present.
+  if (submitted.video?.url?.trim()) {
+    const videoUrl = submitted.video.url.trim();
+    const dl = await fetch(videoUrl);
+    if (!dl.ok) throw new Error(`fal i2v download failed (${dl.status})`);
+    const buf = Buffer.from(await dl.arrayBuffer());
+    if (!buf.length) throw new Error('Empty fal i2v download');
+    await fs.mkdir(path.dirname(params.outPath), { recursive: true });
+    await fs.writeFile(params.outPath, buf);
+    return { model, durationSec: Number(duration) || 6 };
+  }
+
+  const requestId = submitted.request_id?.trim();
   const statusUrl =
     submitted.status_url ||
-    (submitted.request_id
-      ? `https://queue.fal.run/${model}/requests/${submitted.request_id}/status`
-      : null);
+    (requestId ? `https://queue.fal.run/${model}/requests/${requestId}/status` : null);
   const responseUrl =
     submitted.response_url ||
-    (submitted.request_id
-      ? `https://queue.fal.run/${model}/requests/${submitted.request_id}`
-      : null);
+    (requestId ? `https://queue.fal.run/${model}/requests/${requestId}` : null);
 
   if (!statusUrl || !responseUrl) {
     throw new Error('fal i2v submit missing status/response URLs');
@@ -139,22 +202,22 @@ export async function generateFalImageToVideo(params: FalI2vParams): Promise<{
   const started = Date.now();
   let delay = 2500;
   while (Date.now() - started < timeoutMs) {
-    const stRes = await fetch(statusUrl, {
+    const stRes = await fetch(`${statusUrl}${statusUrl.includes('?') ? '&' : '?'}logs=0`, {
       headers: { Authorization: auth, Accept: 'application/json' },
     });
     const stText = await stRes.text();
     if (!stRes.ok) {
       throw new Error(`fal i2v status failed (${stRes.status}): ${stText.slice(0, 200)}`);
     }
-    let status: { status?: string; error?: string };
+    let status: { status?: string; error?: string; response_url?: string };
     try {
       status = JSON.parse(stText) as typeof status;
     } catch {
       throw new Error('fal i2v status non-JSON');
     }
 
-    if (status.status === 'COMPLETED') break;
-    if (status.status === 'FAILED' || status.status === 'CANCELLED') {
+    if (isTerminalSuccess(status.status)) break;
+    if (isTerminalFailure(status.status)) {
       throw new Error(`fal i2v ${status.status}: ${status.error ?? stText.slice(0, 200)}`);
     }
     await sleep(delay);

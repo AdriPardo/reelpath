@@ -162,8 +162,32 @@ export async function generateMedia(params: {
       visualSourceMode,
       scene.preferredVisualSource,
     );
-    const visualExists =
-      (await pathExists(videoPath)) || (await pathExists(imagePath));
+    // When fal i2v is on, reserve remaining slots for stills (stock video would skip i2v).
+    const reserveForI2v =
+      falI2vEnabled && !!falKey && maxFalI2v > 0 && falI2vUsed < maxFalI2v;
+    const preferredSource: 'stock' | 'image' = reserveForI2v
+      ? 'image'
+      : wantsStock
+        ? 'stock'
+        : 'image';
+    if (reserveForI2v && wantsStock) {
+      console.info(
+        `[media-generator] scene=${scene.index} reserva IA+fal i2v (salta stock; slot ${falI2vUsed + 1}/${maxFalI2v})`,
+      );
+    }
+
+    const hasVideoOnDisk = await pathExists(videoPath);
+    const hasImageOnDisk = await pathExists(imagePath);
+    // Hero i2v slots: drop prior stock video so we can (re)build still → motion.
+    if (reserveForI2v && hasVideoOnDisk) {
+      console.info(
+        `[media-generator] scene=${scene.index} borra vídeo previo para slot fal i2v`,
+      );
+      await fs.unlink(videoPath).catch(() => {});
+    }
+    const hasVideo = reserveForI2v ? false : hasVideoOnDisk;
+    const hasImage = hasImageOnDisk;
+    const visualExists = hasVideo || hasImage;
 
     let visualAssetType: 'image' | 'video' = 'image';
     let visualPath = imagePath;
@@ -171,7 +195,48 @@ export async function generateMedia(params: {
     let stockMeta: Record<string, unknown> | undefined;
 
     const allowAiImages =
-      aiImagesBase && (maxAiImages <= 0 || aiImagesUsed < maxAiImages);
+      (aiImagesBase && (maxAiImages <= 0 || aiImagesUsed < maxAiImages)) || reserveForI2v;
+
+    async function tryAnimateStill(reason: string): Promise<boolean> {
+      if (!falI2vEnabled || !falKey || maxFalI2v <= 0 || falI2vUsed >= maxFalI2v) return false;
+      if (!(await pathExists(imagePath))) return false;
+      // Don't re-animate if we already have a fal i2v (or any) video for this scene.
+      if (await pathExists(videoPath)) return false;
+      try {
+        const i2vModel = cfg.FAL_I2V_MODEL?.trim() || PRODUCT_DEFAULTS.falI2vModel;
+        const motionPrompt = buildFalI2vMotionPrompt(scene.visualPrompt, scene.narration);
+        console.info(
+          `[media-generator] scene=${scene.index} fal i2v start (${reason}) model=${i2vModel} (${falI2vUsed + 1}/${maxFalI2v})`,
+        );
+        const i2v = await generateFalImageToVideo({
+          apiKey: falKey,
+          model: i2vModel,
+          imagePath,
+          outPath: videoPath,
+          prompt: motionPrompt,
+          durationSec: (cfg.FAL_I2V_DURATION_SEC === '10' ? '10' : '6') as '6' | '10',
+        });
+        visualAssetType = 'video';
+        visualPath = videoPath;
+        falI2vUsed += 1;
+        stockMeta = {
+          ...(stockMeta ?? {}),
+          falI2v: true,
+          falI2vModel: i2v.model,
+          falI2vDurationSec: i2v.durationSec,
+        };
+        console.info(
+          `[media-generator] scene=${scene.index} fal i2v ok (${falI2vUsed}/${maxFalI2v})`,
+        );
+        return true;
+      } catch (err) {
+        console.warn(
+          `[media-generator] scene=${scene.index} fal i2v failed — keep still:`,
+          err instanceof Error ? err.message : err,
+        );
+        return false;
+      }
+    }
 
     if (!visualExists) {
       const visual = await resolveSceneVisual({
@@ -181,8 +246,8 @@ export async function generateMedia(params: {
         videoOutPath: videoPath,
         sceneIndex: scene.index,
         aspectRatio,
-        preferredSource: wantsStock ? 'stock' : 'image',
-        forceAiImages,
+        preferredSource,
+        forceAiImages: forceAiImages || reserveForI2v,
         allowAiImages,
         stockQuery: stockQueries.get(scene.index) ?? scene.stockQuery,
         usedSourceIds: usedStockSourceIds,
@@ -202,63 +267,39 @@ export async function generateMedia(params: {
         console.info(
           `[media-generator] scene=${scene.index} imagen IA (${aiImagesUsed}${maxAiImages > 0 ? `/${maxAiImages}` : ''})`,
         );
-
-        // Optional: animate hero AI stills (opening + next AI scenes) via fal i2v.
-        if (
-          falI2vEnabled &&
-          falKey &&
-          maxFalI2v > 0 &&
-          falI2vUsed < maxFalI2v &&
-          visualAssetType === 'image' &&
-          (await pathExists(imagePath))
-        ) {
-          try {
-            const i2vModel =
-              cfg.FAL_I2V_MODEL?.trim() || PRODUCT_DEFAULTS.falI2vModel;
-            const motionPrompt = buildFalI2vMotionPrompt(scene.visualPrompt, scene.narration);
-            console.info(
-              `[media-generator] scene=${scene.index} fal i2v start model=${i2vModel} (${falI2vUsed + 1}/${maxFalI2v})`,
-            );
-            const i2v = await generateFalImageToVideo({
-              apiKey: falKey,
-              model: i2vModel,
-              imagePath,
-              outPath: videoPath,
-              prompt: motionPrompt,
-              durationSec: (cfg.FAL_I2V_DURATION_SEC === '10' ? '10' : '6') as '6' | '10',
-            });
-            visualAssetType = 'video';
-            visualPath = videoPath;
-            falI2vUsed += 1;
-            stockMeta = {
-              ...(stockMeta ?? {}),
-              falI2v: true,
-              falI2vModel: i2v.model,
-              falI2vDurationSec: i2v.durationSec,
-            };
-            console.info(
-              `[media-generator] scene=${scene.index} fal i2v ok (${falI2vUsed}/${maxFalI2v})`,
-            );
-          } catch (err) {
-            console.warn(
-              `[media-generator] scene=${scene.index} fal i2v failed — keep still:`,
-              err instanceof Error ? err.message : err,
-            );
-          }
+        if (visualAssetType === 'image') {
+          await tryAnimateStill('ai-still');
         }
       } else if (visualOrigin === 'stock') {
         console.info(
           `[media-generator] scene=${scene.index} stock ${visual.assetType} (${visual.path})`,
         );
+        // Stock photo (not clip): also eligible for motion if i2v slots remain.
+        if (visualAssetType === 'image' && reserveForI2v) {
+          await tryAnimateStill('stock-photo');
+        } else if (falI2vEnabled && falI2vUsed < maxFalI2v) {
+          console.info(
+            `[media-generator] scene=${scene.index} fal i2v skip — stock video (sin still)`,
+          );
+        }
       } else {
         console.info(`[media-generator] scene=${scene.index} placeholder procedural`);
       }
-    } else if (await pathExists(videoPath)) {
+    } else if (hasVideo) {
       visualAssetType = 'video';
       visualPath = videoPath;
       visualOrigin = wantsStock ? 'stock' : 'ai';
     } else {
-      visualOrigin = wantsStock ? 'stock' : 'ai';
+      // Existing still on disk (re-run after enabling fal i2v).
+      visualAssetType = 'image';
+      visualPath = imagePath;
+      visualOrigin = wantsStock && !reserveForI2v ? 'stock' : 'ai';
+      const animated = await tryAnimateStill('cached-still');
+      if (!animated && falI2vEnabled && !falKey) {
+        console.info(
+          `[media-generator] scene=${scene.index} still en disco pero sin FAL_KEY — no i2v`,
+        );
+      }
     }
 
     await writeSceneSubtitle(subtitlePath, scene.narration, durationSec, {
@@ -328,7 +369,9 @@ export async function generateMedia(params: {
     console.info(
       `[media-generator] resumen visuales run=${params.pipelineRunId}: ` +
         `stock=${summary.stock} ia=${summary.ai} placeholder=${summary.placeholder} ` +
-        `(modo=${visualSourceMode}${aiImagesBase ? ', IA on' : ', IA off'})`,
+        `falI2v=${falI2vUsed}/${maxFalI2v} ` +
+        `(modo=${visualSourceMode}${aiImagesBase ? ', IA on' : ', IA off'}` +
+        `${falI2vEnabled ? ', i2v on' : ''})`,
     );
   }
 
