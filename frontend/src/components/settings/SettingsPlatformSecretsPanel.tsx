@@ -16,6 +16,8 @@ type PlatformSecretsStatus = {
   hasDeepseekKey: boolean;
   hasElevenLabsKey: boolean;
   hasPexelsKey: boolean;
+  hasPixabayKey?: boolean;
+  hasCoverrKey?: boolean;
   youtubeOAuthRedirectUri: string;
   sources?: {
     youtube: SecretSource;
@@ -23,6 +25,8 @@ type PlatformSecretsStatus = {
     deepseek: SecretSource;
     elevenlabs: SecretSource;
     pexels: SecretSource;
+    pixabay?: SecretSource;
+    coverr?: SecretSource;
   };
 };
 
@@ -60,6 +64,8 @@ export function SettingsPlatformSecretsPanel() {
   const deepseekId = useId();
   const elevenId = useId();
   const pexelsId = useId();
+  const pixabayId = useId();
+  const coverrId = useId();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -71,6 +77,8 @@ export function SettingsPlatformSecretsPanel() {
   const [deepseekKey, setDeepseekKey] = useState('');
   const [elevenLabsKey, setElevenLabsKey] = useState('');
   const [pexelsKey, setPexelsKey] = useState('');
+  const [pixabayKey, setPixabayKey] = useState('');
+  const [coverrKey, setCoverrKey] = useState('');
 
   const isPlatformAdmin = session?.isPlatformAdmin === true;
 
@@ -104,6 +112,8 @@ export function SettingsPlatformSecretsPanel() {
       if (deepseekKey.trim()) body.deepseekApiKey = deepseekKey.trim();
       if (elevenLabsKey.trim()) body.elevenLabsApiKey = elevenLabsKey.trim();
       if (pexelsKey.trim()) body.pexelsApiKey = pexelsKey.trim();
+      if (pixabayKey.trim()) body.pixabayApiKey = pixabayKey.trim();
+      if (coverrKey.trim()) body.coverrApiKey = coverrKey.trim();
 
       if (Object.keys(body).length === 0) {
         toast(t('nothingToSave'), 'error');
@@ -121,6 +131,8 @@ export function SettingsPlatformSecretsPanel() {
       setDeepseekKey('');
       setElevenLabsKey('');
       setPexelsKey('');
+      setPixabayKey('');
+      setCoverrKey('');
       toast(t('saved'), 'success');
     } catch (err) {
       toast(err instanceof Error ? err.message : t('saveError'), 'error');
@@ -135,7 +147,9 @@ export function SettingsPlatformSecretsPanel() {
       | 'clearOpenaiApiKey'
       | 'clearDeepseekApiKey'
       | 'clearElevenLabsApiKey'
-      | 'clearPexelsApiKey',
+      | 'clearPexelsApiKey'
+      | 'clearPixabayApiKey'
+      | 'clearCoverrApiKey',
   ) {
     setSaving(true);
     try {
@@ -284,6 +298,24 @@ export function SettingsPlatformSecretsPanel() {
               value: pexelsKey,
               set: setPexelsKey,
               clear: 'clearPexelsApiKey' as const,
+            },
+            {
+              id: pixabayId,
+              label: t('pixabayLabel'),
+              has: !!status.hasPixabayKey,
+              source: status.sources?.pixabay,
+              value: pixabayKey,
+              set: setPixabayKey,
+              clear: 'clearPixabayApiKey' as const,
+            },
+            {
+              id: coverrId,
+              label: t('coverrLabel'),
+              has: !!status.hasCoverrKey,
+              source: status.sources?.coverr,
+              value: coverrKey,
+              set: setCoverrKey,
+              clear: 'clearCoverrApiKey' as const,
             },
           ] as const
         ).map((field) => {

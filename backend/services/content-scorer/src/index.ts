@@ -111,6 +111,14 @@ export interface VideoQualityInput {
   description: string;
   forbiddenTopics?: string[];
   minScoreToApprove?: number;
+  /** Escenas con audio casi vacío / corrupto. */
+  nearSilentAudioCount?: number;
+  /** Paths de stock repetidos (mismo clip en varias escenas). */
+  repeatedStockCount?: number;
+  /** Canal tiene BGM on pero no hay track disponible. */
+  bgmEnabledWithoutTrack?: boolean;
+  /** Escenas de audio sin WordBoundary (sync de subtítulos peor). */
+  missingWordBoundaryCount?: number;
 }
 
 const DURATION_RANGES: Record<'shorts' | 'long', { min: number; max: number }> = {
@@ -231,6 +239,65 @@ export function scoreVideoQuality(input: VideoQualityInput): VideoQualityReport 
       violations.length === 0
         ? 'Sin temas prohibidos del canal.'
         : `Contiene temas prohibidos: ${violations.join(', ')}.`,
+  });
+
+  // 9. Audio casi silencioso
+  const silent = input.nearSilentAudioCount ?? 0;
+  checks.push({
+    id: 'audio_level',
+    label: 'Nivel de audio',
+    status: silent === 0 ? 'pass' : silent === 1 ? 'warn' : 'fail',
+    detail:
+      silent === 0
+        ? 'Narración con nivel de audio usable.'
+        : `${silent} escena(s) con audio casi silencioso o vacío.`,
+  });
+
+  // 10. Stock repetido
+  const repeated = input.repeatedStockCount ?? 0;
+  checks.push({
+    id: 'stock_dedup',
+    label: 'Diversidad de stock',
+    status: repeated === 0 ? 'pass' : repeated <= 1 ? 'warn' : 'fail',
+    detail:
+      repeated === 0
+        ? 'Sin clips stock repetidos entre escenas.'
+        : `${repeated} escena(s) reutilizan el mismo clip stock.`,
+  });
+
+  // 11. BGM configurado sin track
+  if (input.bgmEnabledWithoutTrack) {
+    checks.push({
+      id: 'bgm_track',
+      label: 'Música de fondo',
+      status: 'warn',
+      detail: 'BGM activado pero no hay track en resource/bgm ni storage/bgm.',
+    });
+  } else {
+    checks.push({
+      id: 'bgm_track',
+      label: 'Música de fondo',
+      status: 'pass',
+      detail: 'Configuración BGM coherente (off o con track disponible).',
+    });
+  }
+
+  // 12. Word boundaries (sync subtítulos)
+  const missingWb = input.missingWordBoundaryCount ?? 0;
+  const audioScenes = input.sceneAudioIndexes.length || scenes.length;
+  checks.push({
+    id: 'word_boundaries',
+    label: 'Sincronía palabra-subtítulo',
+    status:
+      missingWb === 0
+        ? 'pass'
+        : missingWb <= Math.max(1, Math.floor(audioScenes / 2))
+          ? 'warn'
+          : 'fail',
+    detail:
+      missingWb === 0
+        ? 'WordBoundaries presentes para sync fino de subtítulos.'
+        : `${missingWb} escena(s) sin WordBoundary — subtítulos por frase, menos precisos.`,
   });
 
   const score = Math.round(

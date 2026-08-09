@@ -13,6 +13,8 @@ export interface OrgAnalyticsSummary {
   videoCount: number;
   channelCount: number;
   hasMockData: boolean;
+  avgCtr?: number;
+  avgRetention?: number;
   topVideos: Array<{
     videoId: string;
     title: string;
@@ -163,6 +165,22 @@ export function DashboardOrgAnalytics() {
           <div className="stat-body">
             <div className="stat-value">{summary.channelCount}</div>
             <div className="stat-label">{tc('channels')}</div>
+          </div>
+        </div>
+        <div className="stat">
+          <div className="stat-body">
+            <div className="stat-value">
+              {((summary.avgCtr ?? 0) * 100).toFixed(1)}%
+            </div>
+            <div className="stat-label">{t('avgCtr')}</div>
+          </div>
+        </div>
+        <div className="stat">
+          <div className="stat-body">
+            <div className="stat-value">
+              {((summary.avgRetention ?? 0) * 100).toFixed(0)}%
+            </div>
+            <div className="stat-label">{t('avgRetention')}</div>
           </div>
         </div>
       </div>

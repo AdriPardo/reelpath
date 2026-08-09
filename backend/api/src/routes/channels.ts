@@ -34,6 +34,7 @@ import { assertChannelInOrg } from '../lib/tenant.js';
 import { authMiddleware, orgScope } from '../middleware/auth.js';
 import { paginatedResponse, parsePagination } from '../lib/pagination.js';
 import multer from 'multer';
+import { bgmRouter } from './bgm.js';
 
 /** Estados terminales / espera de review — el resto cuenta como generación activa. */
 const PIPELINE_IDLE_STATUSES = [
@@ -74,6 +75,7 @@ const patchIntegrationSchema = z.discriminatedUnion('action', [
 export const channelsRouter = Router();
 
 channelsRouter.use(authMiddleware);
+channelsRouter.use('/:id/bgm', bgmRouter);
 
 channelsRouter.get('/', async (req, res) => {
   const orgId = orgScope(req);
@@ -457,6 +459,54 @@ channelsRouter.get('/:id/analytics-insights', async (req, res) => {
   }
   const insights = await getChannelAnalyticsInsights(req.params.id);
   res.json(insights);
+});
+
+/** Aplica hora/días recomendados del insight al planner del canal. */
+channelsRouter.post('/:id/apply-publish-insights', async (req, res) => {
+  const orgId = orgScope(req);
+  if (orgId && !(await assertChannelInOrg(req.params.id, orgId))) {
+    return res.status(404).json({ error: 'Channel not found' });
+  }
+
+  const channel = await prisma.channel.findUnique({ where: { id: req.params.id } });
+  if (!channel) return res.status(404).json({ error: 'Channel not found' });
+
+  const insights = await getChannelAnalyticsInsights(req.params.id);
+  const hour = insights.recommendedHour;
+  if (hour == null || !Number.isFinite(hour)) {
+    return res.status(400).json({
+      error: 'Aún no hay hora recomendada. Sincroniza analíticas tras publicar varios vídeos.',
+    });
+  }
+
+  const current = parseChannelConfig(channel.config);
+  const dayScores = insights.publish?.dayScores ?? {};
+  const preferredDays =
+    Object.keys(dayScores).length > 0
+      ? Object.entries(dayScores)
+          .sort((a, b) => b[1] - a[1])
+          .map(([d]) => Number(d))
+          .filter((d) => Number.isInteger(d) && d >= 0 && d <= 6)
+          .slice(0, 4)
+      : current.preferredPublishDays;
+
+  const nextConfig = {
+    ...current,
+    preferredPublishHour: Math.max(0, Math.min(23, Math.round(hour))),
+    ...(preferredDays && preferredDays.length > 0 ? { preferredPublishDays: preferredDays } : {}),
+  };
+
+  const updated = await prisma.channel.update({
+    where: { id: channel.id },
+    data: { config: nextConfig },
+  });
+
+  res.json({
+    message: `Planner actualizado: hora preferida ${String(nextConfig.preferredPublishHour).padStart(2, '0')}:00`,
+    preferredPublishHour: nextConfig.preferredPublishHour,
+    preferredPublishDays: nextConfig.preferredPublishDays,
+    channel: updated,
+  });
 });
 
 channelsRouter.get('/:id', async (req, res) => {

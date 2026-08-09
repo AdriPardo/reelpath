@@ -1,5 +1,5 @@
 import type { Job } from 'bullmq';
-import { existsSync } from 'node:fs';
+import { existsSync, statSync } from 'node:fs';
 import { clearOrgPipelineOverrides, mergeChannelProductOverrides, parseChannelConfig, setOrgPipelineOverrides } from '@autotube/config';
 import { loadOrgPipelineOverrides, prisma } from '@autotube/database';
 import { clearOrgOpenAiApiKey, resetLlmClient } from '@autotube/llm';
@@ -10,7 +10,7 @@ import { generateMedia } from '@autotube/media-generator';
 import { generateScript } from '@autotube/script-generator';
 import type { ChannelConfig, PipelineJobPayload, PipelineRunMetadata, ScriptVariant } from '@autotube/shared';
 import { computeShortPublishSlots, parseScheduledPublishAt, resolveDefaultShortCount, resolveMixedShortsCounts, resolvePlannerConfig, resolveSplitShortsCount } from '@autotube/shared';
-import { renderVideo, splitVideoForShorts } from '@autotube/video-renderer';
+import { renderVideo, resolveBgmFile, splitVideoForShorts } from '@autotube/video-renderer';
 import { publishToYouTube, publishYouTubeShortsClips, deleteYouTubeVideoApi, resolveYouTubeCredentialsForChannel } from '@autotube/youtube-publisher';
 import { syncVideoAnalytics } from '@autotube/analytics';
 import { generateDedicatedShort } from './dedicated-short.js';
@@ -357,19 +357,64 @@ async function runPipelineStep(
         const variant = scriptRecord.selectedVariant as unknown as ScriptVariant;
         const assets = await prisma.mediaAsset.findMany({ where: { pipelineRunId } });
 
+        const audioAssets = assets.filter((a) => a.type === 'audio' && a.sceneIndex >= 0);
+        const visualAssets = assets.filter(
+          (a) => (a.type === 'image' || a.type === 'video') && a.sceneIndex >= 0,
+        );
+
+        let nearSilentAudioCount = 0;
+        for (const a of audioAssets) {
+          if (!existsSync(a.path)) {
+            nearSilentAudioCount++;
+            continue;
+          }
+          try {
+            if (statSync(a.path).size < 800) nearSilentAudioCount++;
+          } catch {
+            nearSilentAudioCount++;
+          }
+        }
+
+        const stockPaths = visualAssets
+          .filter((a) => {
+            const meta = (a.metadata ?? {}) as Record<string, unknown>;
+            return meta.visualOrigin === 'stock' || a.type === 'video';
+          })
+          .map((a) => a.path);
+        const pathCounts = new Map<string, number>();
+        for (const p of stockPaths) pathCounts.set(p, (pathCounts.get(p) ?? 0) + 1);
+        const repeatedStockCount = [...pathCounts.values()]
+          .filter((n) => n > 1)
+          .reduce((sum, n) => sum + (n - 1), 0);
+
+        const missingWordBoundaryCount = audioAssets.filter((a) => {
+          const meta = (a.metadata ?? {}) as Record<string, unknown>;
+          const count = typeof meta.wordBoundaryCount === 'number' ? meta.wordBoundaryCount : 0;
+          return count <= 0;
+        }).length;
+
+        const bgmEnabledWithoutTrack =
+          config.bgmEnabled === true && !(await resolveBgmFile(config.bgmFile ?? null));
+
         const report = scoreVideoQuality({
           script: variant,
           format: config.videoFormat,
           durationSec: video.durationSec,
           filePathExists: video.filePath ? existsSync(video.filePath) : false,
           hasThumbnail: video.thumbnailPath ? existsSync(video.thumbnailPath) : false,
-          sceneImageIndexes: assets.filter((a) => a.type === 'image').map((a) => a.sceneIndex),
-          sceneAudioIndexes: assets.filter((a) => a.type === 'audio').map((a) => a.sceneIndex),
+          sceneImageIndexes: assets
+            .filter((a) => a.type === 'image' || a.type === 'video')
+            .map((a) => a.sceneIndex),
+          sceneAudioIndexes: audioAssets.map((a) => a.sceneIndex),
           hasSubtitles: assets.some((a) => a.type === 'subtitle'),
           title: video.title,
           description: video.description,
           forbiddenTopics: config.forbiddenTopics,
           minScoreToApprove: config.autoApproveMinScore,
+          nearSilentAudioCount,
+          repeatedStockCount,
+          bgmEnabledWithoutTrack,
+          missingWordBoundaryCount,
         });
 
         await prisma.video.update({

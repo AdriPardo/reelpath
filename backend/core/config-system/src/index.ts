@@ -420,11 +420,13 @@ export function effectivePexelsApiKey(): string | undefined {
 }
 
 export function effectivePixabayApiKey(): string | undefined {
-  return pickFirstSecret(loadConfig().PIXABAY_API_KEY);
+  const platform = getPlatformSecretsOverrides();
+  return pickFirstSecret(loadConfig().PIXABAY_API_KEY, platform?.pixabayApiKey);
 }
 
 export function effectiveCoverrApiKey(): string | undefined {
-  return pickFirstSecret(loadConfig().COVERR_API_KEY);
+  const platform = getPlatformSecretsOverrides();
+  return pickFirstSecret(loadConfig().COVERR_API_KEY, platform?.coverrApiKey);
 }
 
 /** YouTube OAuth app credentials: PlatformSecret cache, then legacy env. */

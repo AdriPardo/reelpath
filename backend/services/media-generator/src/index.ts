@@ -26,6 +26,9 @@ import {
 import { pathExists, resolveSceneVisual } from './providers/stock-provider.js';
 import { resolveSceneStockQueries } from './stock-terms.js';
 
+export { generateSpeech, writeSceneSubtitle } from './providers/media-providers.js';
+export { isNearSilentAudio, getAudioDuration } from './ffmpeg-utils.js';
+
 async function ensureDir(dir: string) {
   await fs.mkdir(dir, { recursive: true });
 }

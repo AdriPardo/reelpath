@@ -8,6 +8,7 @@ export interface GettingStartedChecklistProps {
   hasChannels: boolean;
   hasIntegrations: boolean;
   hasGenerations: boolean;
+  hasReviewAction?: boolean;
   firstChannelId?: string;
 }
 
@@ -15,7 +16,9 @@ export function GettingStartedChecklist(props: GettingStartedChecklistProps) {
   const t = useTranslations('dashboard');
   const tc = useTranslations('common');
 
-  const allDone = props.hasChannels && props.hasIntegrations && props.hasGenerations;
+  const hasReview = props.hasReviewAction === true;
+  const allDone =
+    props.hasChannels && props.hasIntegrations && props.hasGenerations && hasReview;
   if (allDone) return null;
 
   const STEPS = [
@@ -49,11 +52,28 @@ export function GettingStartedChecklist(props: GettingStartedChecklistProps) {
       done: () => props.hasGenerations,
       cta: tc('generateVideo'),
     },
+    {
+      key: 'review',
+      number: 4,
+      title: t('stepReviewTitle'),
+      description: t('stepReviewDesc'),
+      href: () => '/review',
+      done: () => hasReview,
+      cta: t('goToReview'),
+    },
   ] as const;
 
   const completedCount = STEPS.filter((s) => s.done()).length;
   const progressPct = Math.round((completedCount / STEPS.length) * 100);
-  const activeIndex = !props.hasChannels ? 0 : !props.hasIntegrations ? 1 : !props.hasGenerations ? 2 : STEPS.length;
+  const activeIndex = !props.hasChannels
+    ? 0
+    : !props.hasIntegrations
+      ? 1
+      : !props.hasGenerations
+        ? 2
+        : !hasReview
+          ? 3
+          : STEPS.length;
 
   return (
     <section className="getting-started card" aria-labelledby="getting-started-title">
@@ -146,6 +166,15 @@ export function GettingStartedChecklist(props: GettingStartedChecklistProps) {
           {t('footnoteGenerate')}
         </p>
       )}
+
+      {props.hasChannels &&
+        props.hasIntegrations &&
+        props.hasGenerations &&
+        !hasReview && (
+          <p className="getting-started-footnote text-muted text-sm">
+            {t('footnoteReview')}
+          </p>
+        )}
     </section>
   );
 }

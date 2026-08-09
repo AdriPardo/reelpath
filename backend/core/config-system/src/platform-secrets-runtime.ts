@@ -9,6 +9,8 @@ export type PlatformSecretsOverrides = {
   deepseekApiKey?: string | null;
   elevenLabsApiKey?: string | null;
   pexelsApiKey?: string | null;
+  pixabayApiKey?: string | null;
+  coverrApiKey?: string | null;
 };
 
 let platformSecrets: PlatformSecretsOverrides | null = null;

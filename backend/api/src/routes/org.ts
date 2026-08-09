@@ -8,16 +8,19 @@ import {
   sendEmail,
 } from '@autotube/config';
 import {
+  deleteOrgElevenLabsApiKey,
   getOrgPipelineSettings,
   getPlatformSecretsStatus,
   prisma,
   resolveOrgElevenLabsApiKey,
   resolvePlatformApiKey,
+  upsertOrgElevenLabsApiKey,
 } from '@autotube/database';
 import { ELEVENLABS_TTS_VOICES, getTtsVoicesForProvider } from '@autotube/shared';
 import type { MemberRole } from '../lib/auth.js';
 import { deleteChannelWithCleanup } from '../lib/channel-deletion.js';
 import { authMiddleware, orgScope, requireAdmin, requireAuth } from '../middleware/auth.js';
+import { handleTtsPreview } from './tts-preview.js';
 
 export const orgRouter = Router();
 
@@ -98,18 +101,19 @@ orgRouter.get('/tts/voices', async (req, res) => {
   });
 });
 
+/** Preview TTS vivo (Edge / OpenAI / ElevenLabs) — audio/mpeg. */
+orgRouter.post('/tts/preview', handleTtsPreview);
+
 const inviteSchema = z.object({
   email: z.string().email(),
   role: z.enum(['admin', 'member']).default('member'),
 });
 
 const optionalVoiceId = z.union([z.string().min(2).max(120), z.null()]).optional();
+const optionalElevenLabsKey = z.union([z.string().min(8).max(500), z.literal(''), z.null()]).optional();
 
-const ORG_FORBIDDEN_AI_KEY_FIELDS = [
-  'openaiApiKey',
-  'deepseekApiKey',
-  'elevenLabsApiKey',
-] as const;
+/** OpenAI/DeepSeek = solo plataforma. ElevenLabs BYOK org permitido. */
+const ORG_FORBIDDEN_AI_KEY_FIELDS = ['openaiApiKey', 'deepseekApiKey'] as const;
 
 const orgSettingsPatchSchema = z
   .object({
@@ -124,10 +128,9 @@ const orgSettingsPatchSchema = z
     edgeTtsVoice: optionalVoiceId,
     elevenLabsVoiceId: optionalVoiceId,
     openaiTtsVoice: optionalVoiceId,
-    // Legacy BYOK fields: rejected below (claves IA = plataforma).
     openaiApiKey: z.unknown().optional(),
     deepseekApiKey: z.unknown().optional(),
-    elevenLabsApiKey: z.unknown().optional(),
+    elevenLabsApiKey: optionalElevenLabsKey,
   })
   .refine((body) => Object.keys(body).length > 0, {
     message: 'No hay campos para actualizar',
@@ -399,16 +402,23 @@ orgRouter.patch('/settings', requireAdmin, async (req, res) => {
 
   const body = orgSettingsPatchSchema.parse(req.body);
 
-  if (
-    body.openaiApiKey !== undefined ||
-    body.deepseekApiKey !== undefined ||
-    body.elevenLabsApiKey !== undefined
-  ) {
+  if (body.openaiApiKey !== undefined || body.deepseekApiKey !== undefined) {
     return res.status(400).json({
       error:
-        'Las claves de IA las gestiona la plataforma (Admin → Secretos). ' +
-        'La organización solo configura preferencias de generación.',
+        'Las claves OpenAI/DeepSeek las gestiona la plataforma (Admin → Secretos). ' +
+        'La organización solo puede aportar clave ElevenLabs (BYOK) y preferencias.',
     });
+  }
+
+  if (body.elevenLabsApiKey !== undefined) {
+    const rawKey = body.elevenLabsApiKey;
+    if (rawKey === null || rawKey === '') {
+      await deleteOrgElevenLabsApiKey(orgId);
+    } else if (typeof rawKey === 'string' && rawKey.trim()) {
+      await upsertOrgElevenLabsApiKey(orgId, rawKey.trim());
+    } else {
+      return res.status(400).json({ error: 'elevenLabsApiKey inválida' });
+    }
   }
 
   const data: {

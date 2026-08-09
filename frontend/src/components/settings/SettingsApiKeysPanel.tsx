@@ -28,6 +28,8 @@ type OrgSettings = {
   edgeTtsVoice: string | null;
   elevenLabsVoiceId: string | null;
   openaiTtsVoice: string | null;
+  hasElevenLabsKey?: boolean;
+  platformKeys?: { openai?: boolean; deepseek?: boolean; elevenlabs?: boolean };
   platformDefaults?: {
     llmProvider: string;
     ttsProvider: string;
@@ -76,6 +78,8 @@ export function SettingsApiKeysPanel() {
   const [edgeTtsVoice, setEdgeTtsVoice] = useState('');
   const [elevenLabsVoiceId, setElevenLabsVoiceId] = useState('');
   const [openaiTtsVoice, setOpenaiTtsVoice] = useState('');
+  const [elevenLabsApiKey, setElevenLabsApiKey] = useState('');
+  const [hasOrgElevenLabsKey, setHasOrgElevenLabsKey] = useState(false);
 
   const isAdmin = session?.role === 'owner' || session?.role === 'admin';
 
@@ -117,6 +121,8 @@ export function SettingsApiKeysPanel() {
     setEdgeTtsVoice(data.edgeTtsVoice ?? '');
     setElevenLabsVoiceId(data.elevenLabsVoiceId ?? '');
     setOpenaiTtsVoice(data.openaiTtsVoice ?? '');
+    setHasOrgElevenLabsKey(Boolean(data.hasElevenLabsKey));
+    setElevenLabsApiKey('');
   }
 
   useEffect(() => {
@@ -144,6 +150,9 @@ export function SettingsApiKeysPanel() {
         elevenLabsVoiceId: elevenLabsVoiceId.trim() === '' ? null : elevenLabsVoiceId.trim(),
         openaiTtsVoice: openaiTtsVoice.trim() === '' ? null : openaiTtsVoice.trim(),
       };
+      if (elevenLabsApiKey.trim()) {
+        body.elevenLabsApiKey = elevenLabsApiKey.trim();
+      }
 
       const result = await api<OrgSettings & { message: string }>('/api/org/settings', {
         method: 'PATCH',
@@ -318,6 +327,58 @@ export function SettingsApiKeysPanel() {
               </select>
               <span className="text-muted text-sm">{ts('apikeysQualityHint')}</span>
             </label>
+
+            <div className="settings-divider" />
+
+            <div className="modal-field">
+              <span className="field-label-row">
+                <span>{ts('apikeysElevenByokLabel')}</span>
+              </span>
+              <input
+                type="password"
+                className="topic-input"
+                autoComplete="off"
+                placeholder={
+                  hasOrgElevenLabsKey
+                    ? ts('apikeysElevenByokConfigured')
+                    : ts('apikeysElevenByokPlaceholder')
+                }
+                value={elevenLabsApiKey}
+                onChange={(e) => setElevenLabsApiKey(e.target.value)}
+                disabled={!isAdmin}
+              />
+              <span className="text-muted text-sm">{ts('apikeysElevenByokHint')}</span>
+              {hasOrgElevenLabsKey && isAdmin ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  style={{ marginTop: '0.35rem' }}
+                  onClick={() => {
+                    void (async () => {
+                      try {
+                        const result = await api<OrgSettings & { message: string }>(
+                          '/api/org/settings',
+                          {
+                            method: 'PATCH',
+                            body: JSON.stringify({ elevenLabsApiKey: null }),
+                          },
+                        );
+                        applySettings(result);
+                        toast(ts('apikeysElevenByokRemoved'), 'success');
+                      } catch (err) {
+                        toast(
+                          err instanceof Error ? err.message : ts('apikeysRemoveError'),
+                          'error',
+                        );
+                      }
+                    })();
+                  }}
+                >
+                  {ts('apikeysRemove')}
+                </Button>
+              ) : null}
+            </div>
 
             <div className="settings-divider" />
 

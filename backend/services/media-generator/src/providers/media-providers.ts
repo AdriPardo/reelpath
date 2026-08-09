@@ -124,9 +124,26 @@ async function stripImageMetadata(filePath: string): Promise<void> {
 export async function generateSpeech(
   text: string,
   outPath: string,
-  options?: { language?: string; retentionMode?: boolean },
+  options?: {
+    language?: string;
+    retentionMode?: boolean;
+    /** Fuerza provider (preview / tests). */
+    provider?: 'edge' | 'elevenlabs' | 'openai';
+    /** Fuerza voz concreta del provider. */
+    voiceId?: string;
+  },
 ): Promise<{ mock: boolean; provider: string; wordBoundaries?: import('@autotube/shared').WordBoundaryLike[] }> {
-  const config = loadEffectiveConfig();
+  const config = { ...loadEffectiveConfig() };
+  if (options?.provider) {
+    config.TTS_PROVIDER = options.provider;
+  }
+  if (options?.voiceId?.trim()) {
+    const voice = options.voiceId.trim();
+    const provider = options.provider ?? resolveTtsProvider(config);
+    if (provider === 'elevenlabs') config.ELEVENLABS_VOICE_ID = voice;
+    else if (provider === 'openai') config.OPENAI_TTS_VOICE = voice;
+    else config.EDGE_TTS_VOICE = voice;
+  }
   const language = options?.language ?? 'es';
   const ttsInput = preprocessForTts(text, language);
 

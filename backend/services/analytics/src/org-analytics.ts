@@ -13,6 +13,8 @@ export interface OrgAnalyticsSummary {
   videoCount: number;
   channelCount: number;
   hasMockData: boolean;
+  avgCtr: number;
+  avgRetention: number;
   topVideos: OrgAnalyticsTopVideo[];
 }
 
@@ -39,6 +41,8 @@ export async function getOrgAnalyticsSummary(orgId: string): Promise<OrgAnalytic
       videoCount: 0,
       channelCount: 0,
       hasMockData: false,
+      avgCtr: 0,
+      avgRetention: 0,
       topVideos: [],
     };
   }
@@ -56,6 +60,8 @@ export async function getOrgAnalyticsSummary(orgId: string): Promise<OrgAnalytic
     string,
     {
       views: number;
+      ctr: number;
+      retention: number;
       title: string;
       channelId: string;
       source: OrgAnalyticsTopVideo['source'];
@@ -73,6 +79,8 @@ export async function getOrgAnalyticsSummary(orgId: string): Promise<OrgAnalytic
 
     latestByVideo.set(snap.videoId, {
       views: snap.views,
+      ctr: snap.ctr ?? 0,
+      retention: snap.retention ?? 0,
       title: snap.video.title,
       channelId: snap.video.channelId,
       source,
@@ -89,11 +97,18 @@ export async function getOrgAnalyticsSummary(orgId: string): Promise<OrgAnalytic
 
   videos.sort((a, b) => b.views - a.views);
 
+  const metrics = [...latestByVideo.values()];
+  const n = metrics.length || 1;
+  const avgCtr = metrics.reduce((sum, m) => sum + m.ctr, 0) / n;
+  const avgRetention = metrics.reduce((sum, m) => sum + m.retention, 0) / n;
+
   return {
     totalViews: videos.reduce((sum, v) => sum + v.views, 0),
     videoCount: videos.length,
     channelCount: channels.length,
     hasMockData,
+    avgCtr: metrics.length ? avgCtr : 0,
+    avgRetention: metrics.length ? avgRetention : 0,
     topVideos: videos.slice(0, 5),
   };
 }
