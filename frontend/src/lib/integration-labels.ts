@@ -147,7 +147,7 @@ export function integrationHelpText(locale: AppLocale = 'es'): string {
 }
 
 export function integrationsIntro(locale: AppLocale = 'es'): string {
-  return translate(locale, 'channels.integration.intro');
+  return translate(locale, 'channels.integrations.intro');
 }
 
 // Compatibilidad
