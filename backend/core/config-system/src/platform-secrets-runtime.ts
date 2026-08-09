@@ -8,6 +8,7 @@ export type PlatformSecretsOverrides = {
   openAiApiKey?: string | null;
   deepseekApiKey?: string | null;
   elevenLabsApiKey?: string | null;
+  falApiKey?: string | null;
   pexelsApiKey?: string | null;
   pixabayApiKey?: string | null;
   coverrApiKey?: string | null;

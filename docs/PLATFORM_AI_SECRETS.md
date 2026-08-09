@@ -4,11 +4,13 @@ Reelpath **no** pide API keys de IA al end-user. Ops / Atlas las inyectan ([ADR-
 
 ## Resolución runtime
 
-`OPENAI_API_KEY` / `DEEPSEEK_API_KEY` / `ELEVENLABS_API_KEY` / `PEXELS_API_KEY`:
+`OPENAI_API_KEY` / `DEEPSEEK_API_KEY` / `ELEVENLABS_API_KEY` / `FAL_KEY` / `PEXELS_API_KEY`:
 
 1. **Atlas env** (envFrom → `.env` del workspace / process.env) — preferido
 2. **PlatformSecret** (BD cifrada) — fallback migración
 3. Leftover org BYOK en BD — último recurso; UI BYOK retirada
+
+Imágenes de escena: con `FAL_KEY` (o secreto `fal`) se usa **FLUX 1.1 [pro]** primero; OpenAI gpt-image queda como fallback (`IMAGE_AI_PROVIDER=auto`).
 
 No se borran filas `PlatformSecret` en deploy ni cutover.
 

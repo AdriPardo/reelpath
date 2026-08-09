@@ -53,6 +53,8 @@ worker.on('ready', () => {
         OPENAI_API_KEY: process.env.OPENAI_API_KEY,
         DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY,
         ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY,
+        FAL_KEY: process.env.FAL_KEY,
+        FAL_API_KEY: process.env.FAL_API_KEY,
         PEXELS_API_KEY: process.env.PEXELS_API_KEY,
       });
       await loadPlatformSecretsOverrides();

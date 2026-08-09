@@ -18,6 +18,8 @@ async function main() {
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY,
     ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY,
+    FAL_KEY: process.env.FAL_KEY,
+    FAL_API_KEY: process.env.FAL_API_KEY,
     PEXELS_API_KEY: process.env.PEXELS_API_KEY,
   });
 
@@ -30,7 +32,7 @@ async function main() {
   } else {
     console.log(`Importados: ${imported.join(', ')}`);
     console.log(
-      'Puedes eliminar del .env: YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET, OPENAI_API_KEY, DEEPSEEK_API_KEY, ELEVENLABS_API_KEY, PEXELS_API_KEY',
+      'Puedes eliminar del .env: YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET, OPENAI_API_KEY, DEEPSEEK_API_KEY, ELEVENLABS_API_KEY, FAL_KEY, FAL_API_KEY, PEXELS_API_KEY',
     );
   }
 }

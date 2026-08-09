@@ -11,6 +11,7 @@ export const PLATFORM_SECRET_KEYS = [
   'openai',
   'deepseek',
   'elevenlabs',
+  'fal',
   'pexels',
   'pixabay',
   'coverr',
@@ -23,6 +24,7 @@ export type PlatformApiKeyProvider =
   | 'openai'
   | 'deepseek'
   | 'elevenlabs'
+  | 'fal'
   | 'pexels'
   | 'pixabay'
   | 'coverr';
@@ -32,6 +34,7 @@ export type PlatformSecretsStatus = {
   hasOpenaiKey: boolean;
   hasDeepseekKey: boolean;
   hasElevenLabsKey: boolean;
+  hasFalKey: boolean;
   hasPexelsKey: boolean;
   hasPixabayKey: boolean;
   hasCoverrKey: boolean;
@@ -91,6 +94,7 @@ export async function getPlatformSecretsStatus(): Promise<PlatformSecretsStatus>
     hasOpenaiKey: hasApiKey('openai'),
     hasDeepseekKey: hasApiKey('deepseek'),
     hasElevenLabsKey: hasApiKey('elevenlabs'),
+    hasFalKey: hasApiKey('fal'),
     hasPexelsKey: hasApiKey('pexels'),
     hasPixabayKey: hasApiKey('pixabay'),
     hasCoverrKey: hasApiKey('coverr'),
@@ -174,12 +178,13 @@ export async function resolvePlatformUploadPost(): Promise<{
 
 /** Load all platform secrets into the sync cache used by resolveLlmConnection / TTS. */
 export async function loadPlatformSecretsOverrides(): Promise<PlatformSecretsOverrides> {
-  const [youtube, openai, deepseek, elevenlabs, pexels, pixabay, coverr, uploadPost] =
+  const [youtube, openai, deepseek, elevenlabs, fal, pexels, pixabay, coverr, uploadPost] =
     await Promise.all([
       resolvePlatformYouTubeOAuthApp(),
       resolvePlatformApiKey('openai'),
       resolvePlatformApiKey('deepseek'),
       resolvePlatformApiKey('elevenlabs'),
+      resolvePlatformApiKey('fal'),
       resolvePlatformApiKey('pexels'),
       resolvePlatformApiKey('pixabay'),
       resolvePlatformApiKey('coverr'),
@@ -192,6 +197,7 @@ export async function loadPlatformSecretsOverrides(): Promise<PlatformSecretsOve
     openAiApiKey: openai,
     deepseekApiKey: deepseek,
     elevenLabsApiKey: elevenlabs,
+    falApiKey: fal,
     pexelsApiKey: pexels,
     pixabayApiKey: pixabay,
     coverrApiKey: coverr,
@@ -214,6 +220,8 @@ export async function importPlatformSecretsFromEnvIfEmpty(env: {
   OPENAI_API_KEY?: string;
   DEEPSEEK_API_KEY?: string;
   ELEVENLABS_API_KEY?: string;
+  FAL_KEY?: string;
+  FAL_API_KEY?: string;
   PEXELS_API_KEY?: string;
   PIXABAY_API_KEY?: string;
   COVERR_API_KEY?: string;
@@ -241,6 +249,11 @@ export async function importPlatformSecretsFromEnvIfEmpty(env: {
     { key: 'openai', has: status.hasOpenaiKey, value: env.OPENAI_API_KEY },
     { key: 'deepseek', has: status.hasDeepseekKey, value: env.DEEPSEEK_API_KEY },
     { key: 'elevenlabs', has: status.hasElevenLabsKey, value: env.ELEVENLABS_API_KEY },
+    {
+      key: 'fal',
+      has: status.hasFalKey,
+      value: env.FAL_KEY?.trim() || env.FAL_API_KEY,
+    },
     { key: 'pexels', has: status.hasPexelsKey, value: env.PEXELS_API_KEY },
     { key: 'pixabay', has: status.hasPixabayKey, value: env.PIXABAY_API_KEY },
     { key: 'coverr', has: status.hasCoverrKey, value: env.COVERR_API_KEY },

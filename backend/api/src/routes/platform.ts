@@ -29,6 +29,8 @@ const patchSchema = z
     clearDeepseekApiKey: z.boolean().optional(),
     elevenLabsApiKey: z.string().min(1).max(500).optional(),
     clearElevenLabsApiKey: z.boolean().optional(),
+    falApiKey: z.string().min(1).max(500).optional(),
+    clearFalApiKey: z.boolean().optional(),
     pexelsApiKey: z.string().min(1).max(500).optional(),
     clearPexelsApiKey: z.boolean().optional(),
     pixabayApiKey: z.string().min(1).max(500).optional(),
@@ -46,6 +48,7 @@ const patchSchema = z
       b.clearOpenaiApiKey ||
       b.clearDeepseekApiKey ||
       b.clearElevenLabsApiKey ||
+      b.clearFalApiKey ||
       b.clearPexelsApiKey ||
       b.clearPixabayApiKey ||
       b.clearCoverrApiKey ||
@@ -55,6 +58,7 @@ const patchSchema = z
       b.openaiApiKey !== undefined ||
       b.deepseekApiKey !== undefined ||
       b.elevenLabsApiKey !== undefined ||
+      b.falApiKey !== undefined ||
       b.pexelsApiKey !== undefined ||
       b.pixabayApiKey !== undefined ||
       b.coverrApiKey !== undefined ||
@@ -81,6 +85,8 @@ function buildSecretsResponse() {
       hasOpenaiKey: status.hasOpenaiKey || !!config.OPENAI_API_KEY?.trim(),
       hasDeepseekKey: status.hasDeepseekKey || !!config.DEEPSEEK_API_KEY?.trim(),
       hasElevenLabsKey: status.hasElevenLabsKey || !!config.ELEVENLABS_API_KEY?.trim(),
+      hasFalKey:
+        status.hasFalKey || !!config.FAL_KEY?.trim() || !!config.FAL_API_KEY?.trim(),
       hasPexelsKey: status.hasPexelsKey || !!config.PEXELS_API_KEY?.trim(),
       hasPixabayKey: status.hasPixabayKey || !!config.PIXABAY_API_KEY?.trim(),
       hasCoverrKey: status.hasCoverrKey || !!config.COVERR_API_KEY?.trim(),
@@ -92,6 +98,10 @@ function buildSecretsResponse() {
         openai: source(status.hasOpenaiKey, !!config.OPENAI_API_KEY?.trim()),
         deepseek: source(status.hasDeepseekKey, !!config.DEEPSEEK_API_KEY?.trim()),
         elevenlabs: source(status.hasElevenLabsKey, !!config.ELEVENLABS_API_KEY?.trim()),
+        fal: source(
+          status.hasFalKey,
+          !!(config.FAL_KEY?.trim() || config.FAL_API_KEY?.trim()),
+        ),
         pexels: source(status.hasPexelsKey, !!config.PEXELS_API_KEY?.trim()),
         pixabay: source(status.hasPixabayKey, !!config.PIXABAY_API_KEY?.trim()),
         coverr: source(status.hasCoverrKey, !!config.COVERR_API_KEY?.trim()),
@@ -141,6 +151,9 @@ platformRouter.patch('/secrets', async (req, res) => {
 
   if (body.clearElevenLabsApiKey) await deletePlatformSecret('elevenlabs');
   else if (body.elevenLabsApiKey) await upsertPlatformApiKey('elevenlabs', body.elevenLabsApiKey);
+
+  if (body.clearFalApiKey) await deletePlatformSecret('fal');
+  else if (body.falApiKey) await upsertPlatformApiKey('fal', body.falApiKey);
 
   if (body.clearPexelsApiKey) await deletePlatformSecret('pexels');
   else if (body.pexelsApiKey) await upsertPlatformApiKey('pexels', body.pexelsApiKey);

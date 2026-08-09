@@ -24,6 +24,7 @@ async function main() {
   const openai = process.env.OPENAI_API_KEY?.trim();
   const deepseek = process.env.DEEPSEEK_API_KEY?.trim();
   const eleven = process.env.ELEVENLABS_API_KEY?.trim();
+  const fal = process.env.FAL_KEY?.trim() || process.env.FAL_API_KEY?.trim();
   const pexels = process.env.PEXELS_API_KEY?.trim();
   const ytId = process.env.YOUTUBE_CLIENT_ID?.trim();
   const ytSecret = process.env.YOUTUBE_CLIENT_SECRET?.trim();
@@ -39,6 +40,10 @@ async function main() {
   if (eleven) {
     await upsertPlatformApiKey('elevenlabs', eleven);
     upserted.push('elevenlabs');
+  }
+  if (fal) {
+    await upsertPlatformApiKey('fal', fal);
+    upserted.push('fal');
   }
   if (pexels) {
     await upsertPlatformApiKey('pexels', pexels);

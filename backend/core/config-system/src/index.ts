@@ -67,6 +67,19 @@ const envSchema = z.object({
   OPENAI_IMAGE_QUALITY: z
     .enum(['low', 'medium', 'high', 'auto'])
     .default(PRODUCT_DEFAULTS.openaiImageQuality),
+  /**
+   * Scene AI images: auto = fal Flux Pro first (if FAL_KEY), else OpenAI.
+   * fal = only fal; openai = only OpenAI.
+   */
+  IMAGE_AI_PROVIDER: z
+    .enum(['auto', 'fal', 'openai'])
+    .default(PRODUCT_DEFAULTS.imageAiProvider),
+  /** fal.ai model id, e.g. fal-ai/flux-pro/v1.1 */
+  FAL_IMAGE_MODEL: z.string().default(PRODUCT_DEFAULTS.falImageModel),
+  /** fal.ai API key (preferred env name). */
+  FAL_KEY: z.string().optional(),
+  /** Alias for FAL_KEY. */
+  FAL_API_KEY: z.string().optional(),
   GENERATE_DALLE_IMAGES: z
     .string()
     .transform((v) => v === 'true')
@@ -443,6 +456,13 @@ export function effectiveCoverrApiKey(): string | undefined {
   return pickFirstSecret(loadConfig().COVERR_API_KEY, platform?.coverrApiKey);
 }
 
+/** fal.ai key: Atlas env (FAL_KEY / FAL_API_KEY) → PlatformSecret. */
+export function effectiveFalApiKey(): string | undefined {
+  const platform = getPlatformSecretsOverrides();
+  const cfg = loadConfig();
+  return pickFirstSecret(cfg.FAL_KEY, cfg.FAL_API_KEY, platform?.falApiKey);
+}
+
 /** YouTube OAuth app credentials: PlatformSecret cache, then legacy env. */
 export function resolvePlatformYouTubeOAuthAppSync(): {
   clientId: string;
@@ -561,6 +581,7 @@ export function loadEffectiveConfig(): AppConfig {
     org?.elevenLabsApiKey,
   );
   const pexelsKey = pickFirstSecret(base.PEXELS_API_KEY, platform?.pexelsApiKey);
+  const falKey = pickFirstSecret(base.FAL_KEY, base.FAL_API_KEY, platform?.falApiKey);
 
   const hasLlm = !!(openAiKey?.trim() || deepseekKey?.trim());
   const hasRealTts = !!(elevenKey?.trim() || openAiKey?.trim() || base.TTS_ENABLE_EDGE);
@@ -578,6 +599,8 @@ export function loadEffectiveConfig(): AppConfig {
       PIPELINE_MAX_SCENES_SHORT: PRODUCT_DEFAULTS.maxScenesShort,
       MAX_AI_IMAGES_PER_VIDEO: PRODUCT_DEFAULTS.maxAiImagesPerVideo,
       OPENAI_IMAGE_QUALITY: PRODUCT_DEFAULTS.openaiImageQuality,
+      IMAGE_AI_PROVIDER: PRODUCT_DEFAULTS.imageAiProvider,
+      FAL_IMAGE_MODEL: PRODUCT_DEFAULTS.falImageModel,
       EDGE_TTS_VOICE: PRODUCT_DEFAULTS.edgeTtsVoice,
       ELEVENLABS_VOICE_ID: PRODUCT_DEFAULTS.elevenLabsVoiceId,
       OPENAI_TTS_VOICE: PRODUCT_DEFAULTS.openaiTtsVoice,
@@ -585,6 +608,8 @@ export function loadEffectiveConfig(): AppConfig {
       DEEPSEEK_API_KEY: deepseekKey,
       ELEVENLABS_API_KEY: elevenKey,
       PEXELS_API_KEY: pexelsKey,
+      FAL_KEY: falKey,
+      FAL_API_KEY: falKey,
     };
   }
 
@@ -640,6 +665,10 @@ export function loadEffectiveConfig(): AppConfig {
     DEEPSEEK_API_KEY: deepseekKey,
     ELEVENLABS_API_KEY: elevenKey,
     PEXELS_API_KEY: pexelsKey,
+    FAL_KEY: falKey,
+    FAL_API_KEY: falKey,
+    IMAGE_AI_PROVIDER: base.IMAGE_AI_PROVIDER || PRODUCT_DEFAULTS.imageAiProvider,
+    FAL_IMAGE_MODEL: base.FAL_IMAGE_MODEL?.trim() || PRODUCT_DEFAULTS.falImageModel,
   };
 }
 

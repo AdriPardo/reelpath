@@ -15,6 +15,7 @@ type PlatformSecretsStatus = {
   hasOpenaiKey: boolean;
   hasDeepseekKey: boolean;
   hasElevenLabsKey: boolean;
+  hasFalKey?: boolean;
   hasPexelsKey: boolean;
   hasPixabayKey?: boolean;
   hasCoverrKey?: boolean;
@@ -25,6 +26,7 @@ type PlatformSecretsStatus = {
     openai: SecretSource;
     deepseek: SecretSource;
     elevenlabs: SecretSource;
+    fal?: SecretSource;
     pexels: SecretSource;
     pixabay?: SecretSource;
     coverr?: SecretSource;
@@ -65,6 +67,7 @@ export function SettingsPlatformSecretsPanel() {
   const openaiId = useId();
   const deepseekId = useId();
   const elevenId = useId();
+  const falId = useId();
   const pexelsId = useId();
   const pixabayId = useId();
   const coverrId = useId();
@@ -78,6 +81,7 @@ export function SettingsPlatformSecretsPanel() {
   const [openaiKey, setOpenaiKey] = useState('');
   const [deepseekKey, setDeepseekKey] = useState('');
   const [elevenLabsKey, setElevenLabsKey] = useState('');
+  const [falKey, setFalKey] = useState('');
   const [pexelsKey, setPexelsKey] = useState('');
   const [pixabayKey, setPixabayKey] = useState('');
   const [coverrKey, setCoverrKey] = useState('');
@@ -115,6 +119,7 @@ export function SettingsPlatformSecretsPanel() {
       if (openaiKey.trim()) body.openaiApiKey = openaiKey.trim();
       if (deepseekKey.trim()) body.deepseekApiKey = deepseekKey.trim();
       if (elevenLabsKey.trim()) body.elevenLabsApiKey = elevenLabsKey.trim();
+      if (falKey.trim()) body.falApiKey = falKey.trim();
       if (pexelsKey.trim()) body.pexelsApiKey = pexelsKey.trim();
       if (pixabayKey.trim()) body.pixabayApiKey = pixabayKey.trim();
       if (coverrKey.trim()) body.coverrApiKey = coverrKey.trim();
@@ -138,6 +143,7 @@ export function SettingsPlatformSecretsPanel() {
       setOpenaiKey('');
       setDeepseekKey('');
       setElevenLabsKey('');
+      setFalKey('');
       setPexelsKey('');
       setPixabayKey('');
       setCoverrKey('');
@@ -157,6 +163,7 @@ export function SettingsPlatformSecretsPanel() {
       | 'clearOpenaiApiKey'
       | 'clearDeepseekApiKey'
       | 'clearElevenLabsApiKey'
+      | 'clearFalApiKey'
       | 'clearPexelsApiKey'
       | 'clearPixabayApiKey'
       | 'clearCoverrApiKey'
@@ -300,6 +307,15 @@ export function SettingsPlatformSecretsPanel() {
               value: elevenLabsKey,
               set: setElevenLabsKey,
               clear: 'clearElevenLabsApiKey' as const,
+            },
+            {
+              id: falId,
+              label: t('falLabel'),
+              has: !!status.hasFalKey,
+              source: status.sources?.fal,
+              value: falKey,
+              set: setFalKey,
+              clear: 'clearFalApiKey' as const,
             },
             {
               id: pexelsId,

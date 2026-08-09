@@ -10,6 +10,7 @@ import { runFfmpeg } from '@autotube/shared/ffmpeg-runner';
 import type { VisualOrigin } from '@autotube/shared';
 import { createSceneVisualPng } from '../png-utils.js';
 import { preprocessForTts } from '../tts-preprocess.js';
+import { downloadFalImageToFile, generateFalFluxImage } from './fal-flux-image.js';
 import { getTtsFallbackChain, resolveTtsProvider } from './tts/index.js';
 import OpenAI from 'openai';
 
@@ -237,28 +238,29 @@ export async function generateSceneImage(params: {
   const { width, height } = isVertical ? VIDEO_RESOLUTION_SHORT : VIDEO_RESOLUTION_LONG;
 
   const allowAi = params.allowAiImages !== false;
-  // Clave efectiva (org/plataforma/env) gana sobre useMocks: si hay OpenAI, se puede generar IA.
+  const falKey = config.FAL_KEY?.trim() || config.FAL_API_KEY?.trim() || '';
+  const openAiKey = config.OPENAI_API_KEY?.trim() || '';
+  const imageProvider = config.IMAGE_AI_PROVIDER ?? 'auto';
+  const wantFal = imageProvider === 'fal' || imageProvider === 'auto';
+  const wantOpenAi = imageProvider === 'openai' || imageProvider === 'auto';
+  const hasAiKey = (wantFal && !!falKey) || (wantOpenAi && !!openAiKey);
+
+  // Clave efectiva (org/plataforma/env) gana sobre useMocks: fal o OpenAI habilitan IA.
   const useAiImages =
-    allowAi &&
-    !!config.OPENAI_API_KEY?.trim() &&
-    (config.GENERATE_DALLE_IMAGES || !!params.forceAiImages);
+    allowAi && hasAiKey && (config.GENERATE_DALLE_IMAGES || !!params.forceAiImages);
 
   if (!useAiImages) {
-    if (
-      config.OPENAI_API_KEY &&
-      !config.GENERATE_DALLE_IMAGES &&
-      !params.forceAiImages
-    ) {
+    if (hasAiKey && !config.GENERATE_DALLE_IMAGES && !params.forceAiImages) {
       console.info(
         '[media] GENERATE_DALLE_IMAGES=false — imágenes procedurales/stock. ' +
-          'Activa imágenes IA en Ajustes / canal para DALL·E / gpt-image.',
+          'Activa imágenes IA en Ajustes / canal (Flux Pro / gpt-image).',
       );
     } else if (!allowAi) {
       console.info(
         `[media] scene=${params.sceneIndex} tope MAX_AI_IMAGES_PER_VIDEO — procedural/stock`,
       );
-    } else if (!config.OPENAI_API_KEY?.trim()) {
-      console.info('[media] Imágenes procedurales (sin OPENAI_API_KEY en env/plataforma/org)');
+    } else if (!hasAiKey) {
+      console.info('[media] Imágenes procedurales (sin FAL_KEY ni OPENAI_API_KEY)');
     } else {
       console.info('[media] Imágenes procedurales/stock');
     }
@@ -266,48 +268,87 @@ export async function generateSceneImage(params: {
     return { mock: true, provider: 'procedural', visualOrigin: 'placeholder' };
   }
 
-  const client = new OpenAI({ apiKey: config.OPENAI_API_KEY });
   const prompt = buildImagePrompt(
     params.visualPrompt,
     params.narration,
     params.sceneIndex,
     aspectRatio,
   );
+  if (isGenericVisualPrompt(params.visualPrompt)) {
+    console.info(
+      `[media/image] scene=${params.sceneIndex} generic visualPrompt — using narration context`,
+    );
+  }
+
   let lastError: unknown;
-  const imageQuality = config.OPENAI_IMAGE_QUALITY;
 
-  for (const model of imageModelsToTry(config.OPENAI_IMAGE_MODEL)) {
+  // 1) Flux Pro (quality-first cheap path) when key present.
+  if (wantFal && falKey) {
+    const falModel = config.FAL_IMAGE_MODEL?.trim() || 'fal-ai/flux-pro/v1.1';
     try {
-      const size = imageSizeForModel(model, aspectRatio);
       console.info(
-        `[media/image] scene=${params.sceneIndex} model=${model} size=${size} quality=${imageQuality}`,
+        `[media/image] scene=${params.sceneIndex} provider=fal model=${falModel} aspect=${aspectRatio}`,
       );
-      if (isGenericVisualPrompt(params.visualPrompt)) {
-        console.info(`[media/image] scene=${params.sceneIndex} generic visualPrompt — using narration context`);
-      }
-
-      const result = await client.images.generate({
-        model,
+      const fal = await generateFalFluxImage({
+        apiKey: falKey,
+        model: falModel,
         prompt,
-        size,
-        quality: model.startsWith('gpt-image') ? imageQuality : 'standard',
-        n: 1,
+        aspectRatio,
       });
-
-      await saveGeneratedImage(result.data?.[0], params.outPath);
+      await downloadFalImageToFile(fal.url, params.outPath);
+      await stripImageMetadata(params.outPath);
       await upscaleImageToTarget(params.outPath, width, height);
-      console.info(`[media/image] scene=${params.sceneIndex} ok model=${model}`);
-      return { mock: false, provider: model, visualOrigin: 'ai' };
+      console.info(`[media/image] scene=${params.sceneIndex} ok provider=fal model=${falModel}`);
+      return { mock: false, provider: falModel, visualOrigin: 'ai' };
     } catch (err) {
       lastError = err;
       console.warn(
-        `[media/image] scene=${params.sceneIndex} model=${model} failed:`,
+        `[media/image] scene=${params.sceneIndex} fal failed:`,
         err instanceof Error ? err.message : err,
       );
+      if (imageProvider === 'fal') {
+        console.warn('[media/image] IMAGE_AI_PROVIDER=fal — no OpenAI fallback');
+        await generateProceduralSceneImage({ ...params, width, height });
+        return { mock: true, provider: 'procedural', visualOrigin: 'placeholder' };
+      }
     }
   }
 
-  console.warn('[media/image] All models failed, using procedural fallback:', lastError);
+  // 2) OpenAI gpt-image fallback (or primary when IMAGE_AI_PROVIDER=openai).
+  if (wantOpenAi && openAiKey) {
+    const client = new OpenAI({ apiKey: openAiKey });
+    const imageQuality = config.OPENAI_IMAGE_QUALITY;
+
+    for (const model of imageModelsToTry(config.OPENAI_IMAGE_MODEL)) {
+      try {
+        const size = imageSizeForModel(model, aspectRatio);
+        console.info(
+          `[media/image] scene=${params.sceneIndex} model=${model} size=${size} quality=${imageQuality}`,
+        );
+
+        const result = await client.images.generate({
+          model,
+          prompt,
+          size,
+          quality: model.startsWith('gpt-image') ? imageQuality : 'standard',
+          n: 1,
+        });
+
+        await saveGeneratedImage(result.data?.[0], params.outPath);
+        await upscaleImageToTarget(params.outPath, width, height);
+        console.info(`[media/image] scene=${params.sceneIndex} ok model=${model}`);
+        return { mock: false, provider: model, visualOrigin: 'ai' };
+      } catch (err) {
+        lastError = err;
+        console.warn(
+          `[media/image] scene=${params.sceneIndex} model=${model} failed:`,
+          err instanceof Error ? err.message : err,
+        );
+      }
+    }
+  }
+
+  console.warn('[media/image] All AI providers failed, using procedural fallback:', lastError);
   await generateProceduralSceneImage({ ...params, width, height });
   return { mock: true, provider: 'procedural', visualOrigin: 'placeholder' };
 }
