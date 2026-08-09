@@ -132,6 +132,18 @@ export function ChannelAnalyticsPanel({
     }
   }
 
+  async function applyPublishInsights() {
+    try {
+      const result = await api<{ message: string }>(
+        `/api/channels/${channelId}/apply-publish-insights`,
+        { method: 'POST' },
+      );
+      toast(result.message, 'success');
+    } catch (err) {
+      toast(err instanceof Error ? err.message : tc('errorGeneric'), 'error');
+    }
+  }
+
   if (loading) {
     return (
       <p className="text-muted" aria-live="polite">
@@ -227,6 +239,27 @@ export function ChannelAnalyticsPanel({
               ))}
             </ul>
           )}
+          {insights.recommendedHour != null && (
+            <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => void applyPublishInsights()}
+              >
+                {t('applyBestHour', {
+                  hour: String(insights.recommendedHour).padStart(2, '0'),
+                })}
+              </Button>
+              {insights.publish?.confident ? (
+                <span className="chip chip-muted">{t('insightsConfident')}</span>
+              ) : insights.publish && insights.publish.sampleCount > 0 ? (
+                <span className="chip chip-muted">
+                  {t('insightsSample', { count: insights.publish.sampleCount })}
+                </span>
+              ) : null}
+            </div>
+          )}
         </div>
       )}
 
@@ -266,6 +299,7 @@ export function ChannelAnalyticsPanel({
                 <th>{t('colViews')}</th>
                 <th>{t('colWatchTime')}</th>
                 <th>{t('colCtr')}</th>
+                <th>{t('colRetention')}</th>
                 <th>{t('colAvgDuration')}</th>
                 <th>{t('colSource')}</th>
               </tr>
@@ -277,6 +311,7 @@ export function ChannelAnalyticsPanel({
                   <td>{row.views.toLocaleString(numberLocale)}</td>
                   <td>{Math.round(row.watchTimeMinutes ?? 0).toLocaleString(numberLocale)} min</td>
                   <td>{formatPct(row.ctr)}</td>
+                  <td>{formatPct(row.retention)}</td>
                   <td>{formatMinutes(row.averageViewDurationSec ?? 0, locale)}</td>
                   <td className="text-muted text-sm">{metricsSourceLabel(row.raw)}</td>
                 </tr>

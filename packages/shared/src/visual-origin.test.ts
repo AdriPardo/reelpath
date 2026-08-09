@@ -17,6 +17,37 @@ describe('computeVisualOriginSummary', () => {
       hasPlaceholders: true,
     });
     expect(summary?.scenes).toHaveLength(3);
+    expect(summary?.stockCredits).toEqual([]);
+  });
+
+  it('recoge créditos stock únicos', () => {
+    const summary = computeVisualOriginSummary([
+      {
+        sceneIndex: 0,
+        type: 'video',
+        metadata: {
+          visualOrigin: 'stock',
+          stockProvider: 'pexels',
+          stockCreator: 'Ada',
+          stockSourcePage: 'https://pexels.com/x',
+        },
+      },
+      {
+        sceneIndex: 1,
+        type: 'video',
+        metadata: {
+          visualOrigin: 'stock',
+          stockProvider: 'pexels',
+          stockCreator: 'Ada',
+          stockSourcePage: 'https://pexels.com/x',
+        },
+      },
+    ]);
+    expect(summary?.stockCredits).toHaveLength(1);
+    expect(summary?.stockCredits[0]).toMatchObject({
+      provider: 'pexels',
+      creator: 'Ada',
+    });
   });
 
   it('devuelve null sin assets visuales', () => {

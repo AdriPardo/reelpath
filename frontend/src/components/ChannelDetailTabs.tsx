@@ -191,6 +191,29 @@ export function ChannelDetailTabs({
                 edgeTtsVoice: config.edgeTtsVoice as string | null | undefined,
                 elevenLabsVoiceId: config.elevenLabsVoiceId as string | null | undefined,
                 openaiTtsVoice: config.openaiTtsVoice as string | null | undefined,
+                ttsProvider: config.ttsProvider as
+                  | 'auto'
+                  | 'edge'
+                  | 'elevenlabs'
+                  | 'openai'
+                  | null
+                  | undefined,
+                maxAiImagesPerVideo: config.maxAiImagesPerVideo as number | null | undefined,
+                openaiImageQuality: config.openaiImageQuality as
+                  | 'low'
+                  | 'medium'
+                  | 'high'
+                  | 'auto'
+                  | null
+                  | undefined,
+                bgmEnabled: config.bgmEnabled as boolean | undefined,
+                bgmVolume: config.bgmVolume as number | undefined,
+                bgmFile: config.bgmFile as string | undefined,
+                stockPlaybackSpeed: config.stockPlaybackSpeed as number | undefined,
+                crossPostEnabled: config.crossPostEnabled as boolean | undefined,
+                crossPostPlatforms: config.crossPostPlatforms as
+                  | Array<'tiktok' | 'instagram' | 'youtube'>
+                  | undefined,
               }}
             />
           </>

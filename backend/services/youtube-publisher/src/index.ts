@@ -26,10 +26,18 @@ export {
   clampYouTubeTitle,
   formatYouTubeShortTitle,
   formatYouTubeShortMetadata,
+  buildCrossPostMetadata,
   YOUTUBE_TITLE_MAX_CHARS,
 } from './metadata.js';
 export { publishYouTubeShortsClips } from './shorts.js';
 export type { YouTubeShortsPublishSummary } from './shorts.js';
+export {
+  crossPostVideoViaUploadPost,
+  checkUploadPostStatus,
+  isUploadPostConfigured,
+  type CrossPostResult,
+  type UploadPostPlatform,
+} from './upload-post.js';
 
 async function tryUploadThumbnail(
   youtubeVideoId: string,

@@ -77,7 +77,7 @@ Registro → Dashboard → Crear canal → Conectar YouTube → Generar vídeo �
 |------|--------|
 | Pago por vídeo suelto (19/29 EUR) | ❌ Próximamente |
 | OAuth Google en UI | ⚠️ | Requiere credenciales de plataforma en `.env` |
-| BYOK ElevenLabs | ❌ | Solo OpenAI a nivel org por ahora |
+| BYOK ElevenLabs | ✅ | Org Ajustes → API keys; canal puede heredar o override voz |
 | Onboarding email / tours | ⚠️ | Email bienvenida al registrarse; sin tour guiado |
 | Multi-usuario por org (invitar) | ✅ | Invitaciones por email + roles owner/member |
 
@@ -91,18 +91,18 @@ En despliegues actuales, el operador de Reelpath puede tener YouTube/OpenAI en `
 
 Prioridad **P0** (bloquean confianza) → **P2** (pulido).
 
-| P | Problema | Impacto |
-|---|----------|---------|
-| P0 | Tras login iba a `/channels`, no al Dashboard | No hay «hogar» ni onboarding claro |
-| P0 | Nav sin Dashboard; «Pipelines» es jerga técnica | Desorienta al creador |
-| P0 | Dashboard mezclaba credenciales globales (`.env`) con modelo por canal | Mensajes contradictorios |
-| P1 | Sin checklist de primeros pasos | Usuario nuevo no sabe qué hacer |
-| P1 | Imposible crear 2.º canal desde UI con canales existentes | Escala mal |
-| P1 | Ajustes vs integraciones por canal duplicaba conceptos | Ya mitigado; publicación redirige a canales |
-| P1 | OAuth no disponible sin mensaje claro al creador | Frustración al conectar cuentas |
-| P2 | Planes muestran «pipelines/día» | Jerga interna |
-| P2 | Algunos subtítulos de página inconsistentes | Menor coherencia de tono |
-| P2 | Landing no vende Reelpath como SaaS | Confusión marca plataforma vs canal demo |
+| P | Problema | Impacto | Estado |
+|---|----------|---------|--------|
+| P0 | Tras login iba a `/channels`, no al Dashboard | No hay «hogar» ni onboarding claro | ✅ |
+| P0 | Nav sin Dashboard; «Pipelines» es jerga técnica | Desorienta al creador | ✅ Generaciones |
+| P0 | Dashboard mezclaba credenciales globales (`.env`) con modelo por canal | Mensajes contradictorios | ✅ |
+| P1 | Sin checklist de primeros pasos | Usuario nuevo no sabe qué hacer | ✅ (+ paso review) |
+| P1 | Imposible crear 2.º canal desde UI con canales existentes | Escala mal | ✅ |
+| P1 | Ajustes vs integraciones por canal duplicaba conceptos | Ya mitigado; publicación redirige a canales | ✅ |
+| P1 | OAuth no disponible sin mensaje claro al creador | Frustración al conectar cuentas | ✅ UnavailableModal |
+| P2 | Planes muestran «pipelines/día» | Jerga interna | ✅ «generaciones al día» |
+| P2 | Algunos subtítulos de página inconsistentes | Menor coherencia de tono | ✅ |
+| P2 | Landing no vende Reelpath como SaaS | Confusión marca plataforma vs canal demo | ✅ hero + pilares SaaS |
 
 ---
 

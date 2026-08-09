@@ -1,5 +1,5 @@
 import type { Job } from 'bullmq';
-import { existsSync } from 'node:fs';
+import { existsSync, statSync } from 'node:fs';
 import { clearOrgPipelineOverrides, mergeChannelProductOverrides, parseChannelConfig, setOrgPipelineOverrides } from '@autotube/config';
 import { loadOrgPipelineOverrides, prisma } from '@autotube/database';
 import { clearOrgOpenAiApiKey, resetLlmClient } from '@autotube/llm';
@@ -10,12 +10,75 @@ import { generateMedia } from '@autotube/media-generator';
 import { generateScript } from '@autotube/script-generator';
 import type { ChannelConfig, PipelineJobPayload, PipelineRunMetadata, ScriptVariant } from '@autotube/shared';
 import { computeShortPublishSlots, parseScheduledPublishAt, resolveDefaultShortCount, resolveMixedShortsCounts, resolvePlannerConfig, resolveSplitShortsCount } from '@autotube/shared';
-import { renderVideo, splitVideoForShorts } from '@autotube/video-renderer';
-import { publishToYouTube, publishYouTubeShortsClips, deleteYouTubeVideoApi, resolveYouTubeCredentialsForChannel } from '@autotube/youtube-publisher';
+import { renderVideo, resolveBgmFile, splitVideoForShorts } from '@autotube/video-renderer';
+import {
+  publishToYouTube,
+  publishYouTubeShortsClips,
+  deleteYouTubeVideoApi,
+  resolveYouTubeCredentialsForChannel,
+  crossPostVideoViaUploadPost,
+  isUploadPostConfigured,
+  type UploadPostPlatform,
+} from '@autotube/youtube-publisher';
 import { syncVideoAnalytics } from '@autotube/analytics';
 import { generateDedicatedShort } from './dedicated-short.js';
 import { notifyPipelineReadyForReview } from './pipeline-notify.js';
 import { notifyPipelineFailed } from './pipeline-notify-failed.js';
+
+async function maybeCrossPostAfterPublish(params: {
+  videoId: string;
+  config: ChannelConfig;
+}): Promise<void> {
+  if (params.config.crossPostEnabled !== true) return;
+  if (!isUploadPostConfigured()) {
+    console.info('[pipeline] cross-post skipped: Upload-Post not configured');
+    return;
+  }
+
+  const video = await prisma.video.findUnique({
+    where: { id: params.videoId },
+    select: {
+      title: true,
+      description: true,
+      tags: true,
+      filePath: true,
+      clips: {
+        orderBy: { createdAt: 'asc' },
+        take: 1,
+        select: { filePath: true },
+      },
+    },
+  });
+  if (!video) return;
+
+  const videoPath =
+    video.clips[0]?.filePath && existsSync(video.clips[0].filePath)
+      ? video.clips[0].filePath
+      : video.filePath && existsSync(video.filePath)
+        ? video.filePath
+        : null;
+  if (!videoPath) {
+    console.warn('[pipeline] cross-post skipped: no local video file');
+    return;
+  }
+
+  const platforms = (params.config.crossPostPlatforms ?? ['tiktok', 'instagram']).filter(
+    (p): p is UploadPostPlatform => p === 'tiktok' || p === 'instagram' || p === 'youtube',
+  );
+
+  const result = await crossPostVideoViaUploadPost({
+    videoPath,
+    title: video.title,
+    description: video.description ?? undefined,
+    tags: video.tags ?? undefined,
+    platforms,
+  });
+
+  console.info(
+    `[pipeline] cross-post success=${result.success} skipped=${Boolean(result.skipped)} ` +
+      `requestId=${result.requestId ?? '-'} error=${result.error ?? '-'}`,
+  );
+}
 
 async function updatePipelineStatus(
   pipelineRunId: string,
@@ -223,6 +286,12 @@ async function runPipelineStep(
     switch (step) {
       case 'generate_ideas': {
         await updatePipelineStatus(pipelineRunId, 'generating_ideas', step);
+        const { runPipelinePreflight } = await import('./pipeline-preflight.js');
+        const preflight = await runPipelinePreflight(config);
+        for (const w of preflight.warnings) console.warn(`[pipeline/preflight] ${w}`);
+        if (!preflight.ok) {
+          throw new Error(`Preflight falló: ${preflight.errors.join('; ')}`);
+        }
         await generateIdeas({ channelId, pipelineRunId, config });
         await enqueuePipelineStep({ pipelineRunId, channelId }, 'select_idea');
         break;
@@ -282,6 +351,7 @@ async function runPipelineStep(
           visualSourceMode: config.visualSourceMode,
           orgPlan: org?.plan,
           channelGenerateAiImages: config.generateAiImages,
+          stockPlaybackSpeed: config.stockPlaybackSpeed,
         });
         await enqueuePipelineStep({ pipelineRunId, channelId }, 'render_video');
         break;
@@ -312,6 +382,9 @@ async function runPipelineStep(
           reviewRequired: config.reviewRequired,
           retentionMode: config.retentionMode,
           videoMotionIntensity: config.videoMotionIntensity,
+          bgmEnabled: config.bgmEnabled,
+          bgmVolume: config.bgmVolume,
+          bgmFile: config.bgmFile,
         });
 
         const repairMeta = run.metadata as { repairAudioRepublish?: boolean } | null;
@@ -347,19 +420,64 @@ async function runPipelineStep(
         const variant = scriptRecord.selectedVariant as unknown as ScriptVariant;
         const assets = await prisma.mediaAsset.findMany({ where: { pipelineRunId } });
 
+        const audioAssets = assets.filter((a) => a.type === 'audio' && a.sceneIndex >= 0);
+        const visualAssets = assets.filter(
+          (a) => (a.type === 'image' || a.type === 'video') && a.sceneIndex >= 0,
+        );
+
+        let nearSilentAudioCount = 0;
+        for (const a of audioAssets) {
+          if (!existsSync(a.path)) {
+            nearSilentAudioCount++;
+            continue;
+          }
+          try {
+            if (statSync(a.path).size < 800) nearSilentAudioCount++;
+          } catch {
+            nearSilentAudioCount++;
+          }
+        }
+
+        const stockPaths = visualAssets
+          .filter((a) => {
+            const meta = (a.metadata ?? {}) as Record<string, unknown>;
+            return meta.visualOrigin === 'stock' || a.type === 'video';
+          })
+          .map((a) => a.path);
+        const pathCounts = new Map<string, number>();
+        for (const p of stockPaths) pathCounts.set(p, (pathCounts.get(p) ?? 0) + 1);
+        const repeatedStockCount = [...pathCounts.values()]
+          .filter((n) => n > 1)
+          .reduce((sum, n) => sum + (n - 1), 0);
+
+        const missingWordBoundaryCount = audioAssets.filter((a) => {
+          const meta = (a.metadata ?? {}) as Record<string, unknown>;
+          const count = typeof meta.wordBoundaryCount === 'number' ? meta.wordBoundaryCount : 0;
+          return count <= 0;
+        }).length;
+
+        const bgmEnabledWithoutTrack =
+          config.bgmEnabled === true && !(await resolveBgmFile(config.bgmFile ?? null));
+
         const report = scoreVideoQuality({
           script: variant,
           format: config.videoFormat,
           durationSec: video.durationSec,
           filePathExists: video.filePath ? existsSync(video.filePath) : false,
           hasThumbnail: video.thumbnailPath ? existsSync(video.thumbnailPath) : false,
-          sceneImageIndexes: assets.filter((a) => a.type === 'image').map((a) => a.sceneIndex),
-          sceneAudioIndexes: assets.filter((a) => a.type === 'audio').map((a) => a.sceneIndex),
+          sceneImageIndexes: assets
+            .filter((a) => a.type === 'image' || a.type === 'video')
+            .map((a) => a.sceneIndex),
+          sceneAudioIndexes: audioAssets.map((a) => a.sceneIndex),
           hasSubtitles: assets.some((a) => a.type === 'subtitle'),
           title: video.title,
           description: video.description,
           forbiddenTopics: config.forbiddenTopics,
           minScoreToApprove: config.autoApproveMinScore,
+          nearSilentAudioCount,
+          repeatedStockCount,
+          bgmEnabledWithoutTrack,
+          missingWordBoundaryCount,
         });
 
         await prisma.video.update({
@@ -477,11 +595,13 @@ async function runPipelineStep(
 
         if (publishYoutube) {
           await publishToYouTube(video.id);
+          await maybeCrossPostAfterPublish({ videoId: video.id, config });
         } else if (video.reviewStatus !== 'published') {
           await prisma.video.update({
             where: { id: video.id },
             data: { reviewStatus: 'published', publishedAt: new Date() },
           });
+          await maybeCrossPostAfterPublish({ videoId: video.id, config });
         }
 
         if (clipSplit) {

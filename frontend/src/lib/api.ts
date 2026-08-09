@@ -43,9 +43,11 @@ function authHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-function requestHeaders(): Record<string, string> {
+function requestHeaders(init?: RequestInit): Record<string, string> {
+  const isFormData =
+    typeof FormData !== 'undefined' && init?.body instanceof FormData;
   return {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...localeHeader(),
     ...authHeaders(),
   };
@@ -56,7 +58,7 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
     ...init,
     credentials: 'include',
     headers: {
-      ...requestHeaders(),
+      ...requestHeaders(init),
       ...init?.headers,
     },
     cache: 'no-store',
@@ -151,6 +153,9 @@ export type VisualOrigin = 'stock' | 'ai' | 'placeholder';
 export interface SceneVisualOrigin {
   sceneIndex: number;
   origin: VisualOrigin;
+  stockProvider?: string;
+  stockCreator?: string;
+  stockSourcePage?: string;
 }
 
 export interface VisualOriginSummary {
@@ -160,6 +165,11 @@ export interface VisualOriginSummary {
   total: number;
   hasPlaceholders: boolean;
   scenes: SceneVisualOrigin[];
+  stockCredits: Array<{
+    provider?: string;
+    creator?: string;
+    sourcePage?: string;
+  }>;
 }
 
 export interface VideoQualityCheck {
@@ -277,6 +287,8 @@ export interface StorageStats {
   pipelinesFormatted: string;
   videosBytes: number;
   videosFormatted: string;
+  stockCacheBytes?: number;
+  stockCacheFormatted?: string;
   pipelineDirs: number;
   pipelineRuns: number;
   videos: number;
@@ -368,4 +380,13 @@ export interface YouTubeAnalyticsInsights {
   hasData: boolean;
   summary: string;
   bullets: string[];
+  publish?: {
+    sampleCount: number;
+    confident: boolean;
+    bestHours: number[];
+    dayScores: Record<number, number>;
+    bestShortSlots: Array<{ hour: number; minute: number }>;
+    source: 'heuristic' | 'analytics';
+  };
+  recommendedHour?: number | null;
 }

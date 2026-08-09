@@ -1,4 +1,5 @@
 import type { AppConfig } from '@autotube/config';
+import type { WordBoundaryLike } from '@autotube/shared';
 
 export type TtsProviderName = 'elevenlabs' | 'edge' | 'openai' | 'mock';
 
@@ -10,9 +11,13 @@ export interface TtsSynthesisOptions {
   retentionMode?: boolean;
 }
 
+export interface TtsSynthesisResult {
+  wordBoundaries?: WordBoundaryLike[];
+}
+
 export interface TtsProvider {
   name: TtsProviderName;
-  synthesize(options: TtsSynthesisOptions): Promise<void>;
+  synthesize(options: TtsSynthesisOptions): Promise<TtsSynthesisResult | void>;
 }
 
 export function resolveTtsProvider(config: AppConfig): TtsProviderName {

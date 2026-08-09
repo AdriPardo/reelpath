@@ -12,9 +12,20 @@ export const PLATFORM_SECRET_KEYS = [
   'deepseek',
   'elevenlabs',
   'pexels',
+  'pixabay',
+  'coverr',
+  'upload_post',
 ] as const;
 
 export type PlatformSecretKey = (typeof PLATFORM_SECRET_KEYS)[number];
+
+export type PlatformApiKeyProvider =
+  | 'openai'
+  | 'deepseek'
+  | 'elevenlabs'
+  | 'pexels'
+  | 'pixabay'
+  | 'coverr';
 
 export type PlatformSecretsStatus = {
   hasYoutubeOAuthApp: boolean;
@@ -22,6 +33,9 @@ export type PlatformSecretsStatus = {
   hasDeepseekKey: boolean;
   hasElevenLabsKey: boolean;
   hasPexelsKey: boolean;
+  hasPixabayKey: boolean;
+  hasCoverrKey: boolean;
+  hasUploadPost: boolean;
 };
 
 function isPlatformSecretKey(key: string): key is PlatformSecretKey {
@@ -78,6 +92,19 @@ export async function getPlatformSecretsStatus(): Promise<PlatformSecretsStatus>
     hasDeepseekKey: hasApiKey('deepseek'),
     hasElevenLabsKey: hasApiKey('elevenlabs'),
     hasPexelsKey: hasApiKey('pexels'),
+    hasPixabayKey: hasApiKey('pixabay'),
+    hasCoverrKey: hasApiKey('coverr'),
+    hasUploadPost: (() => {
+      const raw = byKey.get('upload_post');
+      if (!raw) return false;
+      const data = decryptCredentialPayload(raw);
+      return (
+        typeof data?.apiKey === 'string' &&
+        data.apiKey.trim().length > 0 &&
+        typeof data?.username === 'string' &&
+        data.username.trim().length > 0
+      );
+    })(),
   };
 }
 
@@ -103,7 +130,7 @@ export async function upsertPlatformYouTubeOAuthApp(input: {
 }
 
 export async function resolvePlatformApiKey(
-  provider: 'openai' | 'deepseek' | 'elevenlabs' | 'pexels',
+  provider: PlatformApiKeyProvider,
 ): Promise<string | null> {
   const data = await readSecretData(provider);
   const key = typeof data?.apiKey === 'string' ? data.apiKey.trim() : '';
@@ -111,21 +138,53 @@ export async function resolvePlatformApiKey(
 }
 
 export async function upsertPlatformApiKey(
-  provider: 'openai' | 'deepseek' | 'elevenlabs' | 'pexels',
+  provider: PlatformApiKeyProvider,
   apiKey: string,
 ): Promise<void> {
   await upsertSecretData(provider, { apiKey: apiKey.trim() });
 }
 
+export async function upsertPlatformUploadPost(input: {
+  apiKey: string;
+  username: string;
+  enabled?: boolean;
+}): Promise<void> {
+  await upsertSecretData('upload_post', {
+    apiKey: input.apiKey.trim(),
+    username: input.username.trim(),
+    enabled: input.enabled !== false,
+  });
+}
+
+export async function resolvePlatformUploadPost(): Promise<{
+  apiKey: string;
+  username: string;
+  enabled: boolean;
+} | null> {
+  const data = await readSecretData('upload_post');
+  const apiKey = typeof data?.apiKey === 'string' ? data.apiKey.trim() : '';
+  const username = typeof data?.username === 'string' ? data.username.trim() : '';
+  if (!apiKey || !username) return null;
+  return {
+    apiKey,
+    username,
+    enabled: data?.enabled !== false,
+  };
+}
+
 /** Load all platform secrets into the sync cache used by resolveLlmConnection / TTS. */
 export async function loadPlatformSecretsOverrides(): Promise<PlatformSecretsOverrides> {
-  const [youtube, openai, deepseek, elevenlabs, pexels] = await Promise.all([
-    resolvePlatformYouTubeOAuthApp(),
-    resolvePlatformApiKey('openai'),
-    resolvePlatformApiKey('deepseek'),
-    resolvePlatformApiKey('elevenlabs'),
-    resolvePlatformApiKey('pexels'),
-  ]);
+  const [youtube, openai, deepseek, elevenlabs, pexels, pixabay, coverr, uploadPost] =
+    await Promise.all([
+      resolvePlatformYouTubeOAuthApp(),
+      resolvePlatformApiKey('openai'),
+      resolvePlatformApiKey('deepseek'),
+      resolvePlatformApiKey('elevenlabs'),
+      resolvePlatformApiKey('pexels'),
+      resolvePlatformApiKey('pixabay'),
+      resolvePlatformApiKey('coverr'),
+      resolvePlatformUploadPost(),
+    ]);
 
   const overrides: PlatformSecretsOverrides = {
     youtubeClientId: youtube?.clientId ?? null,
@@ -134,6 +193,11 @@ export async function loadPlatformSecretsOverrides(): Promise<PlatformSecretsOve
     deepseekApiKey: deepseek,
     elevenLabsApiKey: elevenlabs,
     pexelsApiKey: pexels,
+    pixabayApiKey: pixabay,
+    coverrApiKey: coverr,
+    uploadPostApiKey: uploadPost?.apiKey ?? null,
+    uploadPostUsername: uploadPost?.username ?? null,
+    uploadPostEnabled: uploadPost?.enabled ?? null,
   };
 
   setPlatformSecretsOverrides(overrides);
@@ -151,6 +215,8 @@ export async function importPlatformSecretsFromEnvIfEmpty(env: {
   DEEPSEEK_API_KEY?: string;
   ELEVENLABS_API_KEY?: string;
   PEXELS_API_KEY?: string;
+  PIXABAY_API_KEY?: string;
+  COVERR_API_KEY?: string;
 }): Promise<{ imported: PlatformSecretKey[] }> {
   const status = await getPlatformSecretsStatus();
   const imported: PlatformSecretKey[] = [];
@@ -168,7 +234,7 @@ export async function importPlatformSecretsFromEnvIfEmpty(env: {
   }
 
   const apiImports: Array<{
-    key: 'openai' | 'deepseek' | 'elevenlabs' | 'pexels';
+    key: PlatformApiKeyProvider;
     has: boolean;
     value?: string;
   }> = [
@@ -176,6 +242,8 @@ export async function importPlatformSecretsFromEnvIfEmpty(env: {
     { key: 'deepseek', has: status.hasDeepseekKey, value: env.DEEPSEEK_API_KEY },
     { key: 'elevenlabs', has: status.hasElevenLabsKey, value: env.ELEVENLABS_API_KEY },
     { key: 'pexels', has: status.hasPexelsKey, value: env.PEXELS_API_KEY },
+    { key: 'pixabay', has: status.hasPixabayKey, value: env.PIXABAY_API_KEY },
+    { key: 'coverr', has: status.hasCoverrKey, value: env.COVERR_API_KEY },
   ];
 
   for (const item of apiImports) {

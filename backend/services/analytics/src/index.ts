@@ -1,7 +1,7 @@
 import { loadConfig } from '@autotube/config';
 import { prisma } from '@autotube/database';
 import { promptEngine } from '@autotube/prompt-engine';
-import type { YouTubeAnalyticsInsights, YouTubeAnalyticsSummary } from '@autotube/shared';
+import type { YouTubeAnalyticsInsights, YouTubeAnalyticsSummary, ChannelPublishInsights } from '@autotube/shared';
 import {
   createYouTubeOAuthFromCredentials,
   resolveYouTubeCredentialsForChannel,
@@ -18,6 +18,9 @@ export { buildRetentionByPublishHour, deriveChannelPublishInsights };
 
 export type { VideoMetrics } from './types.js';
 import type { VideoMetrics } from './types.js';
+
+// Re-export type used by insights payload
+export type { ChannelPublishInsights };
 
 export type MetricsSource = 'youtube' | 'youtube_data_api' | 'mock';
 
@@ -237,6 +240,7 @@ export async function getVideoYouTubeAnalytics(videoId: string) {
 
 export async function getChannelAnalyticsInsights(channelId: string): Promise<YouTubeAnalyticsInsights> {
   const { snapshots, summary } = await getChannelYouTubeAnalytics(channelId);
+  const publish = await deriveChannelPublishInsights(channelId);
 
   if (snapshots.length === 0 || summary.videoCount === 0) {
     return {
@@ -246,6 +250,8 @@ export async function getChannelAnalyticsInsights(channelId: string): Promise<Yo
         'Conecta YouTube con el scope de Analytics en la pestaña Cuentas.',
         'Publica al menos un vídeo y pulsa «Sincronizar» en Analíticas.',
       ],
+      publish,
+      recommendedHour: publish.bestHours[0] ?? null,
     };
   }
 
@@ -271,10 +277,26 @@ export async function getChannelAnalyticsInsights(channelId: string): Promise<Yo
     bullets.push('La retención es baja: revisa ganchos de los primeros 30 segundos.');
   }
 
+  if (publish.confident && publish.bestHours.length > 0) {
+    bullets.push(
+      `Mejores horas de publicación (analytics): ${publish.bestHours
+        .map((h) => `${String(h).padStart(2, '0')}:00`)
+        .join(', ')}.`,
+    );
+  } else if (publish.bestHours.length > 0) {
+    bullets.push(
+      `Horas candidatas (poca muestra, ${publish.sampleCount} vídeos): ${publish.bestHours
+        .map((h) => `${String(h).padStart(2, '0')}:00`)
+        .join(', ')}.`,
+    );
+  }
+
   return {
     hasData: true,
     summary: `Canal con ${summary.totalViews.toLocaleString('es')} vistas y ${watchHours} h de reproducción.`,
     bullets,
+    publish,
+    recommendedHour: publish.bestHours[0] ?? null,
   };
 }
 

@@ -3,6 +3,10 @@ export type VisualOrigin = 'stock' | 'ai' | 'placeholder';
 export interface SceneVisualOrigin {
   sceneIndex: number;
   origin: VisualOrigin;
+  /** Proveedor stock (pexels / pixabay / coverr). */
+  stockProvider?: string;
+  stockCreator?: string;
+  stockSourcePage?: string;
 }
 
 export interface VisualOriginSummary {
@@ -12,6 +16,12 @@ export interface VisualOriginSummary {
   total: number;
   hasPlaceholders: boolean;
   scenes: SceneVisualOrigin[];
+  /** Créditos únicos de clips stock (para atribución UI). */
+  stockCredits: Array<{
+    provider?: string;
+    creator?: string;
+    sourcePage?: string;
+  }>;
 }
 
 export interface VisualOriginAsset {
@@ -32,6 +42,8 @@ export function computeVisualOriginSummary(
   let stock = 0;
   let ai = 0;
   let placeholder = 0;
+  const creditKeys = new Set<string>();
+  const stockCredits: VisualOriginSummary['stockCredits'] = [];
 
   for (const asset of visualAssets) {
     const raw = asset.metadata?.visualOrigin;
@@ -45,9 +57,40 @@ export function computeVisualOriginSummary(
     } else {
       origin = 'ai';
     }
-    scenes.push({ sceneIndex: asset.sceneIndex, origin });
-    if (origin === 'stock') stock++;
-    else if (origin === 'ai') ai++;
+
+    const stockProvider =
+      typeof asset.metadata?.stockProvider === 'string'
+        ? asset.metadata.stockProvider
+        : undefined;
+    const stockCreator =
+      typeof asset.metadata?.stockCreator === 'string'
+        ? asset.metadata.stockCreator
+        : undefined;
+    const stockSourcePage =
+      typeof asset.metadata?.stockSourcePage === 'string'
+        ? asset.metadata.stockSourcePage
+        : undefined;
+
+    scenes.push({
+      sceneIndex: asset.sceneIndex,
+      origin,
+      ...(origin === 'stock'
+        ? { stockProvider, stockCreator, stockSourcePage }
+        : {}),
+    });
+
+    if (origin === 'stock') {
+      stock++;
+      const key = `${stockProvider ?? ''}|${stockCreator ?? ''}|${stockSourcePage ?? ''}`;
+      if ((stockCreator || stockSourcePage || stockProvider) && !creditKeys.has(key)) {
+        creditKeys.add(key);
+        stockCredits.push({
+          provider: stockProvider,
+          creator: stockCreator,
+          sourcePage: stockSourcePage,
+        });
+      }
+    } else if (origin === 'ai') ai++;
     else placeholder++;
   }
 
@@ -60,6 +103,7 @@ export function computeVisualOriginSummary(
     total: visualAssets.length,
     hasPlaceholders: placeholder > 0,
     scenes,
+    stockCredits,
   };
 }
 

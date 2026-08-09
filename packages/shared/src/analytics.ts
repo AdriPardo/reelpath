@@ -24,4 +24,7 @@ export interface YouTubeAnalyticsInsights {
   hasData: boolean;
   summary: string;
   bullets: string[];
+  /** Mejores horas/días derivados de snapshots. */
+  publish?: import('./publish-insights.js').ChannelPublishInsights;
+  recommendedHour?: number | null;
 }

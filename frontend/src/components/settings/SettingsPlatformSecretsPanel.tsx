@@ -16,6 +16,9 @@ type PlatformSecretsStatus = {
   hasDeepseekKey: boolean;
   hasElevenLabsKey: boolean;
   hasPexelsKey: boolean;
+  hasPixabayKey?: boolean;
+  hasCoverrKey?: boolean;
+  hasUploadPost?: boolean;
   youtubeOAuthRedirectUri: string;
   sources?: {
     youtube: SecretSource;
@@ -23,6 +26,9 @@ type PlatformSecretsStatus = {
     deepseek: SecretSource;
     elevenlabs: SecretSource;
     pexels: SecretSource;
+    pixabay?: SecretSource;
+    coverr?: SecretSource;
+    uploadPost?: SecretSource;
   };
 };
 
@@ -60,6 +66,8 @@ export function SettingsPlatformSecretsPanel() {
   const deepseekId = useId();
   const elevenId = useId();
   const pexelsId = useId();
+  const pixabayId = useId();
+  const coverrId = useId();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -71,6 +79,10 @@ export function SettingsPlatformSecretsPanel() {
   const [deepseekKey, setDeepseekKey] = useState('');
   const [elevenLabsKey, setElevenLabsKey] = useState('');
   const [pexelsKey, setPexelsKey] = useState('');
+  const [pixabayKey, setPixabayKey] = useState('');
+  const [coverrKey, setCoverrKey] = useState('');
+  const [uploadPostApiKey, setUploadPostApiKey] = useState('');
+  const [uploadPostUsername, setUploadPostUsername] = useState('');
 
   const isPlatformAdmin = session?.isPlatformAdmin === true;
 
@@ -104,6 +116,12 @@ export function SettingsPlatformSecretsPanel() {
       if (deepseekKey.trim()) body.deepseekApiKey = deepseekKey.trim();
       if (elevenLabsKey.trim()) body.elevenLabsApiKey = elevenLabsKey.trim();
       if (pexelsKey.trim()) body.pexelsApiKey = pexelsKey.trim();
+      if (pixabayKey.trim()) body.pixabayApiKey = pixabayKey.trim();
+      if (coverrKey.trim()) body.coverrApiKey = coverrKey.trim();
+      if (uploadPostApiKey.trim() && uploadPostUsername.trim()) {
+        body.uploadPostApiKey = uploadPostApiKey.trim();
+        body.uploadPostUsername = uploadPostUsername.trim();
+      }
 
       if (Object.keys(body).length === 0) {
         toast(t('nothingToSave'), 'error');
@@ -121,6 +139,10 @@ export function SettingsPlatformSecretsPanel() {
       setDeepseekKey('');
       setElevenLabsKey('');
       setPexelsKey('');
+      setPixabayKey('');
+      setCoverrKey('');
+      setUploadPostApiKey('');
+      setUploadPostUsername('');
       toast(t('saved'), 'success');
     } catch (err) {
       toast(err instanceof Error ? err.message : t('saveError'), 'error');
@@ -135,7 +157,10 @@ export function SettingsPlatformSecretsPanel() {
       | 'clearOpenaiApiKey'
       | 'clearDeepseekApiKey'
       | 'clearElevenLabsApiKey'
-      | 'clearPexelsApiKey',
+      | 'clearPexelsApiKey'
+      | 'clearPixabayApiKey'
+      | 'clearCoverrApiKey'
+      | 'clearUploadPost',
   ) {
     setSaving(true);
     try {
@@ -285,6 +310,24 @@ export function SettingsPlatformSecretsPanel() {
               set: setPexelsKey,
               clear: 'clearPexelsApiKey' as const,
             },
+            {
+              id: pixabayId,
+              label: t('pixabayLabel'),
+              has: !!status.hasPixabayKey,
+              source: status.sources?.pixabay,
+              value: pixabayKey,
+              set: setPixabayKey,
+              clear: 'clearPixabayApiKey' as const,
+            },
+            {
+              id: coverrId,
+              label: t('coverrLabel'),
+              has: !!status.hasCoverrKey,
+              source: status.sources?.coverr,
+              value: coverrKey,
+              set: setCoverrKey,
+              clear: 'clearCoverrApiKey' as const,
+            },
           ] as const
         ).map((field) => {
           const source = field.source ?? (field.has ? 'db' : 'none');
@@ -333,6 +376,57 @@ export function SettingsPlatformSecretsPanel() {
             </div>
           );
         })}
+      </section>
+
+      <section className="platform-secret-block" aria-labelledby="upload-post-heading">
+        <div className="platform-secret-block-head">
+          <h3 id="upload-post-heading">{t('uploadPostLabel')}</h3>
+          <StatusChip
+            configured={!!status.hasUploadPost}
+            source={status.sources?.uploadPost ?? (status.hasUploadPost ? 'db' : 'none')}
+            configuredLabel={t('configured')}
+            missingLabel={t('missing')}
+            envLabel={t('configuredEnv')}
+          />
+        </div>
+        <p className="text-muted text-sm">{t('uploadPostHint')}</p>
+        <label className="platform-secret-label" htmlFor="upload-post-user">
+          {t('uploadPostUsernameLabel')}
+        </label>
+        <input
+          id="upload-post-user"
+          className="platform-secret-input"
+          type="text"
+          autoComplete="off"
+          value={uploadPostUsername}
+          onChange={(e) => setUploadPostUsername(e.target.value)}
+          placeholder={status.hasUploadPost ? t('leaveBlank') : 'username'}
+        />
+        <label className="platform-secret-label" htmlFor="upload-post-key">
+          {t('uploadPostLabel')}
+        </label>
+        <input
+          id="upload-post-key"
+          className="platform-secret-input"
+          type="password"
+          autoComplete="new-password"
+          value={uploadPostApiKey}
+          onChange={(e) => setUploadPostApiKey(e.target.value)}
+          placeholder={status.hasUploadPost ? t('leaveBlank') : t('pasteKey')}
+        />
+        {status.hasUploadPost && status.sources?.uploadPost === 'db' ? (
+          <div className="platform-secret-actions">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={saving}
+              onClick={() => void clearKey('clearUploadPost')}
+            >
+              {t('removeKey')}
+            </Button>
+          </div>
+        ) : null}
       </section>
 
       <div className="platform-secret-actions platform-secret-actions-primary">

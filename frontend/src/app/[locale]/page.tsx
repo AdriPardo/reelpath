@@ -50,6 +50,7 @@ export default async function HomePage({ params }: Props) {
   let scheduledTotal = 0;
   let pipelines: PipelineRun[] = [];
   let activePipelinesTotal = 0;
+  let reviewedTotal = 0;
 
   // No gatear sesión con checkApiHealth: en Docker el health público puede fallar
   // (hairpin) y la home renderiza MarketingHome → en móvil parece logout.
@@ -62,6 +63,7 @@ export default async function HomePage({ params }: Props) {
         '/api/videos?reviewStatus=scheduled&upcoming=true&page=1&limit=3',
       ),
       serverApi<PaginatedResponse<PipelineRun>>('/api/pipelines?active=true&page=1&limit=20'),
+      serverApi<PaginatedResponse<Video>>('/api/videos?reviewStatus=approved&page=1&limit=1'),
     ]);
 
     if (results[0].status === 'fulfilled') session = results[0].value;
@@ -78,6 +80,9 @@ export default async function HomePage({ params }: Props) {
       pipelines = results[4].value.items;
       activePipelinesTotal = results[4].value.total;
     }
+    if (results[5].status === 'fulfilled') {
+      reviewedTotal = results[5].value.total;
+    }
   } catch {
     // fetch parcial fallido
   }
@@ -93,11 +98,13 @@ export default async function HomePage({ params }: Props) {
     pendingTotal > 0 ||
     scheduledTotal > 0 ||
     activePipelinesTotal > 0;
+  const hasReviewAction = reviewedTotal > 0 || scheduledTotal > 0;
   const activePipelines = pipelines;
   const pendingPreview = pendingVideos.slice(0, 3);
   const scheduledPreview = scheduledVideos;
   const firstChannelId = channels[0]?.id;
-  const onboardingIncomplete = !hasChannels || !hasIntegrations || !hasGenerations;
+  const onboardingIncomplete =
+    !hasChannels || !hasIntegrations || !hasGenerations || !hasReviewAction;
 
   if (!session) {
     return <MarketingHome />;
@@ -135,6 +142,7 @@ export default async function HomePage({ params }: Props) {
           hasChannels={hasChannels}
           hasIntegrations={hasIntegrations}
           hasGenerations={hasGenerations}
+          hasReviewAction={hasReviewAction}
           firstChannelId={firstChannelId}
         />
       )}

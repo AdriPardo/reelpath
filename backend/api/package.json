@@ -15,6 +15,7 @@
     "@autotube/config": "*",
     "@autotube/database": "*",
     "@autotube/job-queue": "*",
+    "@autotube/media-generator": "*",
     "@autotube/shared": "*",
     "@autotube/video-renderer": "*",
     "@autotube/youtube-publisher": "*",

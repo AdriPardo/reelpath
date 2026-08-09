@@ -51,7 +51,19 @@ async function cleanupRejected(): Promise<number> {
   return legacy.length;
 }
 
+async function cleanupStockCache(): Promise<number> {
+  const { cleanupStockSearchCache } = await import(
+    '../../backend/api/src/lib/stock-cache-cleanup.js'
+  );
+  const result = await cleanupStockSearchCache({ maxAgeMs: 24 * 60 * 60 * 1000 });
+  console.info(
+    `[cleanup] Cache stock: ${result.removed} archivos (~${result.bytes} bytes) en ${result.dir}`,
+  );
+  return result.removed;
+}
+
 async function main() {
+  const runStockCache = args.has('--stock-cache') || args.has('--all') || args.size === 0;
   let total = 0;
   if (runOrphans) {
     const n = await cleanupOrphans();
@@ -61,6 +73,11 @@ async function main() {
   if (runRejected) {
     const n = await cleanupRejected();
     console.info(`Vídeos rejected legacy eliminados: ${n}`);
+    total += n;
+  }
+  if (runStockCache) {
+    const n = await cleanupStockCache();
+    console.info(`Entradas cache stock eliminadas: ${n}`);
     total += n;
   }
   console.info(`Limpieza completada (${total} operaciones).`);

@@ -40,6 +40,10 @@ const envSchema = z.object({
   EDGE_TTS_RATE: z.string().default(PRODUCT_DEFAULTS.edgeTtsRate),
   EDGE_TTS_VOLUME: z.string().default(PRODUCT_DEFAULTS.edgeTtsVolume),
   EDGE_TTS_PITCH: z.string().default(PRODUCT_DEFAULTS.edgeTtsPitch),
+  /** Timeout seconds for a single Edge TTS request (0 = disable). */
+  EDGE_TTS_TIMEOUT_SEC: z.coerce.number().min(0).max(300).default(30),
+  /** Retries after Edge TTS timeout/failure (not counting first attempt). */
+  EDGE_TTS_RETRIES: z.coerce.number().int().min(0).max(5).default(2),
   OPENAI_API_KEY: z.string().optional(),
   /**
    * LLM for ideas/scripts/titles (OpenAI-compatible).
@@ -141,6 +145,18 @@ const envSchema = z.object({
     .transform((v) => v === 'true')
     .default('false'),
   PEXELS_API_KEY: z.string().optional(),
+  /** Pixabay Videos API key (fallback stock tras Pexels). */
+  PIXABAY_API_KEY: z.string().optional(),
+  /** Coverr API key (fallback stock tras Pixabay). */
+  COVERR_API_KEY: z.string().optional(),
+  /** Upload-Post (TikTok / Instagram cross-post). */
+  UPLOAD_POST_API_KEY: z.string().optional(),
+  UPLOAD_POST_USERNAME: z.string().optional(),
+  UPLOAD_POST_ENABLED: z
+    .string()
+    .transform((v) => v === 'true')
+    .default('false'),
+  UPLOAD_POST_PLATFORMS: z.string().default('tiktok,instagram'),
   S3_ENDPOINT: z.string().optional(),
   S3_BUCKET: z.string().optional(),
   S3_ACCESS_KEY: z.string().optional(),
@@ -309,6 +325,16 @@ export const channelConfigSchema = z.object({
   edgeTtsVoice: z.union([z.string().min(2).max(120), z.null()]).optional(),
   elevenLabsVoiceId: z.union([z.string().min(2).max(120), z.null()]).optional(),
   openaiTtsVoice: z.union([z.string().min(2).max(120), z.null()]).optional(),
+  bgmEnabled: z.boolean().optional(),
+  bgmVolume: z.coerce.number().min(0).max(1).optional(),
+  bgmFile: z.string().max(255).optional(),
+  stockPlaybackSpeed: z.coerce.number().min(0.75).max(1.5).optional(),
+  /** Cross-post vertical vía Upload-Post tras publicar en YouTube. */
+  crossPostEnabled: z.boolean().optional(),
+  crossPostPlatforms: z
+    .array(z.enum(['tiktok', 'instagram', 'youtube']))
+    .max(3)
+    .optional(),
 });
 
 export function getIdeaMaxRetries(channelMax?: number): number {
@@ -405,6 +431,16 @@ export function effectiveElevenLabsApiKey(): string | undefined {
 export function effectivePexelsApiKey(): string | undefined {
   const platform = getPlatformSecretsOverrides();
   return pickFirstSecret(loadConfig().PEXELS_API_KEY, platform?.pexelsApiKey);
+}
+
+export function effectivePixabayApiKey(): string | undefined {
+  const platform = getPlatformSecretsOverrides();
+  return pickFirstSecret(loadConfig().PIXABAY_API_KEY, platform?.pixabayApiKey);
+}
+
+export function effectiveCoverrApiKey(): string | undefined {
+  const platform = getPlatformSecretsOverrides();
+  return pickFirstSecret(loadConfig().COVERR_API_KEY, platform?.coverrApiKey);
 }
 
 /** YouTube OAuth app credentials: PlatformSecret cache, then legacy env. */
@@ -708,6 +744,11 @@ export {
 } from './platform-secrets-runtime.js';
 export { PRODUCT_DEFAULTS } from './product-defaults.js';
 export { pickFirstSecret } from './pick-first-secret.js';
+export {
+  nextRotatedSecret,
+  parseSecretKeyList,
+  resetSecretRotation,
+} from './rotate-secret.js';
 export {
   resolveGenerateAiImages,
   resolveImageQuality,

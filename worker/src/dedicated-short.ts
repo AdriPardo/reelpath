@@ -84,6 +84,9 @@ async function buildTeaserClip(params: {
     outputSubdir: subdir,
     persistAsVideo: false,
     mediaSubdir: subdir,
+    bgmEnabled: config.bgmEnabled,
+    bgmVolume: config.bgmVolume,
+    bgmFile: config.bgmFile,
   });
 
   const shortDir = getStoragePath('videos', pipelineRunId, subdir);

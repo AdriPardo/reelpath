@@ -27,8 +27,13 @@ export function StorageStatsPanel({ initial }: { initial: StorageStats | null })
     }
   }
 
-  async function cleanup(action: 'orphans' | 'rejected') {
-    const label = action === 'orphans' ? t('confirmOrphans') : t('confirmRejected');
+  async function cleanup(action: 'orphans' | 'rejected' | 'stock-cache') {
+    const label =
+      action === 'orphans'
+        ? t('confirmOrphans')
+        : action === 'rejected'
+          ? t('confirmRejected')
+          : t('confirmStockCache');
     if (!window.confirm(label)) return;
 
     setLoading(action);
@@ -70,6 +75,12 @@ export function StorageStatsPanel({ initial }: { initial: StorageStats | null })
         <dd>{t('pipelineFolders', { size: stats.pipelinesFormatted, count: stats.pipelineDirs })}</dd>
         <dt>{t('renderedVideos')}</dt>
         <dd>{stats.videosFormatted}</dd>
+        {stats.stockCacheFormatted ? (
+          <>
+            <dt>{t('stockCache')}</dt>
+            <dd>{stats.stockCacheFormatted}</dd>
+          </>
+        ) : null}
         <dt>{t('storedContent')}</dt>
         <dd>
           {t('storedSummary', {
@@ -100,6 +111,15 @@ export function StorageStatsPanel({ initial }: { initial: StorageStats | null })
           onClick={() => cleanup('rejected')}
         >
           {loading === 'rejected' ? '…' : t('cleanupRejected')}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={!!loading}
+          onClick={() => cleanup('stock-cache')}
+        >
+          {loading === 'stock-cache' ? '…' : t('cleanupStockCache')}
         </Button>
       </div>
     </section>

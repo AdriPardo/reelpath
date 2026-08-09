@@ -5,6 +5,7 @@ import { getStoragePath } from '@autotube/config';
 import { prisma } from '@autotube/database';
 import { getStorageStats } from '../lib/storage-stats.js';
 import { deletePipelineRunCompletely } from '../lib/pipeline-cleanup.js';
+import { cleanupStockSearchCache } from '../lib/stock-cache-cleanup.js';
 import { authMiddleware, orgChannelIds, requireAdmin } from '../middleware/auth.js';
 
 export const systemRouter = Router();
@@ -68,5 +69,16 @@ systemRouter.post('/storage/cleanup-rejected', async (req, res) => {
   res.json({
     message: `${deleted.length} vídeos rechazados legacy eliminados`,
     deleted,
+  });
+});
+
+/** Elimina JSON stale del cache de búsqueda stock (Pexels/Pixabay/Coverr). */
+systemRouter.post('/storage/cleanup-stock-cache', async (req, res) => {
+  const maxAgeDays = Number(req.body?.maxAgeDays ?? 1);
+  const maxAgeMs = Math.max(0.1, maxAgeDays) * 24 * 60 * 60 * 1000;
+  const result = await cleanupStockSearchCache({ maxAgeMs });
+  res.json({
+    message: `${result.removed} entradas de cache stock eliminadas`,
+    ...result,
   });
 });

@@ -2,7 +2,7 @@
 
 import type { VisualOrigin, VisualOriginSummary } from '@autotube/shared';
 import { visualOriginLabel } from '@autotube/shared';
-import { useLocale, useTranslations } from 'next-intl';
+import { useTranslations } from 'next-intl';
 
 interface VisualOriginBadgeProps {
   origin: VisualOrigin;
@@ -59,9 +59,44 @@ export function VisualOriginSummaryPanel({ summary, compact }: VisualOriginSumma
           {summary.scenes.map((scene) => (
             <li key={scene.sceneIndex}>
               {t('scene', { n: scene.sceneIndex + 1 })} <VisualOriginBadge origin={scene.origin} compact />
+              {scene.origin === 'stock' && (scene.stockCreator || scene.stockProvider) ? (
+                <span className="text-muted text-sm">
+                  {' '}
+                  —{' '}
+                  {[scene.stockProvider, scene.stockCreator].filter(Boolean).join(' · ')}
+                  {scene.stockSourcePage ? (
+                    <>
+                      {' '}
+                      <a href={scene.stockSourcePage} target="_blank" rel="noopener noreferrer">
+                        {t('sourceLink')}
+                      </a>
+                    </>
+                  ) : null}
+                </span>
+              ) : null}
             </li>
           ))}
         </ul>
+      )}
+      {(summary.stockCredits ?? []).length > 0 && (
+        <div className="visual-origin-credits">
+          <strong>{t('creditsTitle')}</strong>
+          <ul>
+            {(summary.stockCredits ?? []).map((c, i) => (
+              <li key={`${c.provider}-${c.creator}-${i}`}>
+                {[c.provider, c.creator].filter(Boolean).join(' · ') || t('creditUnknown')}
+                {c.sourcePage ? (
+                  <>
+                    {' '}
+                    <a href={c.sourcePage} target="_blank" rel="noopener noreferrer">
+                      {t('sourceLink')}
+                    </a>
+                  </>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );

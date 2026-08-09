@@ -223,24 +223,53 @@ export function VoicePicker({
     async (voice: VoicePickerOption, e?: MouseEvent) => {
       e?.stopPropagation();
       e?.preventDefault();
-      if (!voice.previewUrl) return;
       if (playingId === voice.id) {
         stopPreview();
         return;
       }
       stopPreview();
-      const audio = new Audio(voice.previewUrl);
+
+      let url = voice.previewUrl ?? null;
+      let blobUrl: string | null = null;
+      if (!url) {
+        try {
+          const resolvedProvider =
+            provider === 'elevenlabs' || provider === 'openai' ? provider : 'edge';
+          const res = await apiFetch('/api/org/tts/preview', {
+            method: 'POST',
+            body: JSON.stringify({
+              provider: resolvedProvider,
+              voiceId: voice.id,
+            }),
+          });
+          if (!res.ok) return;
+          const blob = await res.blob();
+          blobUrl = URL.createObjectURL(blob);
+          url = blobUrl;
+        } catch {
+          return;
+        }
+      }
+
+      const audio = new Audio(url);
       audioRef.current = audio;
       setPlayingId(voice.id);
-      audio.onended = () => setPlayingId(null);
-      audio.onerror = () => setPlayingId(null);
+      audio.onended = () => {
+        setPlayingId(null);
+        if (blobUrl) URL.revokeObjectURL(blobUrl);
+      };
+      audio.onerror = () => {
+        setPlayingId(null);
+        if (blobUrl) URL.revokeObjectURL(blobUrl);
+      };
       try {
         await audio.play();
       } catch {
         setPlayingId(null);
+        if (blobUrl) URL.revokeObjectURL(blobUrl);
       }
     },
-    [playingId, stopPreview],
+    [playingId, provider, stopPreview],
   );
 
   function selectVoice(next: string) {
@@ -298,7 +327,12 @@ export function VoicePicker({
 
         {filtered.map((voice) => {
           const selectedRow = value === voice.id;
-          const canPreview = Boolean(voice.previewUrl);
+          const canPreview =
+            Boolean(voice.previewUrl) ||
+            provider === 'edge' ||
+            provider === 'openai' ||
+            provider === 'elevenlabs' ||
+            provider === 'auto';
           return (
             <li key={voice.id} role="option" aria-selected={selectedRow}>
               <div className={`voice-picker-row${selectedRow ? ' is-selected' : ''}`}>

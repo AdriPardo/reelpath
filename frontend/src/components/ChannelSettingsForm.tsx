@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import type { ChannelConfig } from '@autotube/shared';
@@ -11,7 +11,7 @@ import {
   resolveMixedShortsCounts,
   type TtsVoiceOption,
 } from '@autotube/shared';
-import { api } from '@/lib/api';
+import { api, apiFetch } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
 import { Button } from '@/components/ui/Button';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
@@ -56,6 +56,232 @@ function voicesForProvider(provider: OrgTtsProvider): TtsVoiceOption[] {
   if (provider === 'elevenlabs') return ELEVENLABS_TTS_VOICES;
   if (provider === 'openai') return OPENAI_TTS_VOICES;
   return EDGE_TTS_VOICES;
+}
+
+function ChannelVoicePreviewButton({
+  provider,
+  voiceId,
+}: {
+  provider: OrgTtsProvider;
+  voiceId: string;
+}) {
+  const t = useTranslations('channels.settingsForm');
+  const tc = useTranslations('common');
+  const { toast } = useToast();
+  const [busy, setBusy] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    return () => {
+      audioRef.current?.pause();
+      if (audioRef.current?.src?.startsWith('blob:')) {
+        URL.revokeObjectURL(audioRef.current.src);
+      }
+    };
+  }, []);
+
+  async function playPreview() {
+    if (!voiceId || busy) return;
+    setBusy(true);
+    try {
+      const resolvedProvider =
+        provider === 'elevenlabs' || provider === 'openai' ? provider : 'edge';
+      const res = await apiFetch('/api/org/tts/preview', {
+        method: 'POST',
+        body: JSON.stringify({
+          provider: resolvedProvider,
+          voiceId,
+        }),
+      });
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      audioRef.current?.pause();
+      if (audioRef.current?.src?.startsWith('blob:')) {
+        URL.revokeObjectURL(audioRef.current.src);
+      }
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onended = () => URL.revokeObjectURL(url);
+      await audio.play();
+      toast(t('bgmPreviewTtsOk'), 'success');
+    } catch (err) {
+      toast(err instanceof Error ? err.message : tc('errorGeneric'), 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div style={{ marginTop: '0.5rem' }}>
+      <Button type="button" variant="secondary" size="sm" disabled={busy || !voiceId} onClick={() => void playPreview()}>
+        {busy ? t('bgmPreviewTtsBusy') : t('bgmPreviewTts')}
+      </Button>
+    </div>
+  );
+}
+
+function BgmSettingsSection({
+  channelId,
+  config,
+  setField,
+  toggle,
+}: {
+  channelId: string;
+  config: FormConfig;
+  setField: <K extends keyof FormConfig>(key: K, value: FormConfig[K]) => void;
+  toggle: (key: keyof FormConfig) => void;
+}) {
+  const t = useTranslations('channels.settingsForm');
+  const tc = useTranslations('common');
+  const { toast } = useToast();
+  const [tracks, setTracks] = useState<Array<{ name: string; source: string }>>([]);
+  const [loadingTracks, setLoadingTracks] = useState(true);
+  const [uploading, setUploading] = useState(false);
+
+  async function refreshTracks() {
+    setLoadingTracks(true);
+    try {
+      const data = await api<{ tracks: Array<{ name: string; source: string }> }>(
+        `/api/channels/${channelId}/bgm`,
+      );
+      setTracks(data.tracks ?? []);
+    } catch {
+      setTracks([]);
+    } finally {
+      setLoadingTracks(false);
+    }
+  }
+
+  useEffect(() => {
+    void refreshTracks();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channelId]);
+
+  async function onUpload(file: File | null) {
+    if (!file) return;
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const data = await api<{ name: string }>(`/api/channels/${channelId}/bgm`, {
+        method: 'POST',
+        body: form,
+      });
+      setField('bgmFile', data.name);
+      setField('bgmEnabled', true);
+      toast(t('bgmUploadOk', { name: data.name }), 'success');
+      await refreshTracks();
+    } catch (err) {
+      toast(err instanceof Error ? err.message : tc('errorGeneric'), 'error');
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function onDelete(name: string) {
+    try {
+      await api(`/api/channels/${channelId}/bgm/${encodeURIComponent(name)}`, {
+        method: 'DELETE',
+      });
+      if (config.bgmFile === name) setField('bgmFile', undefined);
+      toast(t('bgmDeleted', { name }), 'success');
+      await refreshTracks();
+    } catch (err) {
+      toast(err instanceof Error ? err.message : tc('errorGeneric'), 'error');
+    }
+  }
+
+  return (
+    <>
+      <label className="modal-checkbox">
+        <input
+          type="checkbox"
+          checked={config.bgmEnabled === true}
+          onChange={() => toggle('bgmEnabled')}
+        />
+        <span className="checkbox-label-row">
+          <span>{t('bgmEnabledLabel')}</span>
+          <InfoTooltip content={t('bgmEnabledTooltip')} />
+        </span>
+      </label>
+      <label className="modal-field">
+        <span className="field-label-row">
+          <span>{t('bgmVolumeLabel')}</span>
+          <InfoTooltip content={t('bgmVolumeTooltip')} />
+        </span>
+        <input
+          type="number"
+          className="topic-input"
+          min={0}
+          max={1}
+          step={0.01}
+          value={config.bgmVolume ?? 0.18}
+          onChange={(e) => setField('bgmVolume', Number(e.target.value))}
+          disabled={config.bgmEnabled !== true}
+        />
+      </label>
+      <label className="modal-field">
+        <span className="field-label-row">
+          <span>{t('bgmFileLabel')}</span>
+          <InfoTooltip content={t('bgmFileTooltip')} />
+        </span>
+        <select
+          className="topic-input"
+          value={config.bgmFile ?? ''}
+          onChange={(e) => setField('bgmFile', e.target.value || undefined)}
+          disabled={config.bgmEnabled !== true}
+        >
+          <option value="">{t('bgmFileRandom')}</option>
+          {tracks.map((tr) => (
+            <option key={tr.name} value={tr.name}>
+              {tr.name} ({tr.source})
+            </option>
+          ))}
+        </select>
+      </label>
+      <div className="modal-field">
+        <span className="field-label-row">
+          <span>{t('bgmUploadLabel')}</span>
+        </span>
+        <input
+          type="file"
+          accept=".mp3,.m4a,.aac,.wav,.flac,.ogg,.opus,audio/*"
+          disabled={uploading}
+          onChange={(e) => {
+            const f = e.target.files?.[0] ?? null;
+            e.target.value = '';
+            void onUpload(f);
+          }}
+        />
+        <span className="text-muted text-sm">{t('bgmUploadHint')}</span>
+      </div>
+      {loadingTracks ? (
+        <p className="text-muted text-sm">{tc('loading')}</p>
+      ) : tracks.length === 0 ? (
+        <p className="text-muted text-sm">{t('bgmListEmpty')}</p>
+      ) : (
+        <ul className="text-sm" style={{ margin: 0, paddingLeft: '1.1rem' }}>
+          {tracks.map((tr) => (
+            <li key={tr.name}>
+              {tr.name}{' '}
+              <span className="text-muted">({tr.source})</span>
+              {tr.source === 'storage' ? (
+                <>
+                  {' '}
+                  <button type="button" className="link-button" onClick={() => void onDelete(tr.name)}>
+                    {tc('delete')}
+                  </button>
+                </>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
 }
 
 export function ChannelSettingsForm({
@@ -560,6 +786,14 @@ export function ChannelSettingsForm({
             inheritLabel={inheritLabel}
             provider={effectiveProvider}
           />
+          <ChannelVoicePreviewButton
+            provider={effectiveProvider}
+            voiceId={
+              (typeof activeChannelVoice === 'string' && activeChannelVoice
+                ? activeChannelVoice
+                : inheritVoiceId) || 'es-ES-ElviraNeural'
+            }
+          />
         </div>
       </details>
 
@@ -653,6 +887,31 @@ export function ChannelSettingsForm({
             <option value="mixed">{t('footageMixed')}</option>
           </select>
         </label>
+        <label className="modal-field">
+          <span className="field-label-row">
+            <span>{t('stockSpeedLabel')}</span>
+            <InfoTooltip content={t('stockSpeedTooltip')} />
+          </span>
+          <input
+            type="number"
+            className="topic-input"
+            min={0.75}
+            max={1.5}
+            step={0.05}
+            value={config.stockPlaybackSpeed ?? 1}
+            onChange={(e) => setField('stockPlaybackSpeed', Number(e.target.value))}
+          />
+        </label>
+      </details>
+
+      <details className="settings-section settings-fieldset">
+        <summary className="settings-section-summary">{t('bgmLegend')}</summary>
+        <BgmSettingsSection
+          channelId={channelId}
+          config={config}
+          setField={setField}
+          toggle={toggle}
+        />
       </details>
 
       <details className="settings-section settings-fieldset">
@@ -725,6 +984,57 @@ export function ChannelSettingsForm({
             <InfoTooltip content={t('publishYoutubeTooltip')} />
           </span>
         </label>
+        <label className="modal-checkbox">
+          <input
+            type="checkbox"
+            checked={config.crossPostEnabled === true}
+            onChange={() => {
+              const next = !config.crossPostEnabled;
+              setField('crossPostEnabled', next);
+              if (next && (config.crossPostPlatforms == null || config.crossPostPlatforms.length === 0)) {
+                setField('crossPostPlatforms', ['tiktok', 'instagram']);
+              }
+            }}
+          />
+          <span className="checkbox-label-row">
+            <span>{t('crossPostLabel')}</span>
+            <InfoTooltip content={t('crossPostTooltip')} />
+          </span>
+        </label>
+        {config.crossPostEnabled === true && (
+          <fieldset className="modal-field" disabled={config.crossPostEnabled !== true}>
+            <legend className="field-label-row">
+              <span>{t('crossPostPlatformsLabel')}</span>
+              <InfoTooltip content={t('crossPostPlatformsTooltip')} />
+            </legend>
+            <div className="checkbox-group" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+              {(['tiktok', 'instagram', 'youtube'] as const).map((platform) => {
+                const selected = (config.crossPostPlatforms ?? ['tiktok', 'instagram']).includes(
+                  platform,
+                );
+                return (
+                  <label key={platform} className="modal-checkbox" style={{ margin: 0 }}>
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      onChange={() => {
+                        const current = config.crossPostPlatforms ?? ['tiktok', 'instagram'];
+                        const next = selected
+                          ? current.filter((p) => p !== platform)
+                          : [...current, platform];
+                        setField(
+                          'crossPostPlatforms',
+                          next.length > 0 ? next : ['tiktok', 'instagram'],
+                        );
+                      }}
+                    />
+                    <span>{t(`crossPostPlatform_${platform}`)}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </fieldset>
+        )}
         <label className="modal-checkbox">
           <input
             type="checkbox"

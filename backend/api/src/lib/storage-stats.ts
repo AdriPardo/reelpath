@@ -34,18 +34,20 @@ export async function getStorageStats() {
   const storageRoot = getStoragePath();
   const pipelinesRoot = getStoragePath('pipelines');
   const videosRoot = getStoragePath('videos');
+  const stockCacheRoot = getStoragePath('cache', 'stock-search');
 
-  const [pipelinesBytes, videosBytes, pipelineCount, videoCount, clipCount, runCount] =
+  const [pipelinesBytes, videosBytes, stockCacheBytes, pipelineCount, videoCount, clipCount, runCount] =
     await Promise.all([
       dirSizeBytes(pipelinesRoot),
       dirSizeBytes(videosRoot),
+      dirSizeBytes(stockCacheRoot),
       fs.readdir(pipelinesRoot).then((d) => d.length).catch(() => 0),
       prisma.video.count(),
       prisma.videoClip.count(),
       prisma.pipelineRun.count(),
     ]);
 
-  const totalBytes = pipelinesBytes + videosBytes;
+  const totalBytes = pipelinesBytes + videosBytes + stockCacheBytes;
 
   return {
     storagePath: storageRoot,
@@ -55,6 +57,8 @@ export async function getStorageStats() {
     pipelinesFormatted: formatBytes(pipelinesBytes),
     videosBytes,
     videosFormatted: formatBytes(videosBytes),
+    stockCacheBytes,
+    stockCacheFormatted: formatBytes(stockCacheBytes),
     pipelineDirs: pipelineCount,
     pipelineRuns: runCount,
     videos: videoCount,
