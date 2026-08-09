@@ -32,6 +32,7 @@ import {
 } from './ffmpeg-utils.js';
 import { buildSyncedSrtFromScenes, serializeSrt, type TimedScene } from './srt-utils.js';
 import { generateYouTubeThumbnail } from './thumbnail-generator.js';
+import { mixBgmIntoVideo, resolveBgmFile, shouldUseBgm } from './bgm-mix.js';
 
 const execFileAsync = promisify(execFile);
 const DEFAULT_TRANSITION_SEC = 0.4;
@@ -445,6 +446,12 @@ export async function renderVideo(params: {
   reviewRequired: boolean;
   retentionMode?: boolean;
   videoMotionIntensity?: VideoMotionIntensity;
+  /** Enable background music mix after concat. */
+  bgmEnabled?: boolean;
+  /** BGM volume 0–1 (default 0.18). */
+  bgmVolume?: number;
+  /** Basename under resource/bgm or storage/bgm; empty = random. */
+  bgmFile?: string;
   /** Subfolder under videos/<pipelineRunId>/ (e.g. "short"). */
   outputSubdir?: string;
   /** When false, skip Video DB record (auxiliary renders like dedicated shorts). */
@@ -534,6 +541,20 @@ export async function renderVideo(params: {
       await concatClips(renderedClips, outputPath, renderTemplate);
     } else {
       await createFallbackVideo(outputPath, totalDuration || 10);
+    }
+
+    if (
+      shouldUseBgm({ enabled: params.bgmEnabled, volume: params.bgmVolume }) &&
+      renderedClips.length > 0
+    ) {
+      const bgmPath = await resolveBgmFile(params.bgmFile);
+      if (bgmPath) {
+        await mixBgmIntoVideo({
+          videoPath: outputPath,
+          bgmPath,
+          volume: params.bgmVolume ?? 0.18,
+        });
+      }
     }
 
     if (timedScenes.length > 0) {
@@ -630,3 +651,4 @@ export { applyClipOverlay, rawClipPath } from './clip-overlay.js';
 export { burnSubtitlesIntoClip, loadPipelineSrt, subClipPath } from './clip-subtitles.js';
 export { generateYouTubeThumbnail, generateVerticalClipThumbnail } from './thumbnail-generator.js';
 export { getVideoDuration } from './ffmpeg-utils.js';
+export { listBgmFiles, mixBgmIntoVideo, resolveBgmFile, shouldUseBgm } from './bgm-mix.js';

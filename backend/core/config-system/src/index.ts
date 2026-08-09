@@ -141,6 +141,10 @@ const envSchema = z.object({
     .transform((v) => v === 'true')
     .default('false'),
   PEXELS_API_KEY: z.string().optional(),
+  /** Pixabay Videos API key (fallback stock tras Pexels). */
+  PIXABAY_API_KEY: z.string().optional(),
+  /** Coverr API key (fallback stock tras Pixabay). */
+  COVERR_API_KEY: z.string().optional(),
   S3_ENDPOINT: z.string().optional(),
   S3_BUCKET: z.string().optional(),
   S3_ACCESS_KEY: z.string().optional(),
@@ -309,6 +313,9 @@ export const channelConfigSchema = z.object({
   edgeTtsVoice: z.union([z.string().min(2).max(120), z.null()]).optional(),
   elevenLabsVoiceId: z.union([z.string().min(2).max(120), z.null()]).optional(),
   openaiTtsVoice: z.union([z.string().min(2).max(120), z.null()]).optional(),
+  bgmEnabled: z.boolean().optional(),
+  bgmVolume: z.coerce.number().min(0).max(1).optional(),
+  bgmFile: z.string().max(255).optional(),
 });
 
 export function getIdeaMaxRetries(channelMax?: number): number {
@@ -405,6 +412,14 @@ export function effectiveElevenLabsApiKey(): string | undefined {
 export function effectivePexelsApiKey(): string | undefined {
   const platform = getPlatformSecretsOverrides();
   return pickFirstSecret(loadConfig().PEXELS_API_KEY, platform?.pexelsApiKey);
+}
+
+export function effectivePixabayApiKey(): string | undefined {
+  return pickFirstSecret(loadConfig().PIXABAY_API_KEY);
+}
+
+export function effectiveCoverrApiKey(): string | undefined {
+  return pickFirstSecret(loadConfig().COVERR_API_KEY);
 }
 
 /** YouTube OAuth app credentials: PlatformSecret cache, then legacy env. */

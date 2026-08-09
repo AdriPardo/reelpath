@@ -20,6 +20,7 @@ import {
   writeSceneSubtitle,
 } from './providers/media-providers.js';
 import { pathExists, resolveSceneVisual } from './providers/stock-provider.js';
+import { resolveSceneStockQueries } from './stock-terms.js';
 
 async function ensureDir(dir: string) {
   await fs.mkdir(dir, { recursive: true });
@@ -70,6 +71,9 @@ export async function generateMedia(params: {
   const assets: MediaAssetDTO[] = [];
   const timedScenes: Array<{ narration: string; durationSec: number }> = [];
   let previousPreset: MotionPreset | undefined;
+
+  const stockQueries = await resolveSceneStockQueries(params.script.scenes);
+  const usedStockSourceIds = new Set<string>();
 
   for (const scene of params.script.scenes) {
     // Escenas en serie a propósito: TTS + normalización stock + FFmpeg no se paralelizan
@@ -141,10 +145,15 @@ export async function generateMedia(params: {
         preferredSource: wantsStock ? 'stock' : 'image',
         forceAiImages,
         allowAiImages,
+        stockQuery: stockQueries.get(scene.index) ?? scene.stockQuery,
+        usedSourceIds: usedStockSourceIds,
       });
       visualAssetType = visual.assetType;
       visualPath = visual.path;
       visualOrigin = visual.visualOrigin;
+      if (visual.stockAssetId) {
+        usedStockSourceIds.add(visual.stockAssetId);
+      }
       if (visualOrigin === 'ai') {
         aiImagesUsed += 1;
         console.info(
@@ -184,6 +193,7 @@ export async function generateMedia(params: {
         path: visualPath,
         metadata: {
           visualPrompt: scene.visualPrompt,
+          stockQuery: stockQueries.get(scene.index),
           durationSec,
           motionPreset,
           motionIntensity,

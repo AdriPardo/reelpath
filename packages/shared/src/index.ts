@@ -16,3 +16,4 @@ export * from './billing-plans.js';
 export * from './tts-voices.js';
 export * from './youtube-title.js';
 export * from './publish-insights.js';
+export * from './stock-query.js';

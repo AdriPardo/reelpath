@@ -12,8 +12,8 @@
     "@andresaya/edge-tts": "^1.8.0",
     "@autotube/config": "*",
     "@autotube/database": "*",
+    "@autotube/llm": "*",
     "@autotube/shared": "*",
-    "@andresaya/edge-tts": "^1.8.0",
     "openai": "^4.77.0"
   },
   "devDependencies": {

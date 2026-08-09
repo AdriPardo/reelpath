@@ -312,6 +312,9 @@ async function runPipelineStep(
           reviewRequired: config.reviewRequired,
           retentionMode: config.retentionMode,
           videoMotionIntensity: config.videoMotionIntensity,
+          bgmEnabled: config.bgmEnabled,
+          bgmVolume: config.bgmVolume,
+          bgmFile: config.bgmFile,
         });
 
         const repairMeta = run.metadata as { repairAudioRepublish?: boolean } | null;

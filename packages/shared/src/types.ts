@@ -152,6 +152,15 @@ export interface ChannelConfig {
    * undefined/null = heredar Organization.openaiTtsVoice → default de código.
    */
   openaiTtsVoice?: string | null;
+  /** Mezcla música de fondo bajo la voz (default false). */
+  bgmEnabled?: boolean;
+  /** Volumen BGM 0–1 (default 0.18). Ignorado si bgmEnabled=false. */
+  bgmVolume?: number;
+  /**
+   * Archivo BGM concreto (nombre relativo bajo storage/bgm o resource/bgm).
+   * Vacío / omitido = elección aleatoria entre tracks disponibles.
+   */
+  bgmFile?: string;
 }
 
 export type VideoQualityCheckStatus = 'pass' | 'warn' | 'fail';
@@ -190,6 +199,11 @@ export interface ScriptScene {
   durationSec: number;
   /** Preferencia de origen visual por escena (stock → clip Pexels, fallback imagen IA). */
   preferredVisualSource?: VisualSource;
+  /**
+   * Query corta EN (1–3 palabras) para APIs stock.
+   * Si falta, se deriva de visualPrompt vía buildStockSearchQuery.
+   */
+  stockQuery?: string;
   /** Transición visual hacia la escena siguiente (si el guion la define). */
   transitionPreset?: TransitionPreset;
 }
