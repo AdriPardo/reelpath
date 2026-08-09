@@ -672,7 +672,7 @@
       "imageQualityHigh": "High",
       "imageQualityAuto": "Auto",
       "falI2vLabel": "Animate AI images (fal)",
-      "falI2vTooltip": "Turns 1–2 AI stills into short motion clips (Hailuo via fal.ai). Needs FAL_KEY. Other scenes stay stock/Ken Burns. ~$0.27 per 6s clip.",
+      "falI2vTooltip": "Turns up to N stills into short motion clips (Hailuo via fal.ai). Needs FAL_KEY. Reserves those scenes for AI images (skips stock). ~$0.27 per 6s clip. Regenerate the video after enabling.",
       "falI2vInheritEffective": "Inherit → {value}",
       "falI2vOn": "On",
       "falI2vOff": "Off",
