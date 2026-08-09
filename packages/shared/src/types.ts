@@ -152,6 +152,13 @@ export interface ChannelConfig {
    * undefined/null = heredar Organization.openaiTtsVoice → default de código.
    */
   openaiTtsVoice?: string | null;
+  /**
+   * Animate AI stills → short fal image-to-video clips (hero scenes).
+   * null/undefined = inherit platform default (off).
+   */
+  falI2vEnabled?: boolean | null;
+  /** Cap fal i2v clips per video; null = inherit (default 2). */
+  maxFalI2vPerVideo?: number | null;
   /** Mezcla música de fondo bajo la voz (default false). */
   bgmEnabled?: boolean;
   /** Volumen BGM 0–1 (default 0.18). Ignorado si bgmEnabled=false. */

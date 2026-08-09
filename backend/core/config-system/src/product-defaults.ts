@@ -15,6 +15,11 @@ export const PRODUCT_DEFAULTS = {
   /** auto = Flux Pro (fal) first, then OpenAI gpt-image. */
   imageAiProvider: 'auto' as 'auto' | 'fal' | 'openai',
   falImageModel: 'fal-ai/flux-pro/v1.1',
+  /** Animate up to N AI stills into short clips via fal i2v (Hailuo). Off by default. */
+  falI2vEnabled: false,
+  maxFalI2vPerVideo: 2,
+  falI2vModel: 'fal-ai/minimax/hailuo-02/standard/image-to-video',
+  falI2vDurationSec: '6' as '6' | '10',
   maxScenesLong: 8,
   minScenesLong: 6,
   maxScenesShort: 3,

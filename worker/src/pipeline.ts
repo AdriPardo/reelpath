@@ -351,6 +351,8 @@ async function runPipelineStep(
           visualSourceMode: config.visualSourceMode,
           orgPlan: org?.plan,
           channelGenerateAiImages: config.generateAiImages,
+          channelFalI2vEnabled: config.falI2vEnabled,
+          channelMaxFalI2vPerVideo: config.maxFalI2vPerVideo,
           stockPlaybackSpeed: config.stockPlaybackSpeed,
         });
         await enqueuePipelineStep({ pipelineRunId, channelId }, 'render_video');

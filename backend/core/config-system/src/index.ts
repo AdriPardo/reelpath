@@ -80,6 +80,22 @@ const envSchema = z.object({
   FAL_KEY: z.string().optional(),
   /** Alias for FAL_KEY. */
   FAL_API_KEY: z.string().optional(),
+  /**
+   * Animate AI stills → short video clips (fal image-to-video).
+   * Channel.config.falI2vEnabled can override per channel.
+   */
+  FAL_I2V_ENABLED: z
+    .string()
+    .transform((v) => v === 'true')
+    .default(PRODUCT_DEFAULTS.falI2vEnabled ? 'true' : 'false'),
+  MAX_FAL_I2V_PER_VIDEO: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .max(8)
+    .default(PRODUCT_DEFAULTS.maxFalI2vPerVideo),
+  FAL_I2V_MODEL: z.string().default(PRODUCT_DEFAULTS.falI2vModel),
+  FAL_I2V_DURATION_SEC: z.enum(['6', '10']).default(PRODUCT_DEFAULTS.falI2vDurationSec),
   GENERATE_DALLE_IMAGES: z
     .string()
     .transform((v) => v === 'true')
@@ -329,6 +345,10 @@ export const channelConfigSchema = z.object({
   maxScenesShort: z.union([z.coerce.number().int().min(1).max(12), z.null()]).optional(),
   generateAiImages: z.union([z.boolean(), z.null()]).optional(),
   maxAiImagesPerVideo: z.union([z.coerce.number().int().min(0).max(100), z.null()]).optional(),
+  /** Animate AI stills with fal image-to-video; null = inherit platform default. */
+  falI2vEnabled: z.union([z.boolean(), z.null()]).optional(),
+  /** Cap fal i2v clips per video; null = inherit (default 2). */
+  maxFalI2vPerVideo: z.union([z.coerce.number().int().min(0).max(8), z.null()]).optional(),
   openaiImageQuality: z
     .union([z.enum(['low', 'medium', 'high', 'auto']), z.null()])
     .optional(),
@@ -717,6 +737,8 @@ export function parseChannelConfig(raw: unknown): ChannelConfig {
     'maxScenesShort',
     'generateAiImages',
     'maxAiImagesPerVideo',
+    'falI2vEnabled',
+    'maxFalI2vPerVideo',
     'openaiImageQuality',
     'ttsProvider',
     'edgeTtsVoice',
