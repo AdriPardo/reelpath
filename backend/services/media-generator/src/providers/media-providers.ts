@@ -125,7 +125,7 @@ export async function generateSpeech(
   text: string,
   outPath: string,
   options?: { language?: string; retentionMode?: boolean },
-): Promise<{ mock: boolean; provider: string }> {
+): Promise<{ mock: boolean; provider: string; wordBoundaries?: import('@autotube/shared').WordBoundaryLike[] }> {
   const config = loadEffectiveConfig();
   const language = options?.language ?? 'es';
   const ttsInput = preprocessForTts(text, language);
@@ -153,16 +153,32 @@ export async function generateSpeech(
   let lastError: unknown;
   for (const provider of chain) {
     try {
-      await provider.synthesize({
+      const result = await provider.synthesize({
         text: ttsInput,
         language,
         outPath,
         config,
         retentionMode: options?.retentionMode,
       });
-      return { mock: false, provider: provider.name };
+      // Drop empty outputs before accepting provider success.
+      try {
+        const st = await fs.stat(outPath);
+        if (st.size === 0) {
+          await fs.unlink(outPath).catch(() => undefined);
+          throw new Error(`${provider.name} wrote empty audio`);
+        }
+      } catch (err) {
+        if (err instanceof Error && err.message.includes('empty audio')) throw err;
+        throw new Error(`${provider.name} did not write audio file`);
+      }
+      return {
+        mock: false,
+        provider: provider.name,
+        wordBoundaries: result?.wordBoundaries,
+      };
     } catch (err) {
       lastError = err;
+      await fs.unlink(outPath).catch(() => undefined);
       console.warn(
         `[media/TTS] ${provider.name} failed:`,
         err instanceof Error ? err.message : err,
@@ -315,13 +331,39 @@ export async function writeSceneSubtitle(
   options?: {
     retentionMode?: boolean;
     templatePosition?: 'bottom' | 'center';
+    wordBoundaries?: import('@autotube/shared').WordBoundaryLike[];
   },
 ): Promise<void> {
-  const { buildKaraokeAssForScene } = await import('@autotube/shared');
+  const {
+    buildKaraokeAssForScene,
+    buildKaraokeAssFromWordTimings,
+    boundariesToWordTimings,
+    warnSubtitleStyle,
+  } = await import('@autotube/shared');
   const fontSize = options?.retentionMode ? 38 : 42;
   const alignment = options?.templatePosition === 'center' ? 5 : 2;
   const marginV = options?.templatePosition === 'center' ? 180 : options?.retentionMode ? 86 : 64;
-  const content = buildKaraokeAssForScene(text, durationSec, { fontSize, alignment, marginV });
+
+  for (const w of warnSubtitleStyle({
+    fgHex: '#FFFFFF',
+    bgHex: '#111111',
+    sampleText: text,
+  })) {
+    console.warn(`[media/subs] ${w}`);
+  }
+
+  const timings = options?.wordBoundaries?.length
+    ? boundariesToWordTimings(options.wordBoundaries)
+    : [];
+  const content =
+    timings.length > 0
+      ? buildKaraokeAssFromWordTimings(timings, durationSec, { fontSize, alignment, marginV })
+      : buildKaraokeAssForScene(text, durationSec, { fontSize, alignment, marginV });
+
+  if (timings.length > 0) {
+    console.info(`[media/subs] karaoke WordBoundary cues=${timings.length}`);
+  }
+
   await fs.writeFile(outPath, content, 'utf-8');
 }
 

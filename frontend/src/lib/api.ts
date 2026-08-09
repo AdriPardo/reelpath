@@ -277,6 +277,8 @@ export interface StorageStats {
   pipelinesFormatted: string;
   videosBytes: number;
   videosFormatted: string;
+  stockCacheBytes?: number;
+  stockCacheFormatted?: string;
   pipelineDirs: number;
   pipelineRuns: number;
   videos: number;

@@ -4,7 +4,9 @@ import { getStoragePath, isAiSceneImagesEnabled, loadEffectiveConfig } from '@au
 import { prisma } from '@autotube/database';
 import type { ChannelConfig, MediaAssetDTO, ScriptVariant } from '@autotube/shared';
 import {
+  buildPhraseCuesFromWordTimings,
   buildSyncedSrtFromScenes,
+  boundariesToWordTimings,
   computeVisualOriginSummary,
   inferMotionPreset,
   RETENTION_PHRASE_MAX_LEN,
@@ -12,7 +14,9 @@ import {
   sceneWantsStock,
   serializeSrt,
   type MotionPreset,
+  type SrtCue,
   type VisualOrigin,
+  type WordBoundaryLike,
 } from '@autotube/shared';
 import { getAudioDuration, isNearSilentAudio } from './ffmpeg-utils.js';
 import {
@@ -38,6 +42,8 @@ export async function generateMedia(params: {
   orgPlan?: string | null;
   /** Channel.config.generateAiImages — undefined = heredar org/env. */
   channelGenerateAiImages?: boolean | null;
+  /** Velocidad reproducción stock B-roll (canal). */
+  stockPlaybackSpeed?: number;
   /** Subfolder under pipelines/<id>/ (e.g. "short"). */
   subdir?: string;
   /** When false, skip MediaAsset DB writes (for auxiliary renders like dedicated shorts). */
@@ -69,7 +75,11 @@ export async function generateMedia(params: {
   }
 
   const assets: MediaAssetDTO[] = [];
-  const timedScenes: Array<{ narration: string; durationSec: number }> = [];
+  const timedScenes: Array<{
+    narration: string;
+    durationSec: number;
+    wordBoundaries?: WordBoundaryLike[];
+  }> = [];
   let previousPreset: MotionPreset | undefined;
 
   const stockQueries = await resolveSceneStockQueries(params.script.scenes);
@@ -106,16 +116,18 @@ export async function generateMedia(params: {
     const videoPath = path.join(baseDir, `scene-${scene.index}-video.mp4`);
     const subtitlePath = path.join(baseDir, `scene-${scene.index}.ass`);
 
+    let wordBoundaries: WordBoundaryLike[] | undefined;
     if (!(await pathExists(audioPath)) || (await isNearSilentAudio(audioPath))) {
       if (await pathExists(audioPath)) {
         console.warn(
           `[media-generator] scene=${scene.index} audio casi silencioso — regenerando TTS`,
         );
       }
-      await generateSpeech(scene.narration, audioPath, {
+      const speech = await generateSpeech(scene.narration, audioPath, {
         language: params.language,
         retentionMode,
       });
+      wordBoundaries = speech.wordBoundaries;
     }
     const durationSec = await getAudioDuration(audioPath);
 
@@ -130,6 +142,7 @@ export async function generateMedia(params: {
     let visualAssetType: 'image' | 'video' = 'image';
     let visualPath = imagePath;
     let visualOrigin: VisualOrigin = 'placeholder';
+    let stockMeta: Record<string, unknown> | undefined;
 
     const allowAiImages =
       aiImagesBase && (maxAiImages <= 0 || aiImagesUsed < maxAiImages);
@@ -147,12 +160,16 @@ export async function generateMedia(params: {
         allowAiImages,
         stockQuery: stockQueries.get(scene.index) ?? scene.stockQuery,
         usedSourceIds: usedStockSourceIds,
+        playbackSpeed: params.stockPlaybackSpeed,
       });
       visualAssetType = visual.assetType;
       visualPath = visual.path;
       visualOrigin = visual.visualOrigin;
       if (visual.stockAssetId) {
         usedStockSourceIds.add(visual.stockAssetId);
+      }
+      if (visual.attribution) {
+        stockMeta = { ...visual.attribution };
       }
       if (visualOrigin === 'ai') {
         aiImagesUsed += 1;
@@ -177,15 +194,20 @@ export async function generateMedia(params: {
     await writeSceneSubtitle(subtitlePath, scene.narration, durationSec, {
       retentionMode,
       templatePosition: 'bottom',
+      wordBoundaries,
     });
-    timedScenes.push({ narration: scene.narration, durationSec });
+    timedScenes.push({ narration: scene.narration, durationSec, wordBoundaries });
 
     assets.push(
       {
         sceneIndex: scene.index,
         type: 'audio',
         path: audioPath,
-        metadata: { durationSec, narration: scene.narration },
+        metadata: {
+          durationSec,
+          narration: scene.narration,
+          wordBoundaryCount: wordBoundaries?.length ?? 0,
+        },
       },
       {
         sceneIndex: scene.index,
@@ -199,23 +221,21 @@ export async function generateMedia(params: {
           motionIntensity,
           preferredVisualSource: wantsStock ? 'stock' : 'image',
           visualOrigin,
+          ...(stockMeta ?? {}),
         },
       },
       {
         sceneIndex: scene.index,
         type: 'subtitle',
         path: subtitlePath,
-        metadata: { durationSec },
+        metadata: { durationSec, wordBoundarySync: Boolean(wordBoundaries?.length) },
       },
     );
   }
 
   const srtPath = path.join(baseDir, 'subtitles.srt');
-  await fs.writeFile(
-    srtPath,
-    serializeSrt(buildSyncedSrtFromScenes(timedScenes, phraseMaxLen)),
-    'utf-8',
-  );
+  const srtCues = buildSyncedSrtFromScenesWithBoundaries(timedScenes, phraseMaxLen);
+  await fs.writeFile(srtPath, serializeSrt(srtCues), 'utf-8');
   assets.push({ sceneIndex: -1, type: 'subtitle', path: srtPath });
 
   if (persist) {
@@ -243,4 +263,45 @@ export async function generateMedia(params: {
   }
 
   return assets;
+}
+
+function buildSyncedSrtFromScenesWithBoundaries(
+  scenes: Array<{
+    narration: string;
+    durationSec: number;
+    wordBoundaries?: WordBoundaryLike[];
+  }>,
+  maxPhraseLen: number,
+): SrtCue[] {
+  const cues: SrtCue[] = [];
+  let sceneStart = 0;
+
+  for (const scene of scenes) {
+    const timings = scene.wordBoundaries?.length
+      ? boundariesToWordTimings(scene.wordBoundaries)
+      : [];
+    const phraseCues =
+      timings.length > 0
+        ? buildPhraseCuesFromWordTimings(timings, sceneStart, scene.durationSec, maxPhraseLen)
+        : buildSyncedSrtFromScenes(
+            [{ narration: scene.narration, durationSec: scene.durationSec }],
+            maxPhraseLen,
+          ).map((c) => ({
+            startSec: c.startSec + sceneStart,
+            endSec: c.endSec + sceneStart,
+            text: c.text,
+          }));
+
+    for (const pc of phraseCues) {
+      cues.push({
+        index: cues.length + 1,
+        startSec: pc.startSec,
+        endSec: pc.endSec,
+        text: pc.text,
+      });
+    }
+    sceneStart += scene.durationSec;
+  }
+
+  return cues;
 }

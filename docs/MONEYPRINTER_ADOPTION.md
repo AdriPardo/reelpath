@@ -19,26 +19,32 @@ Investigación de [harry0703/MoneyPrinterTurbo](https://github.com/harry0703/Mon
 
 ## Valor alto (adoptado)
 
-1. **BGM mix** — Reelpath no tenía música de fondo. Librería en `storage/bgm` + `resource/bgm`, volumen, loop, fade-out, fail-soft. Config canal: `bgmEnabled` / `bgmVolume` / `bgmFile`.
-2. **Keywords stock orientadas a búsqueda** — Heurística EN 1–3 palabras + campo opcional `stockQuery` por escena + generación LLM opcional (orden guion).
-3. **Multi-provider stock + cache + dedup** — Pexels → Pixabay → Coverr; cache disco 24h; evita reutilizar el mismo `assetId` entre escenas del mismo vídeo.
+1. **BGM mix + sidechain duck** — `bgm-mix.ts`; canal `bgmEnabled` / `bgmVolume` / `bgmFile`.
+2. **Keywords stock EN** — heurística + `stockQuery` + LLM opcional ordenado.
+3. **Multi-provider stock** — Pexels → Pixabay → Coverr + cache 24h + dedup fuentes.
+4. **WordBoundary Edge → ASS/SRT** — sync karaoke real vía `getWordBoundaries()`.
+5. **TTS timeout/retry + cleanup 0B** — `EDGE_TTS_TIMEOUT_SEC` / `EDGE_TTS_RETRIES`.
+6. **Atribución stock + redact + CF detect** — metadata creator/página; Pixabay CF challenge.
+7. **Metadata social multi-plataforma** — `social-metadata.ts` + Shorts/cross-post helpers.
+8. **Rotación API keys** — `nextRotatedSecret` (listas `key1,key2`).
+9. **Purge cache stock** — API + `npm run storage:cleanup -- --stock-cache`.
+10. **clip_speed stock** — `ChannelConfig.stockPlaybackSpeed`.
+11. **Preflight pipeline** — keys/TTS/BGM antes de gastar LLM.
+12. **Contraste/glyphs subtítulos** — `warnSubtitleStyle`.
 
-## Valor medio (backlog)
+## Valor medio (backlog restante)
 
-- Edge TTS `WordBoundary` → cues reales (hoy SRT proporcional a chars)
-- Metadata social multi-plataforma (TikTok/IG captions)
-- Cross-post Upload-Post / TikTok / IG
-- Rotación de API keys thread-safe
-- Sidechain ducking BGM bajo voz (`sidechaincompress`)
-- TwelveLabs rerank (solo si volumen stock alto)
+- Voice preview reuse cache
+- TwelveLabs rerank (caro)
+- Cross-post Upload-Post real (TikTok/IG API)
 
 ## Bajo / no adoptar
 
 - Monolito Python, MoviePy, Streamlit WebUI
-- Whisper ASR (Reelpath sincroniza desde guion+TTS)
+- Whisper ASR + Levenshtein
 - Proliferación TTS (Azure/Gemini/Chatterbox…)
-- Sonilo / ElevenLabs Music como P0 (caro; primero librería local)
-- Bundled songs de MPT (no redistribuir; usuario aporta tracks royalty-free)
+- Sonilo / ElevenLabs Music como P0
+- Bundled songs de MPT
 - Fonts chinos embebidos
 
 ## Licencia

@@ -40,6 +40,10 @@ const envSchema = z.object({
   EDGE_TTS_RATE: z.string().default(PRODUCT_DEFAULTS.edgeTtsRate),
   EDGE_TTS_VOLUME: z.string().default(PRODUCT_DEFAULTS.edgeTtsVolume),
   EDGE_TTS_PITCH: z.string().default(PRODUCT_DEFAULTS.edgeTtsPitch),
+  /** Timeout seconds for a single Edge TTS request (0 = disable). */
+  EDGE_TTS_TIMEOUT_SEC: z.coerce.number().min(0).max(300).default(30),
+  /** Retries after Edge TTS timeout/failure (not counting first attempt). */
+  EDGE_TTS_RETRIES: z.coerce.number().int().min(0).max(5).default(2),
   OPENAI_API_KEY: z.string().optional(),
   /**
    * LLM for ideas/scripts/titles (OpenAI-compatible).
@@ -316,6 +320,7 @@ export const channelConfigSchema = z.object({
   bgmEnabled: z.boolean().optional(),
   bgmVolume: z.coerce.number().min(0).max(1).optional(),
   bgmFile: z.string().max(255).optional(),
+  stockPlaybackSpeed: z.coerce.number().min(0.75).max(1.5).optional(),
 });
 
 export function getIdeaMaxRetries(channelMax?: number): number {
@@ -723,6 +728,11 @@ export {
 } from './platform-secrets-runtime.js';
 export { PRODUCT_DEFAULTS } from './product-defaults.js';
 export { pickFirstSecret } from './pick-first-secret.js';
+export {
+  nextRotatedSecret,
+  parseSecretKeyList,
+  resetSecretRotation,
+} from './rotate-secret.js';
 export {
   resolveGenerateAiImages,
   resolveImageQuality,

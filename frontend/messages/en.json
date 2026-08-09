@@ -1364,12 +1364,15 @@
       "pipelineFiles": "Generation files",
       "pipelineFolders": "{size} ({count} folders)",
       "renderedVideos": "Rendered videos",
+      "stockCache": "Stock search cache",
       "storedContent": "Stored content",
       "storedSummary": "{videos} videos · {clips} clips · {runs} generations",
       "cleanupOrphans": "Clean orphan files",
       "cleanupRejected": "Clean rejected videos",
+      "cleanupStockCache": "Clean stock cache",
       "confirmOrphans": "Delete files with no associated video? This action cannot be undone.",
-      "confirmRejected": "Delete rejected video content? This action cannot be undone."
+      "confirmRejected": "Delete rejected video content? This action cannot be undone.",
+      "confirmStockCache": "Delete stale stock search cache entries?"
     }
   },
   "status": {

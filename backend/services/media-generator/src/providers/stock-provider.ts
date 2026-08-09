@@ -6,6 +6,7 @@ import {
   effectivePexelsApiKey,
   effectivePixabayApiKey,
   getStoragePath,
+  nextRotatedSecret,
 } from '@autotube/config';
 import {
   buildLanczosScaleCrop,
@@ -36,6 +37,15 @@ export interface ResolveSceneVisualParams {
   stockQuery?: string;
   /** Asset IDs already used in this video — avoid repeats (MPT-inspired). */
   usedSourceIds?: Set<string>;
+  /** Stock B-roll playback speed (default 1). */
+  playbackSpeed?: number;
+}
+
+export interface StockAttribution {
+  stockProvider?: StockProviderName;
+  stockAssetId?: string;
+  stockSourcePage?: string;
+  stockCreator?: string;
 }
 
 interface StockCandidate {
@@ -45,9 +55,57 @@ interface StockCandidate {
   width?: number;
   height?: number;
   score: number;
+  sourcePage?: string;
+  creator?: string;
 }
 
 const SEARCH_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+/** Strip credentials / query tokens from public URLs before logging or caching. */
+export function safePublicUrl(value: string | null | undefined): string | undefined {
+  if (!value?.trim()) return undefined;
+  try {
+    const u = new URL(value.trim());
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return undefined;
+    if (u.username || u.password) return undefined;
+    u.search = '';
+    u.hash = '';
+    return u.toString();
+  } catch {
+    return undefined;
+  }
+}
+
+export function redactSecret(message: string, secrets: Array<string | undefined | null>): string {
+  let out = message;
+  for (const secret of secrets) {
+    const s = secret?.trim();
+    if (!s || s.length < 4) continue;
+    out = out.split(s).join('[REDACTED]');
+  }
+  return out;
+}
+
+function isCloudflareChallenge(res: Response, bodyPreview: string): boolean {
+  const mitigated = res.headers.get('cf-mitigated')?.toLowerCase();
+  if (mitigated === 'challenge') return true;
+  const ct = res.headers.get('content-type')?.toLowerCase() ?? '';
+  if (!ct.includes('text/html')) return false;
+  const lower = bodyPreview.toLowerCase();
+  return lower.includes('just a moment') || lower.includes('/cdn-cgi/challenge-platform/');
+}
+
+function rotatedPexelsKey(): string | undefined {
+  return nextRotatedSecret('pexels', effectivePexelsApiKey());
+}
+
+function rotatedPixabayKey(): string | undefined {
+  return nextRotatedSecret('pixabay', effectivePixabayApiKey());
+}
+
+function rotatedCoverrKey(): string | undefined {
+  return nextRotatedSecret('coverr', effectiveCoverrApiKey());
+}
 
 function targetResolution(aspectRatio: '9:16' | '16:9'): { width: number; height: number } {
   return aspectRatio === '9:16' ? { ...VIDEO_RESOLUTION_SHORT } : { ...VIDEO_RESOLUTION_LONG };
@@ -96,7 +154,7 @@ async function fetchPexelsVideoCandidates(
   query: string,
   aspectRatio: '9:16' | '16:9',
 ): Promise<StockCandidate[]> {
-  const apiKey = effectivePexelsApiKey()?.trim();
+  const apiKey = rotatedPexelsKey();
   if (!apiKey) return [];
 
   const orientation = aspectRatio === '9:16' ? 'portrait' : 'landscape';
@@ -110,13 +168,18 @@ async function fetchPexelsVideoCandidates(
     headers: { Authorization: apiKey },
   });
   if (!res.ok) {
-    console.warn(`[stock-provider] Pexels Videos error ${res.status}`);
+    console.warn(
+      `[stock-provider] Pexels Videos error ${res.status}`,
+      redactSecret(res.statusText, [apiKey]),
+    );
     return [];
   }
 
   const json = (await res.json()) as {
     videos?: Array<{
       id?: number | string;
+      url?: string;
+      user?: { name?: string };
       video_files?: Array<{
         link?: string;
         file_type?: string;
@@ -149,6 +212,8 @@ async function fetchPexelsVideoCandidates(
         width: file.width,
         height: file.height,
         score: sizeScore * overscale * qualityBonus,
+        sourcePage: safePublicUrl(video.url),
+        creator: video.user?.name?.trim() || undefined,
       });
       break;
     }
@@ -161,7 +226,7 @@ async function fetchPixabayVideoCandidates(
   query: string,
   aspectRatio: '9:16' | '16:9',
 ): Promise<StockCandidate[]> {
-  const apiKey = effectivePixabayApiKey()?.trim();
+  const apiKey = rotatedPixabayKey();
   if (!apiKey) return [];
 
   const { width: targetW } = targetResolution(aspectRatio);
@@ -172,17 +237,35 @@ async function fetchPixabayVideoCandidates(
   url.searchParams.set('per_page', '20');
 
   const res = await fetch(url.toString());
+  const bodyPreview = await res.clone().text().catch(() => '');
+  if (isCloudflareChallenge(res, bodyPreview)) {
+    console.error(
+      '[stock-provider] Pixabay blocked by Cloudflare challenge — skip provider this run',
+    );
+    return [];
+  }
   if (!res.ok) {
-    console.warn(`[stock-provider] Pixabay Videos error ${res.status}`);
+    console.warn(
+      `[stock-provider] Pixabay Videos error ${res.status}`,
+      redactSecret(res.statusText, [apiKey]),
+    );
     return [];
   }
 
-  const json = (await res.json()) as {
+  let json: {
     hits?: Array<{
       id?: number | string;
+      pageURL?: string;
+      user?: string;
       videos?: Record<string, { url?: string; width?: number; height?: number }>;
     }>;
   };
+  try {
+    json = JSON.parse(bodyPreview) as typeof json;
+  } catch {
+    console.warn('[stock-provider] Pixabay returned non-JSON');
+    return [];
+  }
 
   const out: StockCandidate[] = [];
   for (const hit of json.hits ?? []) {
@@ -200,6 +283,8 @@ async function fetchPixabayVideoCandidates(
         width: file.width,
         height: file.height,
         score: file.width * file.height,
+        sourcePage: safePublicUrl(hit.pageURL),
+        creator: hit.user?.trim() || undefined,
       });
       break;
     }
@@ -212,7 +297,7 @@ async function fetchCoverrVideoCandidates(
   query: string,
   aspectRatio: '9:16' | '16:9',
 ): Promise<StockCandidate[]> {
-  const apiKey = effectiveCoverrApiKey()?.trim();
+  const apiKey = rotatedCoverrKey();
   if (!apiKey) return [];
 
   const url = new URL('https://api.coverr.co/videos');
@@ -227,7 +312,10 @@ async function fetchCoverrVideoCandidates(
     headers: { Authorization: `Bearer ${apiKey}` },
   });
   if (!res.ok) {
-    console.warn(`[stock-provider] Coverr Videos error ${res.status}`);
+    console.warn(
+      `[stock-provider] Coverr Videos error ${res.status}`,
+      redactSecret(res.statusText, [apiKey]),
+    );
     return [];
   }
 
@@ -237,6 +325,10 @@ async function fetchCoverrVideoCandidates(
       max_width?: number;
       max_height?: number;
       is_vertical?: boolean;
+      canonical_url?: string;
+      url?: string;
+      creator?: { name?: string } | string;
+      author?: { name?: string } | string;
       urls?: { mp4_download?: string };
     }>;
   };
@@ -256,6 +348,14 @@ async function fetchCoverrVideoCandidates(
 
     if (!aspectOk && !verticalHintOk) continue;
 
+    const creatorRaw = hit.creator ?? hit.author;
+    const creator =
+      typeof creatorRaw === 'string'
+        ? creatorRaw.trim()
+        : creatorRaw && typeof creatorRaw === 'object'
+          ? creatorRaw.name?.trim()
+          : undefined;
+
     out.push({
       provider: 'coverr',
       url: download,
@@ -263,6 +363,8 @@ async function fetchCoverrVideoCandidates(
       width: hit.max_width,
       height: hit.max_height,
       score: (hit.max_width ?? 0) * (hit.max_height ?? 0),
+      sourcePage: safePublicUrl(hit.canonical_url || hit.url),
+      creator: creator || undefined,
     });
   }
 
@@ -303,7 +405,7 @@ async function fetchPexelsImage(
   query: string,
   aspectRatio: '9:16' | '16:9',
 ): Promise<string | null> {
-  const apiKey = effectivePexelsApiKey()?.trim();
+  const apiKey = rotatedPexelsKey();
   if (!apiKey) return null;
 
   const orientation = aspectRatio === '9:16' ? 'portrait' : 'landscape';
@@ -340,9 +442,13 @@ async function normalizeVideoClip(
   inputPath: string,
   outPath: string,
   aspectRatio: '9:16' | '16:9',
+  playbackSpeed = 1,
 ): Promise<void> {
   const { width, height } = targetResolution(aspectRatio);
   const scaleCrop = buildLanczosScaleCrop(width, height);
+  const speed = Math.min(1.5, Math.max(0.75, playbackSpeed || 1));
+  const setpts = speed === 1 ? null : `setpts=PTS/${speed}`;
+  const vf = setpts ? `${scaleCrop},${setpts},fps=30` : `${scaleCrop},fps=30`;
 
   await fs.mkdir(path.dirname(outPath), { recursive: true });
   await runFfmpeg([
@@ -350,7 +456,7 @@ async function normalizeVideoClip(
     inputPath,
     '-an',
     '-vf',
-    `${scaleCrop},fps=30`,
+    vf,
     ...ffmpegH264EncodeArgs({ videoOnly: true }),
     '-pix_fmt',
     'yuv420p',
@@ -365,11 +471,21 @@ async function tryDownloadStockVideo(
   candidate: StockCandidate,
   params: ResolveSceneVisualParams,
   query: string,
-): Promise<{ path: string; assetId: string; provider: StockProviderName } | null> {
+): Promise<{
+  path: string;
+  assetId: string;
+  provider: StockProviderName;
+  attribution: StockAttribution;
+} | null> {
   const rawPath = params.videoOutPath.replace(/\.mp4$/, '-raw.mp4');
   try {
     await downloadToFile(candidate.url, rawPath);
-    await normalizeVideoClip(rawPath, params.videoOutPath, params.aspectRatio);
+    await normalizeVideoClip(
+      rawPath,
+      params.videoOutPath,
+      params.aspectRatio,
+      params.playbackSpeed ?? 1,
+    );
     await fs.unlink(rawPath).catch(() => {});
     console.info(
       `[stock-provider] scene=${params.sceneIndex} ${candidate.provider} VIDEO OK query="${query}" id=${candidate.assetId}`,
@@ -378,11 +494,21 @@ async function tryDownloadStockVideo(
       path: params.videoOutPath,
       assetId: candidate.assetId,
       provider: candidate.provider,
+      attribution: {
+        stockProvider: candidate.provider,
+        stockAssetId: candidate.assetId,
+        stockSourcePage: candidate.sourcePage,
+        stockCreator: candidate.creator,
+      },
     };
   } catch (err) {
     console.warn(
       `[stock-provider] scene=${params.sceneIndex} fallo vídeo ${candidate.provider}:`,
-      err instanceof Error ? err.message : err,
+      redactSecret(err instanceof Error ? err.message : String(err), [
+        effectivePexelsApiKey(),
+        effectivePixabayApiKey(),
+        effectiveCoverrApiKey(),
+      ]),
     );
     await fs.unlink(rawPath).catch(() => {});
     await fs.unlink(params.videoOutPath).catch(() => {});
@@ -401,6 +527,7 @@ export async function resolveSceneVisual(params: ResolveSceneVisualParams): Prom
   visualOrigin: VisualOrigin;
   stockAssetId?: string;
   stockProvider?: StockProviderName;
+  attribution?: StockAttribution;
 }> {
   if (params.preferredSource === 'stock') {
     const query = buildStockSearchQuery({
@@ -452,6 +579,7 @@ export async function resolveSceneVisual(params: ResolveSceneVisualParams): Prom
           visualOrigin: 'stock',
           stockAssetId: downloaded.assetId,
           stockProvider: downloaded.provider,
+          attribution: downloaded.attribution,
         };
       }
     }

@@ -1364,12 +1364,15 @@
       "pipelineFiles": "Archivos de generación",
       "pipelineFolders": "{size} ({count} carpetas)",
       "renderedVideos": "Vídeos renderizados",
+      "stockCache": "Cache búsqueda stock",
       "storedContent": "Contenido guardado",
       "storedSummary": "{videos} vídeos · {clips} clips · {runs} generaciones",
       "cleanupOrphans": "Limpiar archivos huérfanos",
       "cleanupRejected": "Limpiar vídeos rechazados",
+      "cleanupStockCache": "Limpiar cache stock",
       "confirmOrphans": "¿Eliminar archivos sin vídeo asociado? Esta acción no se puede deshacer.",
-      "confirmRejected": "¿Eliminar contenido de vídeos rechazados? Esta acción no se puede deshacer."
+      "confirmRejected": "¿Eliminar contenido de vídeos rechazados? Esta acción no se puede deshacer.",
+      "confirmStockCache": "¿Eliminar entradas antiguas del cache de búsqueda stock?"
     }
   },
   "status": {

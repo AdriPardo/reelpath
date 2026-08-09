@@ -26,6 +26,7 @@ export {
   clampYouTubeTitle,
   formatYouTubeShortTitle,
   formatYouTubeShortMetadata,
+  buildCrossPostMetadata,
   YOUTUBE_TITLE_MAX_CHARS,
 } from './metadata.js';
 export { publishYouTubeShortsClips } from './shorts.js';

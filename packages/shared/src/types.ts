@@ -161,6 +161,11 @@ export interface ChannelConfig {
    * Vacío / omitido = elección aleatoria entre tracks disponibles.
    */
   bgmFile?: string;
+  /**
+   * Velocidad de reproducción de clips stock B-roll (0.75–1.5, default 1).
+   * >1 = más rápido (menos fuente necesaria); <1 = slow-mo.
+   */
+  stockPlaybackSpeed?: number;
 }
 
 export type VideoQualityCheckStatus = 'pass' | 'warn' | 'fail';

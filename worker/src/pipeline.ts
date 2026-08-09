@@ -223,6 +223,12 @@ async function runPipelineStep(
     switch (step) {
       case 'generate_ideas': {
         await updatePipelineStatus(pipelineRunId, 'generating_ideas', step);
+        const { runPipelinePreflight } = await import('./pipeline-preflight.js');
+        const preflight = await runPipelinePreflight(config);
+        for (const w of preflight.warnings) console.warn(`[pipeline/preflight] ${w}`);
+        if (!preflight.ok) {
+          throw new Error(`Preflight falló: ${preflight.errors.join('; ')}`);
+        }
         await generateIdeas({ channelId, pipelineRunId, config });
         await enqueuePipelineStep({ pipelineRunId, channelId }, 'select_idea');
         break;
@@ -282,6 +288,7 @@ async function runPipelineStep(
           visualSourceMode: config.visualSourceMode,
           orgPlan: org?.plan,
           channelGenerateAiImages: config.generateAiImages,
+          stockPlaybackSpeed: config.stockPlaybackSpeed,
         });
         await enqueuePipelineStep({ pipelineRunId, channelId }, 'render_video');
         break;

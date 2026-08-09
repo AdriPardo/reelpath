@@ -71,17 +71,20 @@ export async function resolveBgmFile(bgmFile?: string | null): Promise<string | 
 }
 
 /**
- * Mix looped BGM under voice track. Fail-soft: on error returns original video.
- * Inspired by MoneyPrinterTurbo (volume + loop + fade-out).
+ * Mix looped BGM under voice with sidechain ducking.
+ * Fail-soft: on error keeps original video.
  */
 export async function mixBgmIntoVideo(params: {
   videoPath: string;
   bgmPath: string;
   volume: number;
   fadeOutSec?: number;
+  /** Enable sidechaincompress ducking (default true). */
+  duck?: boolean;
 }): Promise<boolean> {
   const volume = Math.min(1, Math.max(0.01, params.volume));
   const fadeOutSec = Math.max(0.5, params.fadeOutSec ?? 3);
+  const duck = params.duck !== false;
   const tmpOut = params.videoPath.replace(/\.mp4$/i, `-bgm-mix-${Date.now()}.mp4`);
 
   try {
@@ -90,39 +93,59 @@ export async function mixBgmIntoVideo(params: {
       durationSec > fadeOutSec + 0.5
         ? Number((durationSec - fadeOutSec).toFixed(3))
         : Math.max(0, Number((durationSec * 0.7).toFixed(3)));
+    const trimDur = Math.max(durationSec, 1).toFixed(3);
 
-    const filter = [
-      `[1:a]volume=${volume},aloop=loop=-1:size=2e+09,atrim=0:${Math.max(durationSec, 1).toFixed(3)},asetpts=PTS-STARTPTS,afade=t=out:st=${fadeStart}:d=${fadeOutSec}[bgm]`,
-      `[0:a][bgm]amix=inputs=2:duration=first:dropout_transition=2:normalize=0[aout]`,
-    ].join(';');
+    const bgmPrep = `[1:a]volume=${volume},aloop=loop=-1:size=2e+09,atrim=0:${trimDur},asetpts=PTS-STARTPTS,afade=t=out:st=${fadeStart}:d=${fadeOutSec}[bgmraw]`;
 
-    await runFfmpeg([
-      '-i',
-      params.videoPath,
-      '-i',
-      params.bgmPath,
-      '-filter_complex',
-      filter,
-      '-map',
-      '0:v',
-      '-map',
-      '[aout]',
-      '-c:v',
-      'copy',
-      '-c:a',
-      'aac',
-      '-b:a',
-      '192k',
-      '-shortest',
-      '-movflags',
-      '+faststart',
-      '-y',
-      tmpOut,
-    ]);
+    // sidechaincompress: voice (0:a) ducks BGM when speech is present.
+    const filter = duck
+      ? [
+          bgmPrep,
+          `[bgmraw][0:a]sidechaincompress=threshold=0.08:ratio=6:attack=50:release=300:level_sc=1[bgm]`,
+          `[0:a][bgm]amix=inputs=2:duration=first:dropout_transition=2:normalize=0[aout]`,
+        ].join(';')
+      : [
+          bgmPrep.replace('[bgmraw]', '[bgm]'),
+          `[0:a][bgm]amix=inputs=2:duration=first:dropout_transition=2:normalize=0[aout]`,
+        ].join(';');
+
+    try {
+      await runFfmpeg([
+        '-i',
+        params.videoPath,
+        '-i',
+        params.bgmPath,
+        '-filter_complex',
+        filter,
+        '-map',
+        '0:v',
+        '-map',
+        '[aout]',
+        '-c:v',
+        'copy',
+        '-c:a',
+        'aac',
+        '-b:a',
+        '192k',
+        '-shortest',
+        '-movflags',
+        '+faststart',
+        '-y',
+        tmpOut,
+      ]);
+    } catch (duckErr) {
+      if (!duck) throw duckErr;
+      console.warn(
+        '[bgm] sidechain duck unavailable, fallback flat mix:',
+        duckErr instanceof Error ? duckErr.message : duckErr,
+      );
+      await fs.unlink(tmpOut).catch(() => {});
+      return mixBgmIntoVideo({ ...params, duck: false });
+    }
 
     await fs.rename(tmpOut, params.videoPath);
     console.info(
-      `[bgm] mixed volume=${volume} fadeOut=${fadeOutSec}s file=${path.basename(params.bgmPath)}`,
+      `[bgm] mixed volume=${volume} duck=${duck} fadeOut=${fadeOutSec}s file=${path.basename(params.bgmPath)}`,
     );
     return true;
   } catch (err) {
