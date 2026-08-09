@@ -220,6 +220,8 @@ export function VoicePicker({
     // Focus search without scrolling the page behind the portal.
     const search = document.getElementById(searchId) as HTMLInputElement | null;
     search?.focus({ preventScroll: true });
+    const selectedEl = listRef.current?.querySelector('.voice-picker-row.is-selected');
+    selectedEl?.scrollIntoView({ block: 'nearest' });
     window.addEventListener('resize', updatePanelPosition);
     window.addEventListener('scroll', updatePanelPosition, true);
     return () => {
