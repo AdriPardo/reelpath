@@ -166,6 +166,9 @@ export interface ChannelConfig {
    * >1 = más rápido (menos fuente necesaria); <1 = slow-mo.
    */
   stockPlaybackSpeed?: number;
+  /** Cross-post TikTok/IG vía Upload-Post tras publicar. */
+  crossPostEnabled?: boolean;
+  crossPostPlatforms?: Array<'tiktok' | 'instagram' | 'youtube'>;
 }
 
 export type VideoQualityCheckStatus = 'pass' | 'warn' | 'fail';

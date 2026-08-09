@@ -166,6 +166,20 @@ export function MarketingHome() {
         </div>
       </section>
 
+      <section className="home-section home-bleed" aria-labelledby="home-saas">
+        <div className="home-shell home-reveal">
+          <h2 id="home-saas" className="home-section-title">
+            {t('saasPillarTitle')}
+          </h2>
+          <p className="home-section-lead">{t('saasPillarLead')}</p>
+          <div className="home-problem-grid">
+            <p>{t('saasPillar1')}</p>
+            <p>{t('saasPillar2')}</p>
+            <p>{t('saasPillar3')}</p>
+          </div>
+        </div>
+      </section>
+
       <section className="home-section home-bleed home-band" aria-labelledby="home-problem">
         <div className="home-shell home-reveal">
           <h2 id="home-problem" className="home-section-title">

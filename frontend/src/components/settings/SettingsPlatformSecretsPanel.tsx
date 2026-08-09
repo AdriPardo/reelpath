@@ -18,6 +18,7 @@ type PlatformSecretsStatus = {
   hasPexelsKey: boolean;
   hasPixabayKey?: boolean;
   hasCoverrKey?: boolean;
+  hasUploadPost?: boolean;
   youtubeOAuthRedirectUri: string;
   sources?: {
     youtube: SecretSource;
@@ -27,6 +28,7 @@ type PlatformSecretsStatus = {
     pexels: SecretSource;
     pixabay?: SecretSource;
     coverr?: SecretSource;
+    uploadPost?: SecretSource;
   };
 };
 
@@ -79,6 +81,8 @@ export function SettingsPlatformSecretsPanel() {
   const [pexelsKey, setPexelsKey] = useState('');
   const [pixabayKey, setPixabayKey] = useState('');
   const [coverrKey, setCoverrKey] = useState('');
+  const [uploadPostApiKey, setUploadPostApiKey] = useState('');
+  const [uploadPostUsername, setUploadPostUsername] = useState('');
 
   const isPlatformAdmin = session?.isPlatformAdmin === true;
 
@@ -114,6 +118,10 @@ export function SettingsPlatformSecretsPanel() {
       if (pexelsKey.trim()) body.pexelsApiKey = pexelsKey.trim();
       if (pixabayKey.trim()) body.pixabayApiKey = pixabayKey.trim();
       if (coverrKey.trim()) body.coverrApiKey = coverrKey.trim();
+      if (uploadPostApiKey.trim() && uploadPostUsername.trim()) {
+        body.uploadPostApiKey = uploadPostApiKey.trim();
+        body.uploadPostUsername = uploadPostUsername.trim();
+      }
 
       if (Object.keys(body).length === 0) {
         toast(t('nothingToSave'), 'error');
@@ -133,6 +141,8 @@ export function SettingsPlatformSecretsPanel() {
       setPexelsKey('');
       setPixabayKey('');
       setCoverrKey('');
+      setUploadPostApiKey('');
+      setUploadPostUsername('');
       toast(t('saved'), 'success');
     } catch (err) {
       toast(err instanceof Error ? err.message : t('saveError'), 'error');
@@ -149,7 +159,8 @@ export function SettingsPlatformSecretsPanel() {
       | 'clearElevenLabsApiKey'
       | 'clearPexelsApiKey'
       | 'clearPixabayApiKey'
-      | 'clearCoverrApiKey',
+      | 'clearCoverrApiKey'
+      | 'clearUploadPost',
   ) {
     setSaving(true);
     try {
@@ -365,6 +376,57 @@ export function SettingsPlatformSecretsPanel() {
             </div>
           );
         })}
+      </section>
+
+      <section className="platform-secret-block" aria-labelledby="upload-post-heading">
+        <div className="platform-secret-block-head">
+          <h3 id="upload-post-heading">{t('uploadPostLabel')}</h3>
+          <StatusChip
+            configured={!!status.hasUploadPost}
+            source={status.sources?.uploadPost ?? (status.hasUploadPost ? 'db' : 'none')}
+            configuredLabel={t('configured')}
+            missingLabel={t('missing')}
+            envLabel={t('configuredEnv')}
+          />
+        </div>
+        <p className="text-muted text-sm">{t('uploadPostHint')}</p>
+        <label className="platform-secret-label" htmlFor="upload-post-user">
+          {t('uploadPostUsernameLabel')}
+        </label>
+        <input
+          id="upload-post-user"
+          className="platform-secret-input"
+          type="text"
+          autoComplete="off"
+          value={uploadPostUsername}
+          onChange={(e) => setUploadPostUsername(e.target.value)}
+          placeholder={status.hasUploadPost ? t('leaveBlank') : 'username'}
+        />
+        <label className="platform-secret-label" htmlFor="upload-post-key">
+          {t('uploadPostLabel')}
+        </label>
+        <input
+          id="upload-post-key"
+          className="platform-secret-input"
+          type="password"
+          autoComplete="new-password"
+          value={uploadPostApiKey}
+          onChange={(e) => setUploadPostApiKey(e.target.value)}
+          placeholder={status.hasUploadPost ? t('leaveBlank') : t('pasteKey')}
+        />
+        {status.hasUploadPost && status.sources?.uploadPost === 'db' ? (
+          <div className="platform-secret-actions">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={saving}
+              onClick={() => void clearKey('clearUploadPost')}
+            >
+              {t('removeKey')}
+            </Button>
+          </div>
+        ) : null}
       </section>
 
       <div className="platform-secret-actions platform-secret-actions-primary">

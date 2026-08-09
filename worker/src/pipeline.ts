@@ -11,11 +11,74 @@ import { generateScript } from '@autotube/script-generator';
 import type { ChannelConfig, PipelineJobPayload, PipelineRunMetadata, ScriptVariant } from '@autotube/shared';
 import { computeShortPublishSlots, parseScheduledPublishAt, resolveDefaultShortCount, resolveMixedShortsCounts, resolvePlannerConfig, resolveSplitShortsCount } from '@autotube/shared';
 import { renderVideo, resolveBgmFile, splitVideoForShorts } from '@autotube/video-renderer';
-import { publishToYouTube, publishYouTubeShortsClips, deleteYouTubeVideoApi, resolveYouTubeCredentialsForChannel } from '@autotube/youtube-publisher';
+import {
+  publishToYouTube,
+  publishYouTubeShortsClips,
+  deleteYouTubeVideoApi,
+  resolveYouTubeCredentialsForChannel,
+  crossPostVideoViaUploadPost,
+  isUploadPostConfigured,
+  type UploadPostPlatform,
+} from '@autotube/youtube-publisher';
 import { syncVideoAnalytics } from '@autotube/analytics';
 import { generateDedicatedShort } from './dedicated-short.js';
 import { notifyPipelineReadyForReview } from './pipeline-notify.js';
 import { notifyPipelineFailed } from './pipeline-notify-failed.js';
+
+async function maybeCrossPostAfterPublish(params: {
+  videoId: string;
+  config: ChannelConfig;
+}): Promise<void> {
+  if (params.config.crossPostEnabled !== true) return;
+  if (!isUploadPostConfigured()) {
+    console.info('[pipeline] cross-post skipped: Upload-Post not configured');
+    return;
+  }
+
+  const video = await prisma.video.findUnique({
+    where: { id: params.videoId },
+    select: {
+      title: true,
+      description: true,
+      tags: true,
+      filePath: true,
+      clips: {
+        orderBy: { createdAt: 'asc' },
+        take: 1,
+        select: { filePath: true },
+      },
+    },
+  });
+  if (!video) return;
+
+  const videoPath =
+    video.clips[0]?.filePath && existsSync(video.clips[0].filePath)
+      ? video.clips[0].filePath
+      : video.filePath && existsSync(video.filePath)
+        ? video.filePath
+        : null;
+  if (!videoPath) {
+    console.warn('[pipeline] cross-post skipped: no local video file');
+    return;
+  }
+
+  const platforms = (params.config.crossPostPlatforms ?? ['tiktok', 'instagram']).filter(
+    (p): p is UploadPostPlatform => p === 'tiktok' || p === 'instagram' || p === 'youtube',
+  );
+
+  const result = await crossPostVideoViaUploadPost({
+    videoPath,
+    title: video.title,
+    description: video.description ?? undefined,
+    tags: video.tags ?? undefined,
+    platforms,
+  });
+
+  console.info(
+    `[pipeline] cross-post success=${result.success} skipped=${Boolean(result.skipped)} ` +
+      `requestId=${result.requestId ?? '-'} error=${result.error ?? '-'}`,
+  );
+}
 
 async function updatePipelineStatus(
   pipelineRunId: string,
@@ -532,11 +595,13 @@ async function runPipelineStep(
 
         if (publishYoutube) {
           await publishToYouTube(video.id);
+          await maybeCrossPostAfterPublish({ videoId: video.id, config });
         } else if (video.reviewStatus !== 'published') {
           await prisma.video.update({
             where: { id: video.id },
             data: { reviewStatus: 'published', publishedAt: new Date() },
           });
+          await maybeCrossPostAfterPublish({ videoId: video.id, config });
         }
 
         if (clipSplit) {

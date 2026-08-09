@@ -41,6 +41,8 @@ export {
   resolvePlatformYouTubeOAuthApp,
   upsertPlatformApiKey,
   upsertPlatformYouTubeOAuthApp,
+  upsertPlatformUploadPost,
+  resolvePlatformUploadPost,
   PLATFORM_SECRET_KEYS,
   type PlatformSecretKey,
   type PlatformSecretsStatus,

@@ -1,5 +1,5 @@
 import { getLlmClient, isLlmMockMode } from '@autotube/llm';
-import { buildStockSearchQuery } from '@autotube/shared';
+import { buildStockSearchQuery, rerankTermsBySubject } from '@autotube/shared';
 import type { ScriptScene } from '@autotube/shared';
 
 /**
@@ -85,6 +85,20 @@ ${scriptBlock}
       '[stock-terms] LLM failed; keep heuristic:',
       err instanceof Error ? err.message : err,
     );
+  }
+
+  // Lexical subject relevance (TwelveLabs-style, free): keep scene order but
+  // surface how on-topic each term is for logs / future pool downloads.
+  if (opts?.subject?.trim()) {
+    const ordered = scenes
+      .map((s) => map.get(s.index))
+      .filter((t): t is string => Boolean(t));
+    const ranked = rerankTermsBySubject(opts.subject, ordered);
+    if (ranked[0] && ranked[0] !== ordered[0]) {
+      console.info(
+        `[stock-terms] subject-relevance top="${ranked[0]}" (scene-order preserved)`,
+      );
+    }
   }
 
   return map;

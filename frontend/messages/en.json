@@ -141,10 +141,15 @@
     "inviteRegisterBtn": "Create account"
   },
   "landing": {
-    "heroOutcome": "Publish on YouTube without building a studio",
-    "heroSupport": "Script, voice, edit, human review, and publishing — one workflow for your channel.",
+    "heroOutcome": "Reelpath: produce and publish YouTube at scale",
+    "heroSupport": "Multi-tenant SaaS for teams: script, voice, edit, human review, and OAuth publish — without building a studio.",
     "startTrial": "Start free trial",
     "login": "Sign in",
+    "saasPillarTitle": "One platform, your organization",
+    "saasPillarLead": "Channels, roles, plans, and analytics in one workspace. You decide what goes live.",
+    "saasPillar1": "Multi-channel and multi-user per organization",
+    "saasPillar2": "Clear plan limits (trial → Creator → Pro → Studio)",
+    "saasPillar3": "Optional ElevenLabs BYOK; OpenAI/DeepSeek managed by the platform",
     "problemTitle": "Running a channel shouldn’t need a full crew",
     "problemLead": "Script, voice, edit, and YouTube publishing eat weeks. Reelpath folds that work into one flow you control.",
     "problemPain1": "Sourcing scripts and voiceovers from separate vendors slows every drop.",
@@ -756,6 +761,8 @@
       "autoApproveTooltip": "Only used when auto review is enabled. The higher the value, the stricter auto-approval will be.",
       "publishYoutubeLabel": "Publish to YouTube on approval",
       "publishYoutubeTooltip": "Automatically uploads the video to the connected YouTube account when approved.",
+      "crossPostLabel": "Cross-post TikTok / Instagram (Upload-Post)",
+      "crossPostTooltip": "After YouTube publish, send the vertical (or main) video to TikTok/Instagram via Upload-Post. Requires platform secrets.",
       "publishShortsLabel": "Create Shorts from the same video and upload to YouTube",
       "publishShortsTooltip": "In addition to the main video, generates 9:16 vertical pieces and publishes them as YouTube Shorts.",
       "shortsModeLabel": "How Shorts are generated",
@@ -1327,6 +1334,9 @@
       "pexelsLabel": "Pexels",
       "pixabayLabel": "Pixabay (stock video)",
       "coverrLabel": "Coverr (stock video)",
+      "uploadPostLabel": "Upload-Post (TikTok / Instagram)",
+      "uploadPostUsernameLabel": "Upload-Post username",
+      "uploadPostHint": "API key + username from https://upload-post.com. Enables channel cross-post.",
       "removeKey": "Remove key"
     },
     "plan": {

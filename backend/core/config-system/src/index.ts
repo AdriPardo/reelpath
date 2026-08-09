@@ -149,6 +149,14 @@ const envSchema = z.object({
   PIXABAY_API_KEY: z.string().optional(),
   /** Coverr API key (fallback stock tras Pixabay). */
   COVERR_API_KEY: z.string().optional(),
+  /** Upload-Post (TikTok / Instagram cross-post). */
+  UPLOAD_POST_API_KEY: z.string().optional(),
+  UPLOAD_POST_USERNAME: z.string().optional(),
+  UPLOAD_POST_ENABLED: z
+    .string()
+    .transform((v) => v === 'true')
+    .default('false'),
+  UPLOAD_POST_PLATFORMS: z.string().default('tiktok,instagram'),
   S3_ENDPOINT: z.string().optional(),
   S3_BUCKET: z.string().optional(),
   S3_ACCESS_KEY: z.string().optional(),
@@ -321,6 +329,12 @@ export const channelConfigSchema = z.object({
   bgmVolume: z.coerce.number().min(0).max(1).optional(),
   bgmFile: z.string().max(255).optional(),
   stockPlaybackSpeed: z.coerce.number().min(0.75).max(1.5).optional(),
+  /** Cross-post vertical vía Upload-Post tras publicar en YouTube. */
+  crossPostEnabled: z.boolean().optional(),
+  crossPostPlatforms: z
+    .array(z.enum(['tiktok', 'instagram', 'youtube']))
+    .max(3)
+    .optional(),
 });
 
 export function getIdeaMaxRetries(channelMax?: number): number {

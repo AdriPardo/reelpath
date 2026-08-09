@@ -11,6 +11,9 @@ export type PlatformSecretsOverrides = {
   pexelsApiKey?: string | null;
   pixabayApiKey?: string | null;
   coverrApiKey?: string | null;
+  uploadPostApiKey?: string | null;
+  uploadPostUsername?: string | null;
+  uploadPostEnabled?: boolean | null;
 };
 
 let platformSecrets: PlatformSecretsOverrides | null = null;

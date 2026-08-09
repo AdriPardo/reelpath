@@ -11,6 +11,7 @@ import {
 import {
   buildLanczosScaleCrop,
   buildStockSearchQuery,
+  boostScoreByQueryRelevance,
   ffmpegH264EncodeArgs,
   VIDEO_RESOLUTION_LONG,
   VIDEO_RESOLUTION_SHORT,
@@ -379,14 +380,35 @@ async function searchVideosCached(
 ): Promise<StockCandidate[]> {
   const key = cacheKey(provider, query, aspectRatio);
   const cached = await readSearchCache(key);
-  if (cached) return cached;
+  if (cached) {
+    return cached
+      .map((c) => ({
+        ...c,
+        score: boostScoreByQueryRelevance(
+          c.score,
+          query,
+          [c.creator, c.assetId, c.sourcePage].filter(Boolean).join(' '),
+        ),
+      }))
+      .sort((a, b) => b.score - a.score);
+  }
   const items = await fetcher();
-  if (items.length > 0) {
-    await writeSearchCache(key, items).catch((err) => {
+  const ranked = items
+    .map((c) => ({
+      ...c,
+      score: boostScoreByQueryRelevance(
+        c.score,
+        query,
+        [c.creator, c.assetId, c.sourcePage].filter(Boolean).join(' '),
+      ),
+    }))
+    .sort((a, b) => b.score - a.score);
+  if (ranked.length > 0) {
+    await writeSearchCache(key, ranked).catch((err) => {
       console.warn('[stock-provider] cache write failed:', err instanceof Error ? err.message : err);
     });
   }
-  return items;
+  return ranked;
 }
 
 /** Prefer unused sources first (MPT `_prioritize_unique_source_clips` idea). */

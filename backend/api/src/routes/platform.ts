@@ -5,7 +5,9 @@ import {
   deletePlatformSecret,
   getPlatformSecretsStatus,
   loadPlatformSecretsOverrides,
+  resolvePlatformUploadPost,
   upsertPlatformApiKey,
+  upsertPlatformUploadPost,
   upsertPlatformYouTubeOAuthApp,
 } from '@autotube/database';
 import { getYouTubeOAuthRedirectUri } from '../lib/youtube-oauth.js';
@@ -33,6 +35,10 @@ const patchSchema = z
     clearPixabayApiKey: z.boolean().optional(),
     coverrApiKey: z.string().min(1).max(500).optional(),
     clearCoverrApiKey: z.boolean().optional(),
+    uploadPostApiKey: z.string().min(1).max(500).optional(),
+    uploadPostUsername: z.string().min(1).max(200).optional(),
+    uploadPostEnabled: z.boolean().optional(),
+    clearUploadPost: z.boolean().optional(),
   })
   .refine(
     (b) =>
@@ -43,6 +49,7 @@ const patchSchema = z
       b.clearPexelsApiKey ||
       b.clearPixabayApiKey ||
       b.clearCoverrApiKey ||
+      b.clearUploadPost ||
       b.youtubeClientId !== undefined ||
       b.youtubeClientSecret !== undefined ||
       b.openaiApiKey !== undefined ||
@@ -50,7 +57,10 @@ const patchSchema = z
       b.elevenLabsApiKey !== undefined ||
       b.pexelsApiKey !== undefined ||
       b.pixabayApiKey !== undefined ||
-      b.coverrApiKey !== undefined,
+      b.coverrApiKey !== undefined ||
+      b.uploadPostApiKey !== undefined ||
+      b.uploadPostUsername !== undefined ||
+      b.uploadPostEnabled !== undefined,
     { message: 'Nada que actualizar' },
   );
 
@@ -74,6 +84,9 @@ function buildSecretsResponse() {
       hasPexelsKey: status.hasPexelsKey || !!config.PEXELS_API_KEY?.trim(),
       hasPixabayKey: status.hasPixabayKey || !!config.PIXABAY_API_KEY?.trim(),
       hasCoverrKey: status.hasCoverrKey || !!config.COVERR_API_KEY?.trim(),
+      hasUploadPost:
+        status.hasUploadPost ||
+        !!(config.UPLOAD_POST_API_KEY?.trim() && config.UPLOAD_POST_USERNAME?.trim()),
       sources: {
         youtube: source(status.hasYoutubeOAuthApp, ytEnv),
         openai: source(status.hasOpenaiKey, !!config.OPENAI_API_KEY?.trim()),
@@ -82,6 +95,10 @@ function buildSecretsResponse() {
         pexels: source(status.hasPexelsKey, !!config.PEXELS_API_KEY?.trim()),
         pixabay: source(status.hasPixabayKey, !!config.PIXABAY_API_KEY?.trim()),
         coverr: source(status.hasCoverrKey, !!config.COVERR_API_KEY?.trim()),
+        uploadPost: source(
+          status.hasUploadPost,
+          !!(config.UPLOAD_POST_API_KEY?.trim() && config.UPLOAD_POST_USERNAME?.trim()),
+        ),
       },
       youtubeOAuthRedirectUri: getYouTubeOAuthRedirectUri(),
     };
@@ -133,6 +150,24 @@ platformRouter.patch('/secrets', async (req, res) => {
 
   if (body.clearCoverrApiKey) await deletePlatformSecret('coverr');
   else if (body.coverrApiKey) await upsertPlatformApiKey('coverr', body.coverrApiKey);
+
+  if (body.clearUploadPost) {
+    await deletePlatformSecret('upload_post');
+  } else if (body.uploadPostApiKey || body.uploadPostUsername || body.uploadPostEnabled !== undefined) {
+    const existing = await resolvePlatformUploadPost();
+    const apiKey = body.uploadPostApiKey?.trim() || existing?.apiKey;
+    const username = body.uploadPostUsername?.trim() || existing?.username;
+    if (!apiKey || !username) {
+      return res.status(400).json({
+        error: 'Upload-Post requiere API key y username',
+      });
+    }
+    await upsertPlatformUploadPost({
+      apiKey,
+      username,
+      enabled: body.uploadPostEnabled ?? existing?.enabled ?? true,
+    });
+  }
 
   await loadPlatformSecretsOverrides();
   res.json({

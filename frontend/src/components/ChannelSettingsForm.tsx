@@ -987,6 +987,17 @@ export function ChannelSettingsForm({
         <label className="modal-checkbox">
           <input
             type="checkbox"
+            checked={config.crossPostEnabled === true}
+            onChange={() => toggle('crossPostEnabled')}
+          />
+          <span className="checkbox-label-row">
+            <span>{t('crossPostLabel')}</span>
+            <InfoTooltip content={t('crossPostTooltip')} />
+          </span>
+        </label>
+        <label className="modal-checkbox">
+          <input
+            type="checkbox"
             checked={config.publishYoutubeShorts === true}
             onChange={() => toggle('publishYoutubeShorts')}
           />

@@ -17,6 +17,7 @@ export * from './tts-voices.js';
 export * from './youtube-title.js';
 export * from './publish-insights.js';
 export * from './stock-query.js';
+export * from './stock-relevance.js';
 export * from './word-timing.js';
 export * from './social-metadata.js';
 export * from './subtitle-style.js';

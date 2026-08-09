@@ -6,6 +6,11 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { generateSpeech } from '@autotube/media-generator';
 import { orgScope } from '../middleware/auth.js';
+import {
+  readTtsPreviewCache,
+  ttsPreviewCacheKey,
+  writeTtsPreviewCache,
+} from '../lib/tts-preview-cache.js';
 
 const previewSchema = z.object({
   provider: z.enum(['edge', 'elevenlabs', 'openai']).default('edge'),
@@ -21,7 +26,7 @@ const DEFAULT_TEXT_EN =
 
 /**
  * Genera clip corto TTS (Edge / OpenAI / ElevenLabs). Devuelve audio/mpeg.
- * Montar en orgRouter como POST /tts/preview (no bajo use('/tts') — rompería /tts/voices).
+ * Reusa cache en disco/memoria por fingerprint (provider+voz+texto+lang).
  */
 export async function handleTtsPreview(req: Request, res: Response) {
   const orgId = orgScope(req);
@@ -34,6 +39,21 @@ export async function handleTtsPreview(req: Request, res: Response) {
   const text =
     body.text?.trim() ||
     (language.startsWith('en') ? DEFAULT_TEXT_EN : DEFAULT_TEXT_ES);
+
+  const cacheKey = ttsPreviewCacheKey({
+    provider: body.provider,
+    voiceId: body.voiceId,
+    text,
+    language,
+  });
+
+  const cached = await readTtsPreviewCache(cacheKey);
+  if (cached) {
+    res.setHeader('Content-Type', cached.contentType);
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.setHeader('X-TTS-Cache', cached.hit);
+    return res.send(cached.buf);
+  }
 
   const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reelpath-tts-'));
   const outPath = path.join(tmpDir, `${randomUUID()}.mp3`);
@@ -50,10 +70,15 @@ export async function handleTtsPreview(req: Request, res: Response) {
       return res.status(502).json({ error: 'TTS devolvió audio vacío' });
     }
 
+    if (!result.mock) {
+      await writeTtsPreviewCache(cacheKey, buf).catch(() => undefined);
+    }
+
     res.setHeader('Content-Type', 'audio/mpeg');
-    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Cache-Control', 'private, max-age=3600');
     res.setHeader('X-TTS-Provider', result.provider);
     res.setHeader('X-TTS-Mock', result.mock ? '1' : '0');
+    res.setHeader('X-TTS-Cache', 'miss');
     res.send(buf);
   } catch (err) {
     console.error('[tts/preview]', err);

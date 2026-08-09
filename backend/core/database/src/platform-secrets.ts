@@ -14,6 +14,7 @@ export const PLATFORM_SECRET_KEYS = [
   'pexels',
   'pixabay',
   'coverr',
+  'upload_post',
 ] as const;
 
 export type PlatformSecretKey = (typeof PLATFORM_SECRET_KEYS)[number];
@@ -34,6 +35,7 @@ export type PlatformSecretsStatus = {
   hasPexelsKey: boolean;
   hasPixabayKey: boolean;
   hasCoverrKey: boolean;
+  hasUploadPost: boolean;
 };
 
 function isPlatformSecretKey(key: string): key is PlatformSecretKey {
@@ -92,6 +94,17 @@ export async function getPlatformSecretsStatus(): Promise<PlatformSecretsStatus>
     hasPexelsKey: hasApiKey('pexels'),
     hasPixabayKey: hasApiKey('pixabay'),
     hasCoverrKey: hasApiKey('coverr'),
+    hasUploadPost: (() => {
+      const raw = byKey.get('upload_post');
+      if (!raw) return false;
+      const data = decryptCredentialPayload(raw);
+      return (
+        typeof data?.apiKey === 'string' &&
+        data.apiKey.trim().length > 0 &&
+        typeof data?.username === 'string' &&
+        data.username.trim().length > 0
+      );
+    })(),
   };
 }
 
@@ -131,17 +144,47 @@ export async function upsertPlatformApiKey(
   await upsertSecretData(provider, { apiKey: apiKey.trim() });
 }
 
+export async function upsertPlatformUploadPost(input: {
+  apiKey: string;
+  username: string;
+  enabled?: boolean;
+}): Promise<void> {
+  await upsertSecretData('upload_post', {
+    apiKey: input.apiKey.trim(),
+    username: input.username.trim(),
+    enabled: input.enabled !== false,
+  });
+}
+
+export async function resolvePlatformUploadPost(): Promise<{
+  apiKey: string;
+  username: string;
+  enabled: boolean;
+} | null> {
+  const data = await readSecretData('upload_post');
+  const apiKey = typeof data?.apiKey === 'string' ? data.apiKey.trim() : '';
+  const username = typeof data?.username === 'string' ? data.username.trim() : '';
+  if (!apiKey || !username) return null;
+  return {
+    apiKey,
+    username,
+    enabled: data?.enabled !== false,
+  };
+}
+
 /** Load all platform secrets into the sync cache used by resolveLlmConnection / TTS. */
 export async function loadPlatformSecretsOverrides(): Promise<PlatformSecretsOverrides> {
-  const [youtube, openai, deepseek, elevenlabs, pexels, pixabay, coverr] = await Promise.all([
-    resolvePlatformYouTubeOAuthApp(),
-    resolvePlatformApiKey('openai'),
-    resolvePlatformApiKey('deepseek'),
-    resolvePlatformApiKey('elevenlabs'),
-    resolvePlatformApiKey('pexels'),
-    resolvePlatformApiKey('pixabay'),
-    resolvePlatformApiKey('coverr'),
-  ]);
+  const [youtube, openai, deepseek, elevenlabs, pexels, pixabay, coverr, uploadPost] =
+    await Promise.all([
+      resolvePlatformYouTubeOAuthApp(),
+      resolvePlatformApiKey('openai'),
+      resolvePlatformApiKey('deepseek'),
+      resolvePlatformApiKey('elevenlabs'),
+      resolvePlatformApiKey('pexels'),
+      resolvePlatformApiKey('pixabay'),
+      resolvePlatformApiKey('coverr'),
+      resolvePlatformUploadPost(),
+    ]);
 
   const overrides: PlatformSecretsOverrides = {
     youtubeClientId: youtube?.clientId ?? null,
@@ -152,6 +195,9 @@ export async function loadPlatformSecretsOverrides(): Promise<PlatformSecretsOve
     pexelsApiKey: pexels,
     pixabayApiKey: pixabay,
     coverrApiKey: coverr,
+    uploadPostApiKey: uploadPost?.apiKey ?? null,
+    uploadPostUsername: uploadPost?.username ?? null,
+    uploadPostEnabled: uploadPost?.enabled ?? null,
   };
 
   setPlatformSecretsOverrides(overrides);
