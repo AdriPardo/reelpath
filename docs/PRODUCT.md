@@ -77,7 +77,7 @@ Registro → Dashboard → Crear canal → Conectar YouTube → Generar vídeo �
 |------|--------|
 | Pago por vídeo suelto (19/29 EUR) | ❌ Próximamente |
 | OAuth Google en UI | ⚠️ | Requiere credenciales de plataforma en `.env` |
-| BYOK ElevenLabs | ❌ | Solo OpenAI a nivel org por ahora |
+| BYOK ElevenLabs | ✅ | Org Ajustes → API keys; canal puede heredar o override voz |
 | Onboarding email / tours | ⚠️ | Email bienvenida al registrarse; sin tour guiado |
 | Multi-usuario por org (invitar) | ✅ | Invitaciones por email + roles owner/member |
 

@@ -165,7 +165,7 @@ export interface VisualOriginSummary {
   total: number;
   hasPlaceholders: boolean;
   scenes: SceneVisualOrigin[];
-  stockCredits?: Array<{
+  stockCredits: Array<{
     provider?: string;
     creator?: string;
     sourcePage?: string;

@@ -245,8 +245,8 @@
     "semantic_hash": ""
   },
   "backend/api/src/routes/analytics.ts": {
-    "mtime": 1786275402.828453,
-    "ast_hash": "5e10d4c37147d2947cef5aa67f4a5ec2",
+    "mtime": 1786289144.5826945,
+    "ast_hash": "99c071d96932fe96be3eec90f30f266d",
     "semantic_hash": ""
   },
   "backend/api/src/routes/auth.ts": {
@@ -1190,8 +1190,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/ChannelDetailTabs.tsx": {
-    "mtime": 1786275402.852458,
-    "ast_hash": "9ee6b1556a981f254a3d7730bbd1dd4b",
+    "mtime": 1786289134.270708,
+    "ast_hash": "647b1c24bf478fb55d509e3c3ed26ab1",
     "semantic_hash": ""
   },
   "frontend/src/components/ChannelFilter.tsx": {
@@ -1215,8 +1215,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/ChannelSettingsForm.tsx": {
-    "mtime": 1786288336.7965314,
-    "ast_hash": "c0278be4aa3ecb2690995d933b2e2f10",
+    "mtime": 1786289453.0783467,
+    "ast_hash": "df94045891abd0d39128df8023022567",
     "semantic_hash": ""
   },
   "frontend/src/components/ChannelSwitcher.tsx": {
@@ -1445,8 +1445,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/VisualOriginPanel.tsx": {
-    "mtime": 1786287365.2261755,
-    "ast_hash": "8ffc07e506d3dfc80d165c1c17d8a28c",
+    "mtime": 1786289153.2266834,
+    "ast_hash": "e86c3582bba51deffa120b1bf3de8b70",
     "semantic_hash": ""
   },
   "frontend/src/components/ayuda/HelpArticle.tsx": {
@@ -1670,8 +1670,8 @@
     "semantic_hash": ""
   },
   "frontend/src/lib/api.ts": {
-    "mtime": 1786287380.5941477,
-    "ast_hash": "7a58b219f0c0e9271497f4f27aad69e2",
+    "mtime": 1786289134.262708,
+    "ast_hash": "44c53315ff4b1439956eaa0cbfcf49f9",
     "semantic_hash": ""
   },
   "frontend/src/lib/auth-constants.ts": {
@@ -2285,8 +2285,8 @@
     "semantic_hash": ""
   },
   "docs/PRODUCT.md": {
-    "mtime": 1786288403.3482847,
-    "ast_hash": "bd816af87a22840341800c2f7b6797d6",
+    "mtime": 1786289478.338322,
+    "ast_hash": "2506380d5a51ed5b6dcdacbba47a4950",
     "semantic_hash": ""
   },
   "docs/RELEASE_CHECKLIST.md": {
@@ -2565,8 +2565,8 @@
     "semantic_hash": ""
   },
   "backend/api/src/routes/bgm.ts": {
-    "mtime": 1786286946.2111628,
-    "ast_hash": "e1b03e02c19bd200c4debc13d6abe612",
+    "mtime": 1786289478.354322,
+    "ast_hash": "79e3eb517772f7099822c93faa96b5e1",
     "semantic_hash": ""
   },
   "backend/api/src/routes/tts-preview.ts": {

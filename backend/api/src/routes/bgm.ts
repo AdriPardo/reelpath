@@ -37,15 +37,13 @@ bgmRouter.get('/', async (req, res) => {
   res.json({
     tracks: files.map((f) => {
       const normalized = f.replace(/\\/g, '/');
+      const isResource =
+        normalized.includes('/resource/bgm/') ||
+        normalized.includes('/resource/bgm') ||
+        /(^|\/)resource\/bgm\//.test(normalized);
       return {
         name: path.basename(f),
-        source: normalized.includes('/storage/') || normalized.includes('/bgm/')
-          ? normalized.includes('/resource/')
-            ? 'resource'
-            : 'storage'
-          : normalized.includes('resource/bgm')
-            ? 'resource'
-            : 'storage',
+        source: isResource ? 'resource' : 'storage',
       };
     }),
   });

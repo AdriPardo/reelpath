@@ -988,13 +988,53 @@ export function ChannelSettingsForm({
           <input
             type="checkbox"
             checked={config.crossPostEnabled === true}
-            onChange={() => toggle('crossPostEnabled')}
+            onChange={() => {
+              const next = !config.crossPostEnabled;
+              setField('crossPostEnabled', next);
+              if (next && (config.crossPostPlatforms == null || config.crossPostPlatforms.length === 0)) {
+                setField('crossPostPlatforms', ['tiktok', 'instagram']);
+              }
+            }}
           />
           <span className="checkbox-label-row">
             <span>{t('crossPostLabel')}</span>
             <InfoTooltip content={t('crossPostTooltip')} />
           </span>
         </label>
+        {config.crossPostEnabled === true && (
+          <fieldset className="modal-field" disabled={config.crossPostEnabled !== true}>
+            <legend className="field-label-row">
+              <span>{t('crossPostPlatformsLabel')}</span>
+              <InfoTooltip content={t('crossPostPlatformsTooltip')} />
+            </legend>
+            <div className="checkbox-group" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+              {(['tiktok', 'instagram', 'youtube'] as const).map((platform) => {
+                const selected = (config.crossPostPlatforms ?? ['tiktok', 'instagram']).includes(
+                  platform,
+                );
+                return (
+                  <label key={platform} className="modal-checkbox" style={{ margin: 0 }}>
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      onChange={() => {
+                        const current = config.crossPostPlatforms ?? ['tiktok', 'instagram'];
+                        const next = selected
+                          ? current.filter((p) => p !== platform)
+                          : [...current, platform];
+                        setField(
+                          'crossPostPlatforms',
+                          next.length > 0 ? next : ['tiktok', 'instagram'],
+                        );
+                      }}
+                    />
+                    <span>{t(`crossPostPlatform_${platform}`)}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </fieldset>
+        )}
         <label className="modal-checkbox">
           <input
             type="checkbox"

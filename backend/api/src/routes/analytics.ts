@@ -15,6 +15,8 @@ analyticsRouter.get('/org-summary', async (req, res) => {
       videoCount: 0,
       channelCount: 0,
       hasMockData: false,
+      avgCtr: 0,
+      avgRetention: 0,
       topVideos: [],
     });
   }

@@ -78,11 +78,11 @@ export function VisualOriginSummaryPanel({ summary, compact }: VisualOriginSumma
           ))}
         </ul>
       )}
-      {summary.stockCredits?.length > 0 && (
+      {(summary.stockCredits ?? []).length > 0 && (
         <div className="visual-origin-credits">
           <strong>{t('creditsTitle')}</strong>
           <ul>
-            {summary.stockCredits.map((c, i) => (
+            {(summary.stockCredits ?? []).map((c, i) => (
               <li key={`${c.provider}-${c.creator}-${i}`}>
                 {[c.provider, c.creator].filter(Boolean).join(' · ') || t('creditUnknown')}
                 {c.sourcePage ? (
