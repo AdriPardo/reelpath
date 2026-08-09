@@ -12,6 +12,9 @@ export const PRODUCT_DEFAULTS = {
   generateAiImages: false,
   maxAiImagesPerVideo: 4,
   openaiImageQuality: 'medium' as ProductImageQuality,
+  /** auto = Flux Pro (fal) first, then OpenAI gpt-image. */
+  imageAiProvider: 'auto' as 'auto' | 'fal' | 'openai',
+  falImageModel: 'fal-ai/flux-pro/v1.1',
   maxScenesLong: 8,
   minScenesLong: 6,
   maxScenesShort: 3,
