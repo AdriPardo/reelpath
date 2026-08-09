@@ -7,6 +7,12 @@ export interface YouTubeMetricsResult extends YouTubeVideoMetrics {
   raw: Record<string, unknown>;
 }
 
+const METRICS_WITH_CTR =
+  'views,likes,comments,averageViewPercentage,impressionsClickThroughRate,estimatedMinutesWatched,averageViewDuration';
+/** CTR (impressions) often 403s the whole query — keep retention/watch without it. */
+const METRICS_WITHOUT_CTR =
+  'views,likes,comments,averageViewPercentage,estimatedMinutesWatched,averageViewDuration';
+
 function formatYmd(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
@@ -37,6 +43,37 @@ function reportHasData(raw: Record<string, unknown>): boolean {
   return Array.isArray(report?.rows) && report.rows.length > 0;
 }
 
+/** Parse YouTube ISO-8601 duration (PT#H#M#S) to seconds. */
+export function parseYouTubeDurationSec(iso: string | null | undefined): number {
+  if (!iso) return 0;
+  const m = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/i);
+  if (!m) return 0;
+  const h = Number(m[1] ?? 0);
+  const min = Number(m[2] ?? 0);
+  const s = Number(m[3] ?? 0);
+  return h * 3600 + min * 60 + s;
+}
+
+function applyParsedMetrics(parsed: Record<string, number>): {
+  views: number;
+  likes: number;
+  comments: number;
+  retention: number;
+  ctr: number;
+  watchTimeMinutes: number;
+  averageViewDurationSec: number;
+} {
+  return {
+    views: Math.round(parsed.views ?? 0),
+    likes: Math.round(parsed.likes ?? 0),
+    comments: Math.round(parsed.comments ?? 0),
+    retention: (parsed.averageViewPercentage ?? 0) / 100,
+    ctr: (parsed.impressionsClickThroughRate ?? 0) / 100,
+    watchTimeMinutes: parsed.estimatedMinutesWatched ?? 0,
+    averageViewDurationSec: parsed.averageViewDuration ?? 0,
+  };
+}
+
 /** Métricas reales vía YouTube Analytics API v2 (requiere scope yt-analytics.readonly). */
 export async function fetchYouTubeVideoMetrics(params: {
   auth: OAuth2Client;
@@ -64,29 +101,45 @@ export async function fetchYouTubeVideoMetrics(params: {
     endDate,
   };
 
-  try {
+  const runReport = async (metrics: string) => {
     const report = await youtubeAnalytics.reports.query({
       ids: 'channel==MINE',
       startDate,
       endDate,
-      metrics:
-        'views,likes,comments,averageViewPercentage,impressionsClickThroughRate,estimatedMinutesWatched,averageViewDuration',
+      metrics,
       dimensions: 'video',
       filters: `video==${params.youtubeVideoId}`,
     });
+    return report;
+  };
+
+  try {
+    let report;
+    try {
+      report = await runReport(METRICS_WITH_CTR);
+      raw.analyticsMetrics = 'with_ctr';
+    } catch (ctrErr) {
+      raw.ctrQueryError = ctrErr instanceof Error ? ctrErr.message : String(ctrErr);
+      console.warn(
+        '[analytics/youtube] CTR metrics failed, retrying without impressionsClickThroughRate:',
+        raw.ctrQueryError,
+      );
+      report = await runReport(METRICS_WITHOUT_CTR);
+      raw.analyticsMetrics = 'without_ctr';
+    }
 
     raw.analyticsReport = report.data;
     const headers = report.data.columnHeaders?.map((h) => h.name ?? '') ?? [];
     const row = report.data.rows?.[0];
     const parsed = parseReportRow(headers, row);
-
-    views = Math.round(parsed.views ?? 0);
-    likes = Math.round(parsed.likes ?? 0);
-    comments = Math.round(parsed.comments ?? 0);
-    retention = (parsed.averageViewPercentage ?? 0) / 100;
-    ctr = (parsed.impressionsClickThroughRate ?? 0) / 100;
-    watchTimeMinutes = parsed.estimatedMinutesWatched ?? 0;
-    averageViewDurationSec = parsed.averageViewDuration ?? 0;
+    const applied = applyParsedMetrics(parsed);
+    views = applied.views;
+    likes = applied.likes;
+    comments = applied.comments;
+    retention = applied.retention;
+    ctr = applied.ctr;
+    watchTimeMinutes = applied.watchTimeMinutes;
+    averageViewDurationSec = applied.averageViewDurationSec;
   } catch (err) {
     raw.analyticsError = err instanceof Error ? err.message : String(err);
     console.warn(
@@ -102,12 +155,20 @@ export async function fetchYouTubeVideoMetrics(params: {
 
   const item = dataRes.data.items?.[0];
   const stats = item?.statistics;
+  const durationSec = parseYouTubeDurationSec(item?.contentDetails?.duration);
   raw.dataApiStatistics = stats ?? null;
+  raw.durationSec = durationSec || null;
 
   if (stats) {
     if (views === 0 && stats.viewCount) views = parseInt(stats.viewCount, 10) || 0;
     if (likes === 0 && stats.likeCount) likes = parseInt(stats.likeCount, 10) || 0;
     if (comments === 0 && stats.commentCount) comments = parseInt(stats.commentCount, 10) || 0;
+  }
+
+  // Proxy retención si Analytics no dio % pero sí duración media de visionado.
+  if (retention <= 0 && averageViewDurationSec > 0 && durationSec > 0) {
+    retention = clamp01(averageViewDurationSec / durationSec);
+    raw.retentionProxy = 'averageViewDuration/duration';
   }
 
   const usedAnalytics = !raw.analyticsError && reportHasData(raw);

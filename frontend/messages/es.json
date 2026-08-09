@@ -299,6 +299,7 @@
     "videosWithData": "Vídeos con datos",
     "avgCtr": "CTR medio",
     "avgRetention": "Retención media",
+    "engagementPendingHint": "CTR y retención salen de YouTube Analytics (no solo vistas). Pulsa Actualizar; si sigue vacío, reconecta YouTube en el canal o espera 24–48 h tras publicar.",
     "topVideos": "Top vídeos",
     "publishConnectHint": "Publica vídeos y conecta YouTube en tus canales para ver el resumen aquí.",
     "mockData": "Datos mock",

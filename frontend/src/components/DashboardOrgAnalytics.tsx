@@ -13,8 +13,9 @@ export interface OrgAnalyticsSummary {
   videoCount: number;
   channelCount: number;
   hasMockData: boolean;
-  avgCtr?: number;
-  avgRetention?: number;
+  avgCtr?: number | null;
+  avgRetention?: number | null;
+  engagementSampleCount?: number;
   topVideos: Array<{
     videoId: string;
     title: string;
@@ -170,7 +171,9 @@ export function DashboardOrgAnalytics() {
         <div className="stat">
           <div className="stat-body">
             <div className="stat-value">
-              {((summary.avgCtr ?? 0) * 100).toFixed(1)}%
+              {summary.avgCtr != null && (summary.engagementSampleCount ?? 0) > 0
+                ? `${(summary.avgCtr * 100).toFixed(1)}%`
+                : '—'}
             </div>
             <div className="stat-label">{t('avgCtr')}</div>
           </div>
@@ -178,12 +181,19 @@ export function DashboardOrgAnalytics() {
         <div className="stat">
           <div className="stat-body">
             <div className="stat-value">
-              {((summary.avgRetention ?? 0) * 100).toFixed(0)}%
+              {summary.avgRetention != null && (summary.engagementSampleCount ?? 0) > 0
+                ? `${(summary.avgRetention * 100).toFixed(0)}%`
+                : '—'}
             </div>
             <div className="stat-label">{t('avgRetention')}</div>
           </div>
         </div>
       </div>
+      {(summary.engagementSampleCount ?? 0) === 0 && (
+        <p className="text-muted text-sm" style={{ marginTop: '0.75rem' }}>
+          {t('engagementPendingHint')}
+        </p>
+      )}
 
       {summary.topVideos.length > 0 && (
         <div style={{ marginTop: '1rem' }}>
