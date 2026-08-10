@@ -458,6 +458,12 @@ export async function renderVideo(params: {
   persistAsVideo?: boolean;
   /** Pipeline subfolder for SRT when outputSubdir is set. */
   mediaSubdir?: string;
+  /**
+   * Burn scene subtitles into the rendered video.
+   * Default: true for shorts / 9:16, false for long / 16:9.
+   * Shorts split still burns from subtitles.srt after cutting the long.
+   */
+  burnSubtitles?: boolean;
 }): Promise<{
   videoId?: string;
   filePath: string;
@@ -465,6 +471,9 @@ export async function renderVideo(params: {
   thumbnailPath?: string | null;
 }> {
   const persistAsVideo = params.persistAsVideo !== false;
+  const burnSubtitles =
+    params.burnSubtitles ??
+    (params.format === 'shorts' || params.aspectRatio === '9:16');
   const template = await templateRegistry.getTemplate(params.templateId);
   const retentionMode = params.retentionMode ?? false;
   const forceCut =
@@ -496,10 +505,18 @@ export async function renderVideo(params: {
     };
   }
 
-  const timeline = templateRegistry.buildTimeline(params.script, params.assets, {
+  const timelineRaw = templateRegistry.buildTimeline(params.script, params.assets, {
     videoMotionIntensity: params.videoMotionIntensity,
     retentionMode,
   });
+  const timeline = burnSubtitles
+    ? timelineRaw
+    : timelineRaw.map((clip) => ({ ...clip, subtitlePath: undefined }));
+  if (!burnSubtitles) {
+    console.info(
+      `[video-renderer] subtítulos quemados OFF (format=${params.format} aspect=${params.aspectRatio})`,
+    );
+  }
   const totalDuration = timeline.reduce((s, c) => s + c.durationSec, 0);
 
   const outDir = params.outputSubdir

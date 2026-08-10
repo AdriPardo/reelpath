@@ -88,6 +88,7 @@ async function buildTeaserClip(params: {
     mediaSubdir: subdir,
     bgmEnabled: config.bgmEnabled,
     bgmVolume: config.bgmVolume,
+    burnSubtitles: true,
     bgmFile: config.bgmFile,
   });
 
