@@ -62,6 +62,7 @@ async function buildTeaserClip(params: {
     retentionMode: true,
     videoMotionIntensity: config.videoMotionIntensity,
     visualSourceMode: config.visualSourceMode,
+    niche: config.niche,
     channelGenerateAiImages: config.generateAiImages,
     channelFalI2vEnabled: config.falI2vEnabled,
     channelMaxFalI2vPerVideo: config.maxFalI2vPerVideo,
@@ -90,6 +91,9 @@ async function buildTeaserClip(params: {
     bgmVolume: config.bgmVolume,
     burnSubtitles: true,
     bgmFile: config.bgmFile,
+    niche: config.niche,
+    brandName: config.brandName,
+    language: config.language,
   });
 
   const shortDir = getStoragePath('videos', pipelineRunId, subdir);
@@ -108,8 +112,18 @@ async function buildTeaserClip(params: {
   const thumbPath = path.join(shortDir, 'teaser-thumb.jpg');
   let savedThumb: string | null = null;
   try {
+    const { resolveThumbnailOverlayText } = await import('@autotube/video-renderer');
+    const overlay = await resolveThumbnailOverlayText({
+      title: displayTitle,
+      hook: teaser.variant.hook,
+      niche: config.niche,
+      format: 'shorts',
+      language: config.language,
+    });
     await generateVerticalClipThumbnail({
       title: displayTitle,
+      overlayText: overlay.overlayText,
+      highlightWord: overlay.highlightWord,
       partIndex,
       partCount: 1,
       videoPath: outPath,

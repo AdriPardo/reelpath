@@ -40,6 +40,8 @@ export interface ResolveSceneVisualParams {
   usedSourceIds?: Set<string>;
   /** Stock B-roll playback speed (default 1). */
   playbackSpeed?: number;
+  /** Channel niche — styles AI stills (history vs corporate vs general). */
+  niche?: string | null;
 }
 
 export interface StockAttribution {
@@ -640,6 +642,7 @@ export async function resolveSceneVisual(params: ResolveSceneVisualParams): Prom
     aspectRatio: params.aspectRatio,
     forceAiImages: params.forceAiImages,
     allowAiImages: params.allowAiImages,
+    niche: params.niche,
   });
 
   return {

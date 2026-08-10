@@ -5,6 +5,7 @@
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { buildI2vMotionPrompt, type MotionPreset } from '@autotube/shared';
 
 export type FalI2vParams = {
   apiKey: string;
@@ -259,10 +260,10 @@ export async function generateFalImageToVideo(params: FalI2vParams): Promise<{
   return { model, durationSec: Number(duration) || 6 };
 }
 
-export function buildFalI2vMotionPrompt(visualPrompt: string, narration: string): string {
-  const base = visualPrompt.trim() || narration.trim().slice(0, 200);
-  return (
-    `${base}. Slow cinematic camera drift, subtle natural motion, ` +
-    `documentary style, photorealistic, no text, no watermark, no people talking`
-  ).slice(0, 1500);
+export function buildFalI2vMotionPrompt(
+  visualPrompt: string,
+  narration: string,
+  motionPreset?: MotionPreset,
+): string {
+  return buildI2vMotionPrompt({ visualPrompt, narration, motionPreset });
 }

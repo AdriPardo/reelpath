@@ -10,7 +10,10 @@ import {
   buildLongWordsPerSceneHint,
   getRetentionScriptHints,
   applyVisualSourceToScenes,
+  getScriptBodyPipelineHints,
   getStockVisualScriptHints,
+  getTeaserPipelineHints,
+  getThumbnailPipelineHints,
   resolveVisualSourceMode,
   clampYouTubeTitle,
   formatYouTubeShortTitle,
@@ -192,6 +195,8 @@ export async function generateScript(params: {
   }
   const visualMode = resolveVisualSourceMode(params.config);
   promptContent += getStockVisualScriptHints(visualMode);
+  promptContent += `\n\n${getScriptBodyPipelineHints(params.config, visualMode)}`;
+  promptContent += getThumbnailPipelineHints(params.config);
 
   const channelContext = buildChannelPromptContext(params.config);
 
@@ -274,7 +279,8 @@ export interface TeaserScriptResult {
   variant: ScriptVariant;
 }
 
-function teaserSystemHint(language: string): string {
+function teaserSystemHint(language: string, config: ChannelConfig): string {
+  const visualMode = resolveVisualSourceMode(config);
   if (language === 'es' || language.startsWith('es-')) {
     return (
       'OBLIGATORIO: guion teaser en español para un Short vertical (30-45s). ' +
@@ -284,10 +290,14 @@ function teaserSystemHint(language: string): string {
       '"Nadie te contó este detalle del escándalo…", "¿Y si todo lo que creías fuera falso?". ' +
       'Escenas 2-3 = un solo dato sorprendente del tema (NO resumir todo el vídeo largo). ' +
       'Escena final = CTA que remite al vídeo completo ("Mira el vídeo completo", "La historia entera en el canal", etc.). ' +
-      'JSON válido con title, description, tags, hook y scenes[].'
+      'JSON válido con title, description, tags, hook y scenes[].\n\n' +
+      getTeaserPipelineHints(config, visualMode)
     );
   }
-  return 'Teaser short script (30-45s). 3-4 scenes. Final scene CTA to full video. Valid JSON.';
+  return (
+    `Teaser short script (30-45s). 3-4 scenes. Final scene CTA to full video. Valid JSON.\n\n` +
+    getTeaserPipelineHints(config, visualMode)
+  );
 }
 
 function buildMockTeaserScript(longVideo: {
@@ -426,7 +436,7 @@ export async function generateTeaserScript(params: {
     variationLine +
     buildChannelPromptContext(config) +
     getStockVisualScriptHints(resolveVisualSourceMode(config)) +
-    `\n\nResponde JSON con: title (título corto y completo del Short, distinto del largo, máx ${youtubeShortsTitleBudget()} caracteres, sin cortar palabras a medias), description, tags[], hook, scenes[{narration, visualPrompt, durationSec}].`;
+    `\n\nResponde JSON con: title (título corto y completo del Short, distinto del largo, máx ${youtubeShortsTitleBudget()} caracteres, sin cortar palabras a medias), description, tags[], hook, scenes[{narration, visualPrompt, stockQuery, durationSec}].`;
 
   let lastError: string | null = null;
   let lastParsed: ReturnType<typeof extractScriptResponse> | null = null;
@@ -436,7 +446,7 @@ export async function generateTeaserScript(params: {
   for (let attempt = 1; attempt <= 3; attempt++) {
     let raw: unknown;
     try {
-      raw = await llm.completeJson<unknown>(userPrompt, teaserSystemHint(config.language), {
+      raw = await llm.completeJson<unknown>(userPrompt, teaserSystemHint(config.language, config), {
         maxTokens: 1500,
       });
     } catch (err) {

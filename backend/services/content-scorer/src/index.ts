@@ -219,12 +219,14 @@ export function scoreVideoQuality(input: VideoQualityInput): VideoQualityReport 
     detail: input.filePathExists ? 'Vídeo renderizado correctamente.' : 'No se encontró el archivo de vídeo.',
   });
 
-  // 7. Miniatura
+  // 7. Miniatura — producto #1 de atención (sin ella el CTR muere)
   checks.push({
     id: 'thumbnail',
     label: 'Miniatura',
-    status: input.hasThumbnail ? 'pass' : 'warn',
-    detail: input.hasThumbnail ? 'Miniatura disponible.' : 'Sin miniatura: YouTube generará una automática.',
+    status: input.hasThumbnail ? 'pass' : 'fail',
+    detail: input.hasThumbnail
+      ? 'Miniatura CTR lista para YouTube.'
+      : 'SIN MINIATURA: YouTube pondrá un frame aleatorio y el CTR cae. Regenera antes de publicar.',
   });
 
   // 8. Cumplimiento (temas prohibidos)
@@ -322,11 +324,13 @@ export function getViralHookGuidelines(minScore = 0): string {
       ? `Objetivo: cada idea debe poder superar score ${minScore}/100.`
       : 'Maximiza el potencial viral de cada idea.';
   return `${target}
-- hook: 20-80 caracteres; pregunta con "?" o afirmación con "!"
+- hook: 20-80 caracteres; pregunta con "?" o afirmación con "!" en las primeras palabras
 - Usa al menos una palabra de impacto: secreto, nunca, verdad, imposible, olvidado, paradoja, prohibido, misterio, oculto
-- Incluye un número cuando encaje (año, cifra, duración) o un personaje/lugar concreto
-- title: 30-70 caracteres, específico — persona + época/lugar + giro (no genérico)
+- Incluye un número cuando encaje (año, cifra, duración) o un personaje/lugar/empresa concreto
+- title: 30-70 caracteres, específico — sujeto + época/lugar + giro (no genérico)
 - PROHIBIDO: listas ("5 cosas"), "datos que no sabías", "te sorprenderá" sin especificidad
-- angle: debe describir el giro narrativo concreto, no "es interesante"
-- trendAlignment: 0.85-1.0 si el tema encaja con las tendencias`;
+- PROHIBIDO hooks lentos: "En este vídeo", "Hoy hablaremos", "Bienvenidos"
+- angle: debe describir el giro narrativo concreto (mecanismo o revelación), no "es interesante"
+- rationale: por qué engancha en una frase (específico al caso)
+- trendAlignment: 0.85-1.0 si el tema encaja con las tendencias; si no, sé honesto (0.5-0.7)`;
 }

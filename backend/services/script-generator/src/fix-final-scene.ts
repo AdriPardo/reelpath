@@ -1,6 +1,10 @@
 import { getLlmClient } from '@autotube/llm';
 import type { ChannelConfig, ScriptScene, VideoFormat } from '@autotube/shared';
-import { getLongWordsPerSceneRange } from '@autotube/shared';
+import {
+  getLongWordsPerSceneRange,
+  getNarrationQualityRules,
+  getRetentionClosingPipelineHints,
+} from '@autotube/shared';
 import type { ScriptOutline } from './types.js';
 import { hasRetentionClosing } from './validate.js';
 import { countWords } from './utils.js';
@@ -38,7 +42,8 @@ export function buildFinalSceneRetentionHint(
     (format === 'long'
       ? `- Para documental largo: cierre reflexivo con pregunta retórica también vale.\n`
       : '') +
-    `PROHIBIDO: despedidas largas ("gracias por ver", "nos vemos").\n`
+    `PROHIBIDO: despedidas largas ("gracias por ver", "nos vemos").\n` +
+    `${getRetentionClosingPipelineHints(format)}\n`
   );
 }
 
@@ -61,7 +66,8 @@ export async function fixFinalSceneRetention(params: {
     `Reescribe SOLO la escena final del guion documental "${outline.title}".\n\n` +
     buildFinalSceneRetentionHint(last, format) +
     `\nLongitud objetivo: ~${range} palabras (actual: ${countWords(last.narration)}).\n` +
-    `visualPrompt actual (mantener estilo): "${last.visualPrompt}"\n\n` +
+    `visualPrompt actual (mantener estilo): "${last.visualPrompt}"\n` +
+    `\n${getNarrationQualityRules(config.language, format)}\n\n` +
     `JSON: { "narration": "...", "visualPrompt": "..." }`;
 
   const system = config.language.startsWith('es')

@@ -43,16 +43,18 @@ export async function resolveSceneStockQueries(
       .join('\n\n');
 
     const result = await llm.completeJson<{ terms?: string[] }>(
-      `# Role: Video Search Terms Generator
+      `# Role: Stock B-roll Search Terms Generator
 
 ## Goals
-Generate ${amount} chronological stock-video search terms that follow the order of topics in the video script.
+Generate ${amount} chronological English search terms for Pexels/Pixabay/Coverr that match each scene topic in order.
 
 ## Constraints
-1. Return JSON object: { "terms": string[] } with exactly ${amount} strings.
-2. Each term: 1-3 English words only.
-3. Keep terms in the same order as the scenes listed.
-4. Terms must be useful for Pexels/Pixabay/Coverr search.
+1. Return JSON: { "terms": string[] } with EXACTLY ${amount} strings.
+2. Each term: 1-3 concrete English nouns/verbs (filmable actions or places).
+3. Prefer real-world B-roll: offices, hands, city streets, documents, nature — not abstract concepts.
+4. Avoid style words: cinematic, dramatic, lighting, beautiful, historical.
+5. Keep the same order as the listed scenes.
+6. Prefer terms that would return usable vertical/horizontal stock clips.
 
 ## Context
 ### Subject
@@ -61,7 +63,7 @@ ${opts?.subject ?? 'general'}
 ### Scenes
 ${scriptBlock}
 `,
-      'Responde SOLO JSON válido con clave terms (array de strings EN).',
+      'Reply ONLY valid JSON with key terms (array of English strings).',
       { maxTokens: 400 },
     );
 

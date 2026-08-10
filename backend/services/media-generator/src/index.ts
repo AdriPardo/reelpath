@@ -26,9 +26,11 @@ import {
 import { buildFalI2vMotionPrompt, generateFalImageToVideo } from './providers/fal-i2v.js';
 import { pathExists, resolveSceneVisual } from './providers/stock-provider.js';
 import { resolveSceneStockQueries } from './stock-terms.js';
+import { generateThumbnailBackground } from './thumbnail-bg.js';
 
 export { generateSpeech, writeSceneSubtitle } from './providers/media-providers.js';
 export { isNearSilentAudio, getAudioDuration } from './ffmpeg-utils.js';
+export { generateThumbnailBackground } from './thumbnail-bg.js';
 
 async function ensureDir(dir: string) {
   await fs.mkdir(dir, { recursive: true });
@@ -42,6 +44,12 @@ export async function generateMedia(params: {
   retentionMode?: boolean;
   videoMotionIntensity?: 'subtle' | 'normal' | 'dynamic';
   visualSourceMode?: ChannelConfig['visualSourceMode'];
+  /** Channel niche — styles AI image prompts. */
+  niche?: string | null;
+  /** Metadata for dedicated YouTube thumbnail background. */
+  title?: string;
+  hook?: string;
+  angle?: string;
   /** Plan de la organización — solo fuerza IA si FORCE_AI_IMAGES_ON_PAID=true. */
   orgPlan?: string | null;
   /** Channel.config.generateAiImages — undefined = heredar org/env. */
@@ -204,7 +212,11 @@ export async function generateMedia(params: {
       if (await pathExists(videoPath)) return false;
       try {
         const i2vModel = cfg.FAL_I2V_MODEL?.trim() || PRODUCT_DEFAULTS.falI2vModel;
-        const motionPrompt = buildFalI2vMotionPrompt(scene.visualPrompt, scene.narration);
+        const motionPrompt = buildFalI2vMotionPrompt(
+          scene.visualPrompt,
+          scene.narration,
+          motionPreset,
+        );
         console.info(
           `[media-generator] scene=${scene.index} fal i2v start (${reason}) model=${i2vModel} (${falI2vUsed + 1}/${maxFalI2v})`,
         );
@@ -252,6 +264,7 @@ export async function generateMedia(params: {
         stockQuery: stockQueries.get(scene.index) ?? scene.stockQuery,
         usedSourceIds: usedStockSourceIds,
         playbackSpeed: params.stockPlaybackSpeed,
+        niche: params.niche,
       });
       visualAssetType = visual.assetType;
       visualPath = visual.path;
@@ -348,6 +361,28 @@ export async function generateMedia(params: {
   const srtCues = buildSyncedSrtFromScenesWithBoundaries(timedScenes, phraseMaxLen);
   await fs.writeFile(srtPath, serializeSrt(srtCues), 'utf-8');
   assets.push({ sceneIndex: -1, type: 'subtitle', path: srtPath });
+
+  // Fondo dedicado de miniatura (CTR): espacio negativo para overlay de texto.
+  if (params.title?.trim() && persist) {
+    const thumbBg = await generateThumbnailBackground({
+      pipelineRunId: params.pipelineRunId,
+      title: params.title,
+      hook: params.hook ?? params.script.hook,
+      angle: params.angle,
+      niche: params.niche,
+      aspectRatio,
+      forceAiImages: forceAiImages || aiImagesBase,
+      subdir: params.subdir,
+    });
+    if (thumbBg) {
+      assets.push({
+        sceneIndex: -1,
+        type: 'image',
+        path: thumbBg,
+        metadata: { role: 'thumbnail-bg', visualOrigin: 'ai' },
+      });
+    }
+  }
 
   if (persist) {
     await prisma.mediaAsset.deleteMany({ where: { pipelineRunId: params.pipelineRunId } });

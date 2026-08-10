@@ -8,6 +8,7 @@
   "dependencies": {
     "@autotube/config": "*",
     "@autotube/database": "*",
+    "@autotube/llm": "*",
     "@autotube/shared": "*",
     "@autotube/template-engine": "*",
     "sharp": "^0.34.3"

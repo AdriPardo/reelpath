@@ -2,12 +2,14 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { loadEffectiveConfig } from '@autotube/config';
 import {
+  buildAiImagePrompt,
   buildLanczosScaleCrop,
+  isGenericVisualPrompt,
   VIDEO_RESOLUTION_LONG,
   VIDEO_RESOLUTION_SHORT,
+  type VisualOrigin,
 } from '@autotube/shared';
 import { runFfmpeg } from '@autotube/shared/ffmpeg-runner';
-import type { VisualOrigin } from '@autotube/shared';
 import { createSceneVisualPng } from '../png-utils.js';
 import { preprocessForTts } from '../tts-preprocess.js';
 import { downloadFalImageToFile, generateFalFluxImage } from './fal-flux-image.js';
@@ -33,38 +35,6 @@ function imageSizeForModel(model: string, aspectRatio: '9:16' | '16:9'): ImageSi
   }
   if (model === 'dall-e-2') return '1024x1024';
   return aspectRatio === '9:16' ? '1024x1792' : '1792x1024';
-}
-
-function aspectLabel(aspectRatio: '9:16' | '16:9'): string {
-  return aspectRatio === '9:16' ? 'vertical 9:16' : 'horizontal 16:9';
-}
-
-const GENERIC_VISUAL_PATTERN =
-  /^(cinematic|dramatic|historical|16:9|9:16|no text|photorealistic)/i;
-
-function isGenericVisualPrompt(visualPrompt: string): boolean {
-  const t = visualPrompt.trim();
-  if (t.length < 35) return true;
-  if (/cinematic,?\s*dramatic lighting,?\s*historical/i.test(t) && t.split(/\s+/).length < 12) {
-    return true;
-  }
-  return GENERIC_VISUAL_PATTERN.test(t) && t.split(/\s+/).length < 10;
-}
-
-function buildImagePrompt(
-  visualPrompt: string,
-  narration: string,
-  sceneIndex: number,
-  aspectRatio: '9:16' | '16:9',
-): string {
-  const style = `Cinematic historical documentary, ${aspectLabel(aspectRatio)}, dramatic lighting, photorealistic, no text, no watermark`;
-
-  if (!isGenericVisualPrompt(visualPrompt)) {
-    return `${visualPrompt.trim()}. ${style}`;
-  }
-
-  const sceneHint = narration.trim().slice(0, 280);
-  return `Historical documentary scene ${sceneIndex + 1}: ${sceneHint}. ${style}`;
 }
 
 async function saveGeneratedImage(
@@ -224,6 +194,8 @@ export async function generateSceneImage(params: {
   outPath: string;
   sceneIndex: number;
   aspectRatio?: '9:16' | '16:9';
+  /** Nicho del canal — ajusta estilo (histórico vs corporativo vs general). */
+  niche?: string | null;
   /**
    * Force AI images when GENERATE_DALLE_IMAGES=false (e.g. FORCE_AI_IMAGES_ON_PAID).
    * Ignored when allowAiImages=false (per-video cap).
@@ -268,12 +240,13 @@ export async function generateSceneImage(params: {
     return { mock: true, provider: 'procedural', visualOrigin: 'placeholder' };
   }
 
-  const prompt = buildImagePrompt(
-    params.visualPrompt,
-    params.narration,
-    params.sceneIndex,
+  const prompt = buildAiImagePrompt({
+    visualPrompt: params.visualPrompt,
+    narration: params.narration,
+    sceneIndex: params.sceneIndex,
     aspectRatio,
-  );
+    niche: params.niche,
+  });
   if (isGenericVisualPrompt(params.visualPrompt)) {
     console.info(
       `[media/image] scene=${params.sceneIndex} generic visualPrompt — using narration context`,

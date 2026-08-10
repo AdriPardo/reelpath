@@ -14,6 +14,7 @@ export function isHistoryNiche(niche: string): boolean {
 
 export function buildChannelPromptContext(config: ChannelConfig): string {
   const parts: string[] = [];
+  if (config.niche?.trim()) parts.push(`Nicho: ${config.niche.trim()}.`);
   if (config.brandName?.trim()) parts.push(`Marca/canal: ${config.brandName.trim()}.`);
   if (config.tone?.trim()) parts.push(`Tono narrativo: ${config.tone.trim()}.`);
   if (config.targetAudience?.trim()) parts.push(`Audiencia: ${config.targetAudience.trim()}.`);
@@ -58,7 +59,7 @@ export function getRetentionScriptHints(format: VideoFormat): string {
 2. ESCENAS intermedias: contexto rápido + revelación; máximo 12 palabras; visualPrompt único por escena.
 3. ESCENA FINAL: cliffhanger, pregunta abierta, o teaser "la parte más oscura… en el próximo vídeo".
 4. TTS: comas para pausas dramáticas; énfasis en palabras clave.
-5. visualPrompt: escena concreta distinta en cada corte — jamás repetir descripción genérica.`;
+5. visualPrompt según modo del canal (stock keywords vs IA cinematográfica); jamás genérico.`;
   }
 
   return `MODO RETENCIÓN — DOCUMENTAL LARGO (suavizado):
@@ -69,7 +70,7 @@ export function getRetentionScriptHints(format: VideoFormat): string {
    - "¿Y si todo lo que creías saber fuera solo la mitad de la historia?"
    - "La pregunta que queda es: ¿quién tenía realmente la razón?"
    - "Hoy todavía debatimos si aquella decisión fue un error o el único camino posible."
-4. visualPrompt único y específico por escena; alternar planos (detalle, panorama, personaje).
+4. visualPrompt único por escena según modo del canal; alternar planos (detalle, panorama, personaje).
 5. TTS: ritmo documental con comas estratégicas; escena 1 ≤20 palabras.`;
 }
 

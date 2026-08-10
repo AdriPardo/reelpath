@@ -200,8 +200,15 @@ export async function splitVideoForShorts(
     const thumbnailPath = path.join(outDir, `part-${String(i).padStart(3, '0')}-thumb.jpg`);
     let savedThumb: string | null = null;
     try {
+      const { resolveThumbnailOverlayText } = await import('./thumbnail-copy.js');
+      const overlay = await resolveThumbnailOverlayText({
+        title: video.title,
+        format: 'shorts',
+      });
       await generateVerticalClipThumbnail({
         title: video.title,
+        overlayText: overlay.overlayText,
+        highlightWord: overlay.highlightWord,
         partIndex: i,
         partCount: effectiveDurations.length,
         videoPath: filePath,
@@ -293,8 +300,15 @@ async function createSingleShortClip(
   const thumbnailPath = path.join(outDir, 'part-000-thumb.jpg');
   let savedThumb: string | null = null;
   try {
+    const { resolveThumbnailOverlayText } = await import('./thumbnail-copy.js');
+    const overlay = await resolveThumbnailOverlayText({
+      title: video.title,
+      format: 'shorts',
+    });
     await generateVerticalClipThumbnail({
       title: video.title,
+      overlayText: overlay.overlayText,
+      highlightWord: overlay.highlightWord,
       partIndex: 0,
       partCount: 1,
       videoPath: outPath,

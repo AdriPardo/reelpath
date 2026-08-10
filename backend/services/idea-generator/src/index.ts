@@ -6,13 +6,10 @@ import type { ContentScoreBreakdown } from '@autotube/shared';
 import {
   buildChannelPromptContext,
   clampYouTubeTitle,
-  formatDurationRange,
   getHistoryViralTopicAngles,
-  getMinScriptWords,
+  getIdeaPipelineSystemHints,
   getRetentionIdeaHints,
   getRetentionViralGuidelines,
-  getTargetDurationMaxSec,
-  getTargetDurationMinSec,
   isHistoryNiche,
 } from '@autotube/shared';
 import { getIdeaMaxRetries } from '@autotube/config';
@@ -215,14 +212,6 @@ export async function generateIdeas(params: {
   const usedConstraint = formatUsedTopicsConstraint(usedTopics);
 
   const llm = getLlmClient();
-  const format = params.config.videoFormat;
-  const baseHint =
-    params.config.language === 'es' || params.config.language.startsWith('es-')
-      ? format === 'long'
-        ? `OBLIGATORIO: ideas en español. Una curiosidad histórica con material para ${formatDurationRange(getTargetDurationMinSec(params.config), getTargetDurationMaxSec(params.config))} de documental (~${getMinScriptWords(params.config)}+ palabras de guion). Prohibido listas y temas superficiales.`
-        : 'OBLIGATORIO: ideas íntegramente en español. Una sola curiosidad por idea — prohibido listas tipo "5 cosas".'
-      : `Language: ${params.config.language}. Format: ${format}. One curiosity per video.`;
-
   const viralGuidelines = getViralHookGuidelines(minViralScore);
   const retentionHints = params.config.retentionMode
     ? `\n\n${getRetentionIdeaHints()}\n${getRetentionViralGuidelines()}`
@@ -237,10 +226,12 @@ export async function generateIdeas(params: {
       ? ` REINTENTO ${attempt}: la tanda anterior no alcanzó score mínimo${minViralScore > 0 ? ` (${minViralScore})` : ''}. Hooks más agresivos, más específicos y con mayor trendAlignment.`
       : '';
 
-  const raw = await llm.completeJson<unknown>(
-    rendered.content,
-    `${baseHint}${topicConstraint}${usedConstraint}${channelContext}${historyAngles}${retryHint}${retentionHints}\n\n${viralGuidelines}\n\nJSON conciso con clave "ideas". Max 60 chars en title y hook.`,
-  );
+  const system =
+    `${getIdeaPipelineSystemHints(params.config)}${topicConstraint}${usedConstraint}` +
+    `${channelContext}${historyAngles}${retryHint}${retentionHints}\n\n${viralGuidelines}\n\n` +
+    `Responde JSON conciso con clave "ideas".`;
+
+  const raw = await llm.completeJson<unknown>(rendered.content, system);
 
   const ideaItems = extractIdeasArray(raw) as unknown as LlmIdeaItem[];
 
