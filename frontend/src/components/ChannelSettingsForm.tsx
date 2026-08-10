@@ -1147,9 +1147,11 @@ export function ChannelSettingsForm({
                   {config.shortsMode === 'split' && (
                     <option value="auto">{t('longPartsAuto')}</option>
                   )}
-                  <option value="1">{t('longParts1')}</option>
-                  <option value="2">{t('longParts2')}</option>
-                  <option value="3">{t('longParts3')}</option>
+                  {[1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20].map((n) => (
+                    <option key={n} value={String(n)}>
+                      {t('longPartsN', { n })}
+                    </option>
+                  ))}
                 </select>
               </label>
             )}

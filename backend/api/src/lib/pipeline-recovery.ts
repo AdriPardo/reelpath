@@ -2,7 +2,7 @@ import { parseChannelConfig } from '@autotube/config';
 import { prisma } from '@autotube/database';
 import { enqueuePipelineStep } from '@autotube/job-queue';
 import type { PipelineJobPayload, PipelineStep } from '@autotube/shared';
-import { PIPELINE_STEPS, expectedDedicatedOrMixedShortCount } from '@autotube/shared';
+import { PIPELINE_STEPS, expectedDedicatedOrMixedShortCount, resolveSplitShortsCount } from '@autotube/shared';
 import { expectedShortsPartCount, getVideoDuration } from '@autotube/video-renderer';
 
 const TERMINAL_STATUSES = new Set(['completed', 'failed', 'rejected', 'pending_review', 'cancelled']);
@@ -95,7 +95,10 @@ async function tryFinalizePreReviewClipStep(
   const expectedParts =
     config.shortsMode === 'dedicated' || config.shortsMode === 'mixed'
       ? expectedDedicatedOrMixedShortCount(config)
-      : expectedShortsPartCount(duration, config.shortsClipMaxSec);
+      : expectedShortsPartCount(duration, config.shortsClipMaxSec, {
+          maxParts: resolveSplitShortsCount(config),
+          coverFullVideo: true,
+        });
   const clipCount = await prisma.videoClip.count({
     where: { videoId: video.id, platform: 'short_source' },
   });

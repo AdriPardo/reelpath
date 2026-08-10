@@ -69,7 +69,7 @@ export interface ChannelConfig {
   publishYoutube?: boolean;
   /** Upload vertical clips as YouTube Shorts (long format) or mark main upload as Short (shorts format). */
   publishYoutubeShorts?: boolean;
-  /** Max seconds per vertical Short part when splitting a long video (default 60). */
+  /** Max seconds per vertical Short part when splitting a long video (default 60; soft overshoot allowed). */
   shortsClipMaxSec?: number;
   /** Minimum viral score to accept an idea (0 = no filter, pick best). */
   minViralScore?: number;
@@ -89,7 +89,7 @@ export interface ChannelConfig {
   shortsMode?: 'split' | 'dedicated' | 'mixed';
   /** Shorts por vídeo largo (1-7). En dedicated/mixed: teasers dedicados; en mixed el total incluye cortes del largo. */
   shortsPerVideo?: number;
-  /** Cuántas partes del vídeo largo se convierten en Shorts (1-3). En mixed resto = teasers; en split limita partes distribuidas. */
+  /** Cuántas partes del vídeo largo se convierten en Shorts (1-30). En mixed: highlights; en split: cubre el largo (auto = tantas como haga falta). */
   longShortsFromVideo?: number;
   /** Días entre Shorts consecutivos al programar su publicación escalonada (0 = todos ya; default 1). */
   shortsPublishIntervalDays?: number;
