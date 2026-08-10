@@ -10,7 +10,9 @@ import {
   buildLongWordsPerSceneHint,
   getRetentionScriptHints,
   applyVisualSourceToScenes,
+  getScriptBodyPipelineHints,
   getStockVisualScriptHints,
+  getTeaserPipelineHints,
   resolveVisualSourceMode,
   clampYouTubeTitle,
   formatYouTubeShortTitle,
@@ -192,6 +194,7 @@ export async function generateScript(params: {
   }
   const visualMode = resolveVisualSourceMode(params.config);
   promptContent += getStockVisualScriptHints(visualMode);
+  promptContent += `\n\n${getScriptBodyPipelineHints(params.config, visualMode)}`;
 
   const channelContext = buildChannelPromptContext(params.config);
 
@@ -274,7 +277,8 @@ export interface TeaserScriptResult {
   variant: ScriptVariant;
 }
 
-function teaserSystemHint(language: string): string {
+function teaserSystemHint(language: string, config: ChannelConfig): string {
+  const visualMode = resolveVisualSourceMode(config);
   if (language === 'es' || language.startsWith('es-')) {
     return (
       'OBLIGATORIO: guion teaser en español para un Short vertical (30-45s). ' +
@@ -284,10 +288,14 @@ function teaserSystemHint(language: string): string {
       '"Nadie te contó este detalle del escándalo…", "¿Y si todo lo que creías fuera falso?". ' +
       'Escenas 2-3 = un solo dato sorprendente del tema (NO resumir todo el vídeo largo). ' +
       'Escena final = CTA que remite al vídeo completo ("Mira el vídeo completo", "La historia entera en el canal", etc.). ' +
-      'JSON válido con title, description, tags, hook y scenes[].'
+      'JSON válido con title, description, tags, hook y scenes[].\n\n' +
+      getTeaserPipelineHints(config, visualMode)
     );
   }
-  return 'Teaser short script (30-45s). 3-4 scenes. Final scene CTA to full video. Valid JSON.';
+  return (
+    `Teaser short script (30-45s). 3-4 scenes. Final scene CTA to full video. Valid JSON.\n\n` +
+    getTeaserPipelineHints(config, visualMode)
+  );
 }
 
 function buildMockTeaserScript(longVideo: {
@@ -436,7 +444,7 @@ export async function generateTeaserScript(params: {
   for (let attempt = 1; attempt <= 3; attempt++) {
     let raw: unknown;
     try {
-      raw = await llm.completeJson<unknown>(userPrompt, teaserSystemHint(config.language), {
+      raw = await llm.completeJson<unknown>(userPrompt, teaserSystemHint(config.language, config), {
         maxTokens: 1500,
       });
     } catch (err) {

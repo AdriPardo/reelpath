@@ -4,6 +4,7 @@ import type { ChannelConfig, ScriptScene } from '@autotube/shared';
 import {
   buildLongWordsPerSceneHint,
   getLongWordsPerSceneRange,
+  getNarrationQualityRules,
   getVisualPromptGenerationRules,
   LONG_SCENE_WORDS_HARD_MIN,
   LONG_SCENE_WORDS_MIN,
@@ -31,12 +32,14 @@ function chunkSystemHint(language: string, config: ChannelConfig): string {
       'PROHIBIDO estilo Shorts. PROHIBIDO "hoy vamos a hablar de". ' +
       `Visuales según modo ${visualMode}: sigue las reglas de visualPrompt/stockQuery del usuario. ` +
       'Mantén continuidad con el contexto previo y la frase puente indicada.' +
-      retentionNote
+      retentionNote +
+      `\n\n${getNarrationQualityRules(language, 'long')}`
     );
   }
   return (
     `Documentary script chunk writer. Valid JSON only. Visual mode: ${visualMode}. ` +
-    'Follow visualPrompt/stockQuery rules in the user message.'
+    'Follow visualPrompt/stockQuery rules in the user message.\n\n' +
+    getNarrationQualityRules(language, 'long')
   );
 }
 

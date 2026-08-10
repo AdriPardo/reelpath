@@ -311,6 +311,45 @@ JSON object con clave "ideas": array de {
     variables: ['count', 'niche', 'format', 'language', 'trends', 'minViralScore', 'usedTopics'],
   },
   {
+    type: 'idea_generation',
+    version: '1.9.0',
+    name: 'Idea Generator v1.9 (Pipeline quality layer)',
+    template: `Genera {{count}} ideas de vídeo YouTube en formato {{format}} para nicho "{{niche}}".
+
+FORMATO:
+- Si format=long: documental horizontal 8-15 min con arco completo (contexto, conflicto, mecanismo, consecuencias, legado).
+- Si format=shorts: UNA sola curiosidad para 30-60s; hook <2s.
+- PROHIBIDO: listas, recopilaciones, clickbait vacío, temas sin material narrativo.
+
+TEMAS YA USADOS (no repetir): {{usedTopics}}
+
+CALIDAD PIPELINE (crítico):
+- title: sujeto + época/lugar/empresa + giro (30-70 chars)
+- hook: para el scroll — "?" o "!" + cifra/persona/paradoja (20-80 chars)
+- angle: el mecanismo o revelación que obliga a ver hasta el final
+- Diferencia clara entre ideas de esta tanda (ángulos distintos)
+- Preferir hechos verificables / documentación pública cuando el nicho lo permita
+- PROHIBIDO: "No vas a creer", "Top 5", "Hoy hablaremos", "datos que no sabías" sin especificidad
+
+OPTIMIZACIÓN VIRAL (objetivo score ≥ {{minViralScore}}):
+- Palabra de impacto + número o nombre concreto
+- trendAlignment: 0.85-1.0 si encaja con tendencias; honesto si no
+
+IDIOMA: {{language}}. Sin anglicismos salvo nombres propios.
+
+Tendencias: {{trends}}
+
+JSON object con clave "ideas": array de {
+  title (max 70 chars),
+  hook (max 120 chars),
+  angle (giro narrativo central, max 150 chars),
+  targetAudience,
+  trendAlignment (0-1),
+  rationale (max 120 chars)
+}. Sin texto extra.`,
+    variables: ['count', 'niche', 'format', 'language', 'trends', 'minViralScore', 'usedTopics'],
+  },
+  {
     type: 'script_generation',
     version: '1.0.0',
     name: 'Script Generator v1',
@@ -718,6 +757,13 @@ VISUALES (base; el runtime refuerza según visualSourceMode):
 - Si IA: 15-30 palabras (sujeto + plano + luz + atmósfera). PROHIBIDO solo "cinematic, dramatic lighting".
 - Sin texto/UI/watermarks en la descripción.
 
+NARRACIÓN TTS:
+- Español oral; comas para pausas; cifras/fechas hablables.
+- Datos concretos por escena; cero relleno; una sola historia.
+
+METADATA:
+- title clickeable (sujeto + giro); description con gancho searchable; tags concretos.
+
 JSON: { title, description (max 400 chars), tags (max 8), hookA, hookB, scenes: [
   { narration, visualPrompt, stockQuery, durationSec: 40 }
 ] }
@@ -947,9 +993,9 @@ async function main() {
     }
   }
 
-  // Activate latest prompts (ideas v1.8.0, script v2.2.0 mode-aware visuals)
+  // Activate latest prompts (ideas v1.9.0 pipeline quality, script v2.2.0)
   for (const [type, version] of [
-    ['idea_generation', '1.8.0'],
+    ['idea_generation', '1.9.0'],
     ['script_generation', '2.2.0'],
   ] as const) {
     const latest = await prisma.promptVersion.findUnique({
@@ -1214,7 +1260,7 @@ async function main() {
   }
 
   await bindChannelPrompts(channel.id, {
-    idea_generation: '1.8.0',
+    idea_generation: '1.9.0',
     script_generation: '2.2.0',
     hook_ab: '1.0.0',
   });

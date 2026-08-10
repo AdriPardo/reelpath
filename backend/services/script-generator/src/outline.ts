@@ -8,6 +8,7 @@ import {
   exampleOutlineSectionCounts,
   formatDurationRange,
   getMinScriptWords,
+  getOutlinePipelineHints,
   getTargetDurationMinSec,
   getTargetDurationMaxSec,
   getTargetScriptWords,
@@ -48,10 +49,11 @@ function outlineSystemHint(language: string, config: ChannelConfig): string {
       `hookA/hookB: pattern-interrupt brutal, escena 1 ≤${LONG_HOOK_MAX_WORDS} palabras. PROHIBIDO "hoy vamos a hablar de". ` +
       'Arco: gancho → contexto → mecanismo del enigma → consecuencias → lección → cierre con gancho. ' +
       '3-4 secciones con sceneCount, summary (datos concretos, nombres, cifras) y transitionToNext.' +
-      retentionNote
+      retentionNote +
+      `\n\n${getOutlinePipelineHints(config)}`
     );
   }
-  return 'Documentary script outline planner. Valid JSON only.';
+  return `Documentary script outline planner. Valid JSON only.\n\n${getOutlinePipelineHints(config)}`;
 }
 
 function buildOutlinePrompt(

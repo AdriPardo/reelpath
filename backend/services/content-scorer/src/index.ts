@@ -322,11 +322,13 @@ export function getViralHookGuidelines(minScore = 0): string {
       ? `Objetivo: cada idea debe poder superar score ${minScore}/100.`
       : 'Maximiza el potencial viral de cada idea.';
   return `${target}
-- hook: 20-80 caracteres; pregunta con "?" o afirmación con "!"
+- hook: 20-80 caracteres; pregunta con "?" o afirmación con "!" en las primeras palabras
 - Usa al menos una palabra de impacto: secreto, nunca, verdad, imposible, olvidado, paradoja, prohibido, misterio, oculto
-- Incluye un número cuando encaje (año, cifra, duración) o un personaje/lugar concreto
-- title: 30-70 caracteres, específico — persona + época/lugar + giro (no genérico)
+- Incluye un número cuando encaje (año, cifra, duración) o un personaje/lugar/empresa concreto
+- title: 30-70 caracteres, específico — sujeto + época/lugar + giro (no genérico)
 - PROHIBIDO: listas ("5 cosas"), "datos que no sabías", "te sorprenderá" sin especificidad
-- angle: debe describir el giro narrativo concreto, no "es interesante"
-- trendAlignment: 0.85-1.0 si el tema encaja con las tendencias`;
+- PROHIBIDO hooks lentos: "En este vídeo", "Hoy hablaremos", "Bienvenidos"
+- angle: debe describir el giro narrativo concreto (mecanismo o revelación), no "es interesante"
+- rationale: por qué engancha en una frase (específico al caso)
+- trendAlignment: 0.85-1.0 si el tema encaja con las tendencias; si no, sé honesto (0.5-0.7)`;
 }

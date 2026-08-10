@@ -6,10 +6,14 @@ import {
   getLongWordsPerSceneRange,
   formatDurationRange,
   formatDurationMinutes,
+  getNarrationQualityRules,
+  getScriptMetadataRules,
   getTargetDurationMinSec,
   getTargetDurationMaxSec,
+  getVisualPromptGenerationRules,
   LONG_HOOK_MAX_WORDS,
   LONG_SCENE_WORDS_ABSOLUTE_MIN,
+  resolveVisualSourceMode,
 } from '@autotube/shared';
 import {
   buildLongScriptCorrection,
@@ -71,7 +75,13 @@ function llmSystemHint(language: string, format: VideoFormat, config: ChannelCon
     format === 'long'
       ? `Escena 1 ≤${LONG_HOOK_MAX_WORDS} palabras. Escenas 2+: ${wordsPerScene} palabras obligatorias.`
       : `Narration ${wordsPerScene} palabras/escena.`;
-  return `${languageSystemHint(language, format, config)} JSON válido. ${sceneRule} ${wordRule}`;
+  const visualMode = resolveVisualSourceMode(config);
+  return (
+    `${languageSystemHint(language, format, config)} JSON válido. ${sceneRule} ${wordRule}\n\n` +
+    `${getNarrationQualityRules(language, format)}\n\n` +
+    `${getScriptMetadataRules(format)}\n\n` +
+    getVisualPromptGenerationRules(visualMode)
+  );
 }
 
 function longFormMaxTokens(attempt: number): number {

@@ -1,10 +1,12 @@
 import { getLlmClient, isLlmMockMode } from '@autotube/llm';
 import type { ChannelConfig, ScriptScene } from '@autotube/shared';
 import {
+  getAssembleScenePipelineHints,
   getLongWordsPerSceneRange,
   getMinScriptWords,
   LONG_SCENE_WORDS_MAX,
   LONG_SCENE_WORDS_MIN,
+  resolveVisualSourceMode,
 } from '@autotube/shared';
 import type { ScriptOutline } from './types.js';
 import { countWords, normalizeScenes, totalSceneWords } from './utils.js';
@@ -90,6 +92,7 @@ export async function generatePaddingScene(params: {
   }
 
   const llm = getLlmClient();
+  const visualMode = resolveVisualSourceMode(config);
   const retentionClosing =
     params.config.retentionMode
       ? `\nMODO RETENCIÓN: si es escena de cierre, termina con pregunta abierta, teaser o cliffhanger ` +
@@ -103,23 +106,26 @@ export async function generatePaddingScene(params: {
     (lastSection ? `Bloque final "${lastSection.title}": ${lastSection.summary}\n` : '') +
     `Narración: ${range} palabras (mínimo ${LONG_SCENE_WORDS_MIN}).\n` +
     retentionClosing +
-    `visualPrompt único en inglés.\n\n` +
-    `JSON: { "narration": "...", "visualPrompt": "..." }`;
+    `\n${getAssembleScenePipelineHints(config, visualMode)}\n\n` +
+    `JSON: { "narration": "...", "visualPrompt": "...", "stockQuery": "optional" }`;
 
   const system =
     config.language.startsWith('es')
       ? 'Guionista documental. Una escena adicional en español oral. JSON válido.'
       : 'Documentary scriptwriter. One additional scene. Valid JSON.';
 
-  const raw = await llm.completeJson<{ narration?: string; visualPrompt?: string }>(prompt, system, {
-    maxTokens: 800,
-  });
+  const raw = await llm.completeJson<{ narration?: string; visualPrompt?: string; stockQuery?: string }>(
+    prompt,
+    system,
+    { maxTokens: 800 },
+  );
 
   const narration = String(raw.narration ?? '');
   return {
     index: sceneNumber - 1,
     narration,
     visualPrompt: String(raw.visualPrompt ?? previousScene.visualPrompt),
+    stockQuery: String(raw.stockQuery ?? '').trim() || previousScene.stockQuery,
     durationSec: countWords(narration) * 0.45,
   };
 }
@@ -146,12 +152,14 @@ export async function expandScene(params: {
 
   const llm = getLlmClient();
   const range = getLongWordsPerSceneRange();
+  const visualMode = resolveVisualSourceMode(config);
 
   const prompt =
     `Expande SOLO esta escena del guion documental "${outline.title}" a ${range} palabras.\n` +
     `Escena ${sceneNumber} actual (${currentWords} palabras):\n"${scene.narration}"\n\n` +
     `Mantén el mismo significado y tono. Añade contexto, detalles y consecuencias sin repetir ideas.\n` +
-    `Mínimo ${LONG_SCENE_WORDS_MIN} palabras.\n\n` +
+    `Mínimo ${LONG_SCENE_WORDS_MIN} palabras.\n` +
+    `\n${getAssembleScenePipelineHints(config, visualMode)}\n\n` +
     `JSON: { "narration": "...", "visualPrompt": "${scene.visualPrompt.replace(/"/g, '\\"')}" }`;
 
   const system =

@@ -96,7 +96,8 @@ export async function fixTeaserHookWithLlm(params: {
     `Reescribe SOLO la escena 1 (gancho) del teaser Short para "${longVideoTitle}".\n\n` +
     buildTeaserHookHint(first) +
     `\nLongitud máxima: 12 palabras (actual: ${countWords(first.narration)}).\n` +
-    `visualPrompt actual (mantener estilo): "${first.visualPrompt}"\n\n` +
+    `visualPrompt actual (mantener estilo): "${first.visualPrompt}"\n` +
+    `Español oral, pattern-interrupt, sin intros lentas.\n\n` +
     `JSON: { "narration": "...", "visualPrompt": "..." }`;
 
   const system = config.language.startsWith('es')
