@@ -11,7 +11,9 @@ import {
   getTargetDurationMinSec,
   getTargetDurationMaxSec,
   getTargetScriptWords,
+  getVisualPromptGenerationRules,
   LONG_HOOK_MAX_WORDS,
+  resolveVisualSourceMode,
   youtubeLongTitleMaxForShortParts,
   YOUTUBE_TITLE_MAX_CHARS,
 } from '@autotube/shared';
@@ -89,6 +91,7 @@ function buildOutlinePrompt(
     config.publishYoutubeShorts === true
       ? youtubeLongTitleMaxForShortParts()
       : YOUTUBE_TITLE_MAX_CHARS;
+  const visualMode = resolveVisualSourceMode(config);
 
   return (
     `Planifica la ESTRUCTURA (outline) de un guion documental largo. NO generes narraciones completas todavía.\n\n` +
@@ -105,7 +108,8 @@ function buildOutlinePrompt(
     `- Arco narrativo investigativo: gancho brutal → contexto (época, lugar, protagonistas) → mecanismo del enigma/engaño → consecuencias → lección → cierre memorable\n` +
     `- hookA: pregunta directa que contradiga creencias (≤${LONG_HOOK_MAX_WORDS} palabras). Ej: "¿Y si el imperio cayó por un error de traducción?"\n` +
     `- hookB: afirmación impactante con dato concreto (≤${LONG_HOOK_MAX_WORDS} palabras). Ej: "Nadie sabe que este tratado se firmó tres días después de la muerte del rey."\n` +
-    `- hookVisualPrompt: descripción visual concreta en inglés para escena 1 (NO genérico)\n` +
+    `- hookVisualPrompt: sigue modo visual ${visualMode}. ` +
+    `${getVisualPromptGenerationRules(visualMode).split('\n').slice(1).join(' ')}\n` +
     `- title del vídeo: frase completa ≤${titleMax} caracteres (límite YouTube; no cortes a medias)\n` +
     `- Cada summary debe incluir nombres, fechas o cifras verificables — no generalidades\n` +
     `- Cada sección: title, sceneCount (≥2), summary (qué cubre el bloque), transitionToNext (frase puente; omitir en última sección)\n` +

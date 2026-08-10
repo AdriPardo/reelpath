@@ -349,6 +349,7 @@ async function runPipelineStep(
           retentionMode: config.retentionMode,
           videoMotionIntensity: config.videoMotionIntensity,
           visualSourceMode: config.visualSourceMode,
+          niche: config.niche,
           orgPlan: org?.plan,
           channelGenerateAiImages: config.generateAiImages,
           channelFalI2vEnabled: config.falI2vEnabled,

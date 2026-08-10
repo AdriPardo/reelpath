@@ -1,42 +1,42 @@
 # Graph Report - workspace  (2026-08-10)
 
 ## Corpus Check
-- 515 files · ~330,229 words
+- 517 files · ~331,713 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 3524 nodes · 6355 edges · 240 communities (208 shown, 32 thin omitted)
+- 3527 nodes · 6342 edges · 233 communities (201 shown, 32 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 45 edges (avg confidence: 0.71)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `875b7099`
+- Built from commit: `7cde47da`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - idea-generator/src/index.ts
 - api/src/index.ts
-- api
 - api.ts
+- useToast
 - countWords
 - org.ts
 - ChannelCard.tsx
 - stock-provider.ts
-- VideoCard.tsx
+- Nav.tsx
 - videos/page.tsx
-- AuthContext.tsx
-- translate
+- prompt-visual.ts
+- videos/[id]/page.tsx
 - getOrgPipelineOverrides
 - media-providers.ts
-- middleware/auth.ts
-- useToast
+- api/src/lib/auth-cookie.ts
+- ChannelDetailTabs.tsx
 - site-brand.ts
 - ThemeContext.tsx
 - video-renderer/src/index.ts
-- UploadLongVideoButton.tsx
-- api/src/lib/auth.ts
-- StatusBadge.tsx
+- retention.ts
+- a/[slug]/page.tsx
+- VideoCard.tsx
 - frontend/src/lib/auth-cookie.ts
 - database/src/index.ts
 - HelpSearch.tsx
@@ -44,9 +44,8 @@
 - fal-i2v.ts
 - edge-tts.ts
 - upload-long.ts
-- Nav.tsx
+- navigation.ts
 - PipelineDetailLive.tsx
-- SettingsApiKeysPanel.tsx
 - png-utils.ts
 - Graphify + Obsidian
 - graphify-export-obsidian.sh
@@ -55,7 +54,7 @@
 - youtube-title.ts
 - stripe-webhook.ts
 - videos.ts
-- SettingsLayout.tsx
+- AuthContext.tsx
 - Adopción desde MoneyPrinterTurbo
 - dependencies
 - social-metadata.ts
@@ -65,7 +64,6 @@
 - LegalArticles.tsx
 - channels.ts
 - subtitle-style.ts
-- stock-query.ts
 - @autotube/job-queue
 - @autotube/media-generator
 - config-system/src/index.ts
@@ -78,10 +76,6 @@
 - multer
 - Skeleton.tsx
 - rotate-secret.ts
-- ReviewVideoCard.tsx
-- ShortsClipsSection.tsx
-- stock-relevance.ts
-- fal-flux-image.ts
 - pickFirstSecret
 - publication-planner.ts
 - llm/src/index.ts
@@ -92,7 +86,7 @@
 - compilerOptions
 - config-system/package.json
 - resolve-settings.ts
-- routes/auth.ts
+- middleware/auth.ts
 - analytics/package.json
 - idea-generator/package.json
 - dependencies
@@ -235,24 +229,24 @@
 - restore-db.sh
 
 ## God Nodes (most connected - your core abstractions)
-1. `api()` - 68 edges
-2. `useToast()` - 60 edges
+1. `useToast()` - 60 edges
+2. `api()` - 58 edges
 3. `countWords()` - 40 edges
 4. `scripts` - 39 edges
 5. `translate()` - 38 edges
 6. `Button()` - 34 edges
 7. `useAuth()` - 32 edges
 8. `loadConfig()` - 28 edges
-9. `parseApiError()` - 22 edges
-10. `AppLocale` - 21 edges
+9. `AppLocale` - 21 edges
+10. `parseApiError()` - 21 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `searchHelpIndex()` --indirect_call--> `t()`  [INFERRED]
   frontend/src/lib/help/help-search.ts → backend/api/src/lib/i18n.ts
-- `jaccardSimilarity()` --indirect_call--> `t()`  [INFERRED]
-  packages/shared/src/stock-relevance.ts → backend/api/src/lib/i18n.ts
 - `runAutoGenerateSweep()` --indirect_call--> `getZonedParts()`  [INFERRED]
   worker/src/auto-generate-sweep.ts → packages/shared/src/publication-planner.ts
+- `jaccardSimilarity()` --indirect_call--> `t()`  [INFERRED]
+  packages/shared/src/stock-relevance.ts → backend/api/src/lib/i18n.ts
 - `main()` --calls--> `cleanupPipelineRunStorage()`  [EXTRACTED]
   scripts/retention-cleanup.ts → backend/api/src/lib/pipeline-cleanup.ts
 - `main()` --calls--> `runAutoGenerateSweep()`  [EXTRACTED]
@@ -263,99 +257,99 @@
 - 2-file cycle: `backend/core/database/src/index.ts -> backend/core/database/src/platform-secrets.ts -> backend/core/database/src/index.ts`
 - 2-file cycle: `backend/core/config-system/src/index.ts -> backend/core/config-system/src/storage.ts -> backend/core/config-system/src/index.ts`
 
-## Communities (240 total, 32 thin omitted)
+## Communities (233 total, 32 thin omitted)
 
 ### Community 0 - "idea-generator/src/index.ts"
 Cohesion: 0.22
 Nodes (16): ensureSelectedIdea(), fetchTrends(), FORCED_TOPIC_STOPWORDS, forcedTopicMatchScore(), generateIdeas(), LlmIdeaItem, persistSelectedIdea(), pickGlobalBest() (+8 more)
 
 ### Community 1 - "api/src/index.ts"
-Cohesion: 0.12
-Nodes (18): app, config, isPrivateNetworkOrigin(), origin(), staticCorsOrigins, initSentryForApi(), installSentryErrorHandler(), installSentryMiddleware() (+10 more)
+Cohesion: 0.09
+Nodes (20): app, config, isPrivateNetworkOrigin(), origin(), staticCorsOrigins, initSentryForApi(), installSentryErrorHandler(), installSentryMiddleware() (+12 more)
 
-### Community 2 - "api"
+### Community 2 - "api.ts"
 Cohesion: 0.08
-Nodes (32): generateMetadata(), PipelineDetailPage(), pipelinePageTitle(), DashboardOrgAnalytics(), isSyncableChannel(), OrgAnalyticsSummary, RepublishButton(), ReviewActions() (+24 more)
+Nodes (34): DashboardOrgAnalytics(), isSyncableChannel(), OrgAnalyticsSummary, ShortClipActions(), formatMinutes(), formatPct(), VideoAnalyticsPanel(), SPEEDS (+26 more)
 
-### Community 3 - "api.ts"
-Cohesion: 0.06
-Nodes (35): Props, AdminBilling(), BillingOrg, BillingPayload, AdminInfra(), AdminLayout(), SECTION_IDS, SectionId (+27 more)
+### Community 3 - "useToast"
+Cohesion: 0.04
+Nodes (72): AdminBilling(), BillingOrg, BillingPayload, AdminInfra(), AdminLayout(), SECTION_IDS, SectionId, TAB_ALIASES (+64 more)
 
 ### Community 4 - "countWords"
 Cohesion: 0.06
 Nodes (97): assembleScript(), buildHookScene(), detectTransitionGaps(), expandScene(), expandScriptToMinDuration(), generatePaddingScene(), minimalOutline(), buildChunkCorrection() (+89 more)
 
 ### Community 5 - "org.ts"
-Cohesion: 0.10
-Nodes (22): cacheFile(), MemEntry, memory, readTtsPreviewCache(), touchMem(), ttsPreviewCacheKey(), writeTtsPreviewCache(), acceptInviteSchema (+14 more)
+Cohesion: 0.08
+Nodes (28): MemberRole, cacheFile(), MemEntry, memory, readTtsPreviewCache(), touchMem(), ttsPreviewCacheKey(), writeTtsPreviewCache() (+20 more)
 
 ### Community 6 - "ChannelCard.tsx"
-Cohesion: 0.08
-Nodes (31): ApiStatusBanner(), ChannelCard(), IntegrationPill(), DashboardActivePipelinesProps, PipelinesLiveTableProps, SettingsDevPanel(), minScheduleInputValue(), TriggerPipelineButton() (+23 more)
+Cohesion: 0.09
+Nodes (26): ApiStatusBanner(), ChannelCard(), ChannelCreatePanel(), CreateMode, DashboardActivePipelinesProps, SettingsDevPanel(), minScheduleInputValue(), TriggerPipelineButton() (+18 more)
 
 ### Community 7 - "stock-provider.ts"
 Cohesion: 0.15
 Nodes (27): cacheKey(), downloadToFile(), fetchCoverrVideoCandidates(), fetchPexelsImage(), fetchPexelsVideoCandidates(), fetchPixabayVideoCandidates(), isCloudflareChallenge(), matchesAspect() (+19 more)
 
-### Community 8 - "VideoCard.tsx"
-Cohesion: 0.27
-Nodes (6): ChannelBadge(), ChannelBadgeProps, formatCreatedAtLong(), formatCreatedAtShort(), VideoCard(), VideoCardProps
+### Community 8 - "Nav.tsx"
+Cohesion: 0.14
+Nodes (10): AUTH_PATHS, IconAdmin(), LEGAL_PATHS, Nav(), NAV_ITEMS, NavEntry, NavIcon, profileInitial() (+2 more)
 
 ### Community 9 - "videos/page.tsx"
 Cohesion: 0.06
-Nodes (41): ChannelDetailPage(), ChannelsPage(), Props, parseFilter(), PipelineFilter, PipelinesPage(), Props, Props (+33 more)
+Nodes (39): Props, ChannelDetailPage(), ChannelsPage(), Props, InvitePage(), generateMetadata(), PipelineDetailPage(), pipelinePageTitle() (+31 more)
 
-### Community 10 - "AuthContext.tsx"
-Cohesion: 0.13
-Nodes (18): channelHasIntegration(), greetingName(), HomePage(), Props, BillingPastDueBanner(), GettingStartedChecklist(), GettingStartedChecklistProps, TrialBanner() (+10 more)
+### Community 10 - "prompt-visual.ts"
+Cohesion: 0.29
+Nodes (12): aspectLabel(), buildAiImagePrompt(), buildI2vMotionPrompt(), getAiVisualScriptHints(), getVisualPromptGenerationRules(), ImageStyleFamily, isGenericVisualPrompt(), motionPresetToCameraPrompt() (+4 more)
 
-### Community 11 - "translate"
-Cohesion: 0.14
-Nodes (19): detectLocale(), GlobalError(), VideoDetailPage(), AuthContextValue, AppLocale, formatDurationReadable(), catalogs, defaultLocale (+11 more)
+### Community 11 - "videos/[id]/page.tsx"
+Cohesion: 0.07
+Nodes (46): detectLocale(), GlobalError(), VideoDetailPage(), QualityReportPanel(), scoreClass(), STATUS_META, ReviewActions(), formatReviewDate() (+38 more)
 
 ### Community 12 - "getOrgPipelineOverrides"
 Cohesion: 0.26
 Nodes (12): effectiveDeepseekApiKey(), effectiveLlmProviderPreference(), effectiveOpenAiApiKey(), getLlmModel(), getMaxScenes(), getMinScenes(), getOpenAiModel(), isAiSceneImagesEnabled() (+4 more)
 
 ### Community 13 - "media-providers.ts"
-Cohesion: 0.14
-Nodes (22): downloadFalImageToFile(), aspectLabel(), buildImagePrompt(), estimateDuration(), formatSrtTime(), generateProceduralSceneImage(), generateSceneImage(), generateSilentAudio() (+14 more)
-
-### Community 14 - "middleware/auth.ts"
 Cohesion: 0.13
-Nodes (16): attachUserLocale(), attachUserLocaleMiddleware(), authMiddleware(), enforceAuthMiddleware(), Express, extractAuthToken(), extractBearerToken(), extractCookieToken() (+8 more)
+Nodes (24): authorize(), downloadFalImageToFile(), FalFluxImageParams, FalFluxImageResult, generateFalFluxImage(), imageSizeForAspect(), estimateDuration(), formatSrtTime() (+16 more)
 
-### Community 15 - "useToast"
-Cohesion: 0.06
-Nodes (51): ChannelAnalyticsPanel(), formatMinutes(), formatPct(), ChannelDeleteButton(), DeleteChannelModal(), ChannelDetailTabs(), configChip(), shortsChip() (+43 more)
+### Community 14 - "api/src/lib/auth-cookie.ts"
+Cohesion: 0.30
+Nodes (9): AUTH_COOKIE_MAX_AGE_SEC, AUTH_COOKIE_NAME, clearAuthCookies(), cookieOptions(), cookieSecure(), isCrossSiteCookie(), LEGACY_AUTH_COOKIE_NAME, serializeAuthCookie() (+1 more)
+
+### Community 15 - "ChannelDetailTabs.tsx"
+Cohesion: 0.05
+Nodes (47): ChannelAnalyticsPanel(), formatMinutes(), formatPct(), IntegrationPill(), ChannelDetailTabs(), configChip(), shortsChip(), TabValue (+39 more)
 
 ### Community 16 - "site-brand.ts"
 Cohesion: 0.18
 Nodes (11): LoginPage(), RegisterPage(), AutoTubeIcon, BrandMark(), BrandMarkProps, MarketingHome(), useHomeMotion(), DEMO_CHANNEL (+3 more)
 
 ### Community 17 - "ThemeContext.tsx"
-Cohesion: 0.19
-Nodes (9): SettingsPreferencesPanel(), ThemeToggle(), applyTheme(), getStoredTheme(), Theme, ThemeContext, ThemeContextValue, ThemeProvider() (+1 more)
+Cohesion: 0.15
+Nodes (12): LocaleSwitcher(), Providers(), SettingsPreferencesPanel(), ThemeToggle(), ToastProvider(), applyTheme(), getStoredTheme(), Theme (+4 more)
 
 ### Community 18 - "video-renderer/src/index.ts"
 Cohesion: 0.07
 Nodes (67): isSupportedBgm(), listAudioInDir(), listBgmFiles(), mixBgmIntoVideo(), resolveBgmFile(), shouldUseBgm(), SUPPORTED_BGM_EXTENSIONS, applyClipOverlay() (+59 more)
 
-### Community 19 - "UploadLongVideoButton.tsx"
-Cohesion: 0.22
-Nodes (11): ChannelCreatePanel(), CreateMode, ACCEPTED_TYPES, isMp4(), UploadLongVideoButton(), UploadPhase, uploadWithProgress(), clearToken() (+3 more)
+### Community 19 - "retention.ts"
+Cohesion: 0.20
+Nodes (4): NORMAL_KEN_BURNS, RETENTION_KEN_BURNS, RETENTION_PHRASE_MAX_LEN, VideoFormat
 
-### Community 20 - "api/src/lib/auth.ts"
-Cohesion: 0.24
-Nodes (12): AuthContext, getAuthSecretKey(), hashPassword(), isAdminRole(), JwtPayload, MemberRole, signToken(), verifyPassword() (+4 more)
+### Community 20 - "a/[slug]/page.tsx"
+Cohesion: 0.83
+Nodes (3): generateMetadata(), HelpArticlePage(), getHelpArticleBySlug()
 
-### Community 21 - "StatusBadge.tsx"
-Cohesion: 0.19
-Nodes (17): Chip(), ChipSize, ChipVariant, BadgeKind, badgeVariant(), PIPELINE_KEYS, REVIEW_KEYS, StatusBadge() (+9 more)
+### Community 21 - "VideoCard.tsx"
+Cohesion: 0.11
+Nodes (25): ChannelBadge(), ChannelBadgeProps, ReviewVideoCardProps, minScheduleInputValue(), PublicationPlanPreview, SchedulePublishChoice, SchedulePublishModal(), Chip() (+17 more)
 
 ### Community 22 - "frontend/src/lib/auth-cookie.ts"
-Cohesion: 0.44
-Nodes (5): GET(), AUTH_COOKIE, LEGACY_AUTH_COOKIE, getServerAuthToken(), decodeAuthCookieValue()
+Cohesion: 0.40
+Nodes (6): GET(), AUTH_COOKIE, LEGACY_AUTH_COOKIE, authHeadersFromCookie(), getServerAuthToken(), decodeAuthCookieValue()
 
 ### Community 23 - "database/src/index.ts"
 Cohesion: 0.07
@@ -366,8 +360,8 @@ Cohesion: 0.67
 Nodes (3): HelpSearch(), SearchHit, useDebounced()
 
 ### Community 26 - "fal-i2v.ts"
-Cohesion: 0.46
-Nodes (7): authorize(), FalI2vParams, generateFalImageToVideo(), isTerminalFailure(), isTerminalSuccess(), sleep(), uploadImageToFal()
+Cohesion: 0.39
+Nodes (8): authorize(), buildFalI2vMotionPrompt(), FalI2vParams, generateFalImageToVideo(), isTerminalFailure(), isTerminalSuccess(), sleep(), uploadImageToFal()
 
 ### Community 27 - "edge-tts.ts"
 Cohesion: 0.20
@@ -377,17 +371,13 @@ Nodes (13): postProcessTtsAudio(), edgeProvider, synthesizeOnce(), unlinkIfEmpty
 Cohesion: 0.38
 Nodes (6): execFileAsync, handleLongVideoUpload(), probeVideoFile(), UploadLongVideoParams, UploadLongVideoResult, VideoProbeResult
 
-### Community 29 - "Nav.tsx"
-Cohesion: 0.06
-Nodes (30): Props, ChannelSwitcher(), HelpFab(), LocaleSwitcher(), LocaleSwitcherProps, AUTH_PATHS, IconAdmin(), LEGAL_PATHS (+22 more)
+### Community 29 - "navigation.ts"
+Cohesion: 0.17
+Nodes (10): Props, HelpFab(), LocaleSwitcherProps, { Link, redirect, usePathname, useRouter, getPathname }, locales, routing, isPublicPath(), PUBLIC_PATHS (+2 more)
 
 ### Community 30 - "PipelineDetailLive.tsx"
-Cohesion: 0.12
-Nodes (32): DashboardActivePipelines(), PipelineCancelButton(), channelStepperOptions(), PipelineDetailLive(), PipelineElapsed(), PipelineProgressBar(), PipelineProgressBarProps, PipelineRetryButton() (+24 more)
-
-### Community 31 - "SettingsApiKeysPanel.tsx"
-Cohesion: 0.14
-Nodes (17): IMAGE_QUALITY_OPTIONS, ImageQuality, LLM_OPTIONS, LlmProvider, OrgSettings, SettingsApiKeysPanel(), TTS_OPTIONS, TtsProvider (+9 more)
+Cohesion: 0.10
+Nodes (35): DashboardActivePipelines(), channelStepperOptions(), PipelineDetailLive(), PipelineElapsed(), PipelineProgressBar(), PipelineProgressBarProps, Filter, PipelineCounts (+27 more)
 
 ### Community 32 - "png-utils.ts"
 Cohesion: 0.32
@@ -402,8 +392,8 @@ Cohesion: 0.18
 Nodes (6): Bridge local (PlatformSecret en DB app), Platform AI secrets (ops), Preferido: Atlas + envFrom, Reglas, Resolución runtime, UI
 
 ### Community 36 - "media-generator/src/index.ts"
-Cohesion: 0.29
-Nodes (10): execFileAsync, getAudioDuration(), isNearSilentAudio(), buildSyncedSrtFromScenesWithBoundaries(), ensureDir(), generateMedia(), buildFalI2vMotionPrompt(), writeSceneSubtitle() (+2 more)
+Cohesion: 0.31
+Nodes (9): execFileAsync, getAudioDuration(), isNearSilentAudio(), buildSyncedSrtFromScenesWithBoundaries(), ensureDir(), generateMedia(), writeSceneSubtitle(), pathExists() (+1 more)
 
 ### Community 37 - "youtube-title.ts"
 Cohesion: 0.39
@@ -415,11 +405,11 @@ Nodes (40): ACTIVE_SUBSCRIPTION_STATUSES, appendCheckoutTaxParams(), BillingStat
 
 ### Community 39 - "videos.ts"
 Cohesion: 0.06
-Nodes (45): paginatedResponse(), PaginatedResult, PaginationParams, parsePagination(), CANCELLABLE_VIDEO_REVIEW, cancelPipelineRun(), isPipelineCancellable(), PlanLimitError (+37 more)
+Nodes (44): paginatedResponse(), PaginatedResult, PaginationParams, parsePagination(), CANCELLABLE_VIDEO_REVIEW, cancelPipelineRun(), isPipelineCancellable(), planLimitErrorBody() (+36 more)
 
-### Community 40 - "SettingsLayout.tsx"
-Cohesion: 0.10
-Nodes (25): InvitePage(), Props, SettingsAccountPanel(), SettingsBillingNotice(), profileInitial(), SECTION_IDS, SectionId, SettingsLayout() (+17 more)
+### Community 40 - "AuthContext.tsx"
+Cohesion: 0.06
+Nodes (46): channelHasIntegration(), greetingName(), HomePage(), Props, Props, BillingPastDueBanner(), GettingStartedChecklist(), GettingStartedChecklistProps (+38 more)
 
 ### Community 41 - "Adopción desde MoneyPrinterTurbo"
 Cohesion: 0.25
@@ -443,15 +433,11 @@ Nodes (9): Props, Props, PrivacyPolicyArticle(), TermsOfServiceArticle(), LegalS
 
 ### Community 48 - "channels.ts"
 Cohesion: 0.09
-Nodes (40): buildCredentialFromEnv(), ChannelIntegrationsResponse, checkYouTubeStatus(), deleteChannelCredential(), envYouTubeData(), getChannelIntegrations(), getIntegrationsSummaryForChannels(), IntegrationProvider (+32 more)
+Nodes (39): buildCredentialFromEnv(), ChannelIntegrationsResponse, checkYouTubeStatus(), deleteChannelCredential(), envYouTubeData(), getChannelIntegrations(), getIntegrationsSummaryForChannels(), IntegrationProvider (+31 more)
 
 ### Community 49 - "subtitle-style.ts"
 Cohesion: 0.67
 Nodes (5): contrastRatio(), hexLuminance(), subtitleColorsAreIndistinguishable(), subtitleTextNeedsExtendedFont(), warnSubtitleStyle()
-
-### Community 50 - "stock-query.ts"
-Cohesion: 0.60
-Nodes (3): buildStockSearchQuery(), clampQueryWords(), STOPWORDS
 
 ### Community 53 - "config-system/src/index.ts"
 Cohesion: 0.12
@@ -462,8 +448,8 @@ Cohesion: 0.05
 Nodes (39): scripts, build, build:core, channel:auto-publish, clean:web, db:generate, db:migrate, db:migrate:deploy (+31 more)
 
 ### Community 58 - "shared/src/types.ts"
-Cohesion: 0.06
-Nodes (29): NORMAL_KEN_BURNS, RETENTION_KEN_BURNS, RETENTION_PHRASE_MAX_LEN, AspectRatio, ChannelConfig, ContentScoreBreakdown, MediaAssetDTO, MediaAssetType (+21 more)
+Cohesion: 0.09
+Nodes (25): AspectRatio, ChannelConfig, ContentScoreBreakdown, MediaAssetDTO, MediaAssetType, PIPELINE_STEPS, PipelineJobPayload, PipelineStatus (+17 more)
 
 ### Community 61 - "Skeleton.tsx"
 Cohesion: 0.13
@@ -472,22 +458,6 @@ Nodes (9): Skeleton(), SkeletonCard(), SkeletonGrid(), SkeletonHeader(), Skeleto
 ### Community 62 - "rotate-secret.ts"
 Cohesion: 0.60
 Nodes (4): counters, nextRotatedSecret(), parseSecretKeyList(), resetSecretRotation()
-
-### Community 63 - "ReviewVideoCard.tsx"
-Cohesion: 0.12
-Nodes (19): QualityReportPanel(), scoreClass(), STATUS_META, formatReviewDate(), ReviewVideoCard(), ReviewVideoCardProps, SPEEDS, VideoPlayer() (+11 more)
-
-### Community 64 - "ShortsClipsSection.tsx"
-Cohesion: 0.22
-Nodes (14): ShortClipActions(), formatScheduledDate(), ShortsClipsSection(), ShortsClipsSectionProps, shortUrl(), ShortsPanel(), ShortsPanelProps, clipStreamUrl() (+6 more)
-
-### Community 65 - "stock-relevance.ts"
-Cohesion: 0.71
-Nodes (5): boostScoreByQueryRelevance(), jaccardSimilarity(), normalizeToken(), rerankTermsBySubject(), tokenizeRelevanceText()
-
-### Community 66 - "fal-flux-image.ts"
-Cohesion: 0.47
-Nodes (5): authorize(), FalFluxImageParams, FalFluxImageResult, generateFalFluxImage(), imageSizeForAspect()
 
 ### Community 67 - "pickFirstSecret"
 Cohesion: 0.31
@@ -529,9 +499,9 @@ Nodes (25): @aws-sdk/client-s3, dependencies, @autotube/shared, @aws-sdk/client-
 Cohesion: 0.15
 Nodes (20): loadEffectiveConfig(), PRODUCT_DEFAULTS, ProductImageQuality, ProductTtsProvider, IMAGE_QUALITIES, resolveGenerateAiImages(), ResolveGenerateAiImagesInput, resolveImageQuality() (+12 more)
 
-### Community 105 - "routes/auth.ts"
-Cohesion: 0.11
-Nodes (23): AUTH_COOKIE_MAX_AGE_SEC, AUTH_COOKIE_NAME, clearAuthCookies(), cookieOptions(), cookieSecure(), isCrossSiteCookie(), LEGACY_AUTH_COOKIE_NAME, serializeAuthCookie() (+15 more)
+### Community 105 - "middleware/auth.ts"
+Cohesion: 0.09
+Nodes (35): AuthContext, getAuthSecretKey(), hashPassword(), isAdminRole(), JwtPayload, signToken(), verifyPassword(), verifyToken() (+27 more)
 
 ### Community 106 - "analytics/package.json"
 Cohesion: 0.07
@@ -602,16 +572,16 @@ Cohesion: 0.19
 Nodes (15): deleteChannelWithCleanup(), cleanupPipelineRunStorage(), deletePipelineRunCompletely(), deleteVideoLocalFilesOnly(), rmDirQuiet(), unlinkQuiet(), args, cleanupOrphans() (+7 more)
 
 ### Community 151 - "shared/src/index.ts"
-Cohesion: 0.12
-Nodes (10): YouTubeAnalyticsInsights, YouTubeAnalyticsSummary, YouTubeMetricsSource, YouTubeVideoMetrics, buildKaraokeAssForScene(), escapeAssText(), formatAssTime(), PAID_PLAN_IDS (+2 more)
+Cohesion: 0.10
+Nodes (13): YouTubeAnalyticsInsights, YouTubeAnalyticsSummary, YouTubeMetricsSource, YouTubeVideoMetrics, buildKaraokeAssForScene(), escapeAssText(), formatAssTime(), PAID_PLAN_IDS (+5 more)
 
 ### Community 155 - "dependencies"
 Cohesion: 0.11
 Nodes (19): dependencies, @autotube/analytics, @autotube/config, bcryptjs, cors, express, express-rate-limit, jose (+11 more)
 
 ### Community 156 - "lib/notifications.ts"
-Cohesion: 0.21
-Nodes (11): isDbSchemaError(), AppNotification, CreateNotificationInput, getComputedNotifications(), getOrgNotifications(), getStoredNotifications(), markAllNotificationsRead(), markNotificationRead() (+3 more)
+Cohesion: 0.18
+Nodes (13): isDbSchemaError(), AppNotification, CreateNotificationInput, getComputedNotifications(), getOrgNotifications(), getStoredNotifications(), markAllNotificationsRead(), markNotificationRead() (+5 more)
 
 ### Community 157 - "llm/package.json"
 Cohesion: 0.12
@@ -662,8 +632,8 @@ Cohesion: 0.22
 Nodes (5): ensureSessionViaApi(), loginViaApi(), registerViaApi(), registerViaApiWithToken(), setSessionToken()
 
 ### Community 188 - "HelpArticle.tsx"
-Cohesion: 0.24
-Nodes (11): generateMetadata(), HelpArticlePage(), HelpArticle(), HelpToc(), scrollToHeading(), TocItem, useActiveHeading(), MarkdownArticle() (+3 more)
+Cohesion: 0.31
+Nodes (8): HelpArticle(), HelpToc(), scrollToHeading(), TocItem, useActiveHeading(), MarkdownArticle(), HelpArticleMeta, getArticleToc()
 
 ### Community 189 - "help-content.ts"
 Cohesion: 0.21
@@ -690,8 +660,8 @@ Cohesion: 0.17
 Nodes (11): DURATION_RANGES, GENERIC_HOOK_PATTERNS, HOOK_POWER_WORDS, rankIdeas(), scoreAngle(), scoreHook(), scoreIdea(), scoreVideoQuality() (+3 more)
 
 ### Community 205 - "api/src/lib/plan-limits.ts"
-Cohesion: 0.11
-Nodes (26): ApiLocale, catalogs, interpolate(), MessageTree, parseAcceptLanguage(), resolveKey(), resolveLocale(), t() (+18 more)
+Cohesion: 0.10
+Nodes (30): catalogs, interpolate(), MessageTree, parseAcceptLanguage(), resolveKey(), resolveLocale(), t(), assertOrgCanPublish() (+22 more)
 
 ### Community 211 - "Checklist completo (pre-deploy)"
 Cohesion: 0.14
@@ -1010,24 +980,24 @@ Cohesion: 0.67
 Nodes (3): 8. Subir un vídeo que ya tienes, Pasos, Requisitos
 
 ## Knowledge Gaps
-- **1263 isolated node(s):** `name`, `version`, `private`, `type`, `build` (+1258 more)
+- **1264 isolated node(s):** `name`, `version`, `private`, `type`, `build` (+1259 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **32 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `t()` connect `api/src/lib/plan-limits.ts` to `idea-generator/src/index.ts`, `stock-relevance.ts`, `help-search.ts`, `database/src/index.ts`?**
-  _High betweenness centrality (0.137) - this node is a cross-community bridge._
+- **Why does `t()` connect `api/src/lib/plan-limits.ts` to `idea-generator/src/index.ts`, `help-search.ts`, `database/src/index.ts`?**
+  _High betweenness centrality (0.131) - this node is a cross-community bridge._
 - **Why does `searchHelpIndex()` connect `help-search.ts` to `api/src/lib/plan-limits.ts`?**
-  _High betweenness centrality (0.103) - this node is a cross-community bridge._
-- **Why does `jaccardSimilarity()` connect `stock-relevance.ts` to `api/src/lib/plan-limits.ts`?**
-  _High betweenness centrality (0.057) - this node is a cross-community bridge._
+  _High betweenness centrality (0.094) - this node is a cross-community bridge._
 - **What connects `name`, `version`, `private` to the rest of the system?**
-  _1263 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _1264 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `api/src/index.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.11666666666666667 - nodes in this community are weakly interconnected._
-- **Should `api` be split into smaller, more focused modules?**
-  _Cohesion score 0.07616892911010557 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.09425287356321839 - nodes in this community are weakly interconnected._
 - **Should `api.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.0603921568627451 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.08292682926829269 - nodes in this community are weakly interconnected._
+- **Should `useToast` be split into smaller, more focused modules?**
+  _Cohesion score 0.04070201643017177 - nodes in this community are weakly interconnected._
+- **Should `countWords` be split into smaller, more focused modules?**
+  _Cohesion score 0.06334420121099209 - nodes in this community are weakly interconnected._

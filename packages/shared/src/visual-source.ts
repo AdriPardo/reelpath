@@ -1,4 +1,5 @@
 import type { ChannelConfig, ScriptScene, VisualSource, VisualSourceMode } from './types.js';
+import { getVisualPromptGenerationRules } from './prompt-visual.js';
 
 export type { VisualSourceMode };
 
@@ -36,23 +37,10 @@ export function applyVisualSourceToScenes(
   }));
 }
 
-/** Instrucciones extra para el LLM cuando el canal usa stock B-roll. */
+/**
+ * Instrucciones extra para el LLM según modo visual del canal.
+ * Código siempre-on (no depende de re-seed de plantillas DB).
+ */
 export function getStockVisualScriptHints(mode: VisualSourceMode): string {
-  if (mode === 'image') return '';
-
-  const base =
-    `\n\nVISUALES STOCK (metraje real — Pexels):\n` +
-    `- visualPrompt = 3-6 palabras clave en INGLÉS para buscar clips de vídeo (ej: "busy city street night", "hands signing contract", "aerial forest river").\n` +
-    `- Describe acciones y lugares filmables; evita escenas imposibles, texto en pantalla o personajes históricos concretos.\n` +
-    `- Cada escena debe tener keywords DISTINTAS.\n` +
-    `- NO uses "cinematic", "dramatic lighting" ni descripciones de estilo IA.`;
-
-  if (mode === 'mixed') {
-    return (
-      base +
-      `\n- En modo mixto: alterna entre keywords de stock (escenas pares) y descripciones más artísticas para IA (escenas impares).`
-    );
-  }
-
-  return base + `\n- Todas las escenas usarán clips de stock; prioriza keywords concretas y variadas.`;
+  return `\n\n${getVisualPromptGenerationRules(mode)}`;
 }

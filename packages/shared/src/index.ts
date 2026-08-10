@@ -11,6 +11,7 @@ export * from './shorts.js';
 export * from './publication-planner.js';
 export * from './analytics.js';
 export * from './visual-source.js';
+export * from './prompt-visual.js';
 export * from './visual-origin.js';
 export * from './billing-plans.js';
 export * from './tts-voices.js';

@@ -42,6 +42,8 @@ export async function generateMedia(params: {
   retentionMode?: boolean;
   videoMotionIntensity?: 'subtle' | 'normal' | 'dynamic';
   visualSourceMode?: ChannelConfig['visualSourceMode'];
+  /** Channel niche — styles AI image prompts. */
+  niche?: string | null;
   /** Plan de la organización — solo fuerza IA si FORCE_AI_IMAGES_ON_PAID=true. */
   orgPlan?: string | null;
   /** Channel.config.generateAiImages — undefined = heredar org/env. */
@@ -204,7 +206,11 @@ export async function generateMedia(params: {
       if (await pathExists(videoPath)) return false;
       try {
         const i2vModel = cfg.FAL_I2V_MODEL?.trim() || PRODUCT_DEFAULTS.falI2vModel;
-        const motionPrompt = buildFalI2vMotionPrompt(scene.visualPrompt, scene.narration);
+        const motionPrompt = buildFalI2vMotionPrompt(
+          scene.visualPrompt,
+          scene.narration,
+          motionPreset,
+        );
         console.info(
           `[media-generator] scene=${scene.index} fal i2v start (${reason}) model=${i2vModel} (${falI2vUsed + 1}/${maxFalI2v})`,
         );
@@ -252,6 +258,7 @@ export async function generateMedia(params: {
         stockQuery: stockQueries.get(scene.index) ?? scene.stockQuery,
         usedSourceIds: usedStockSourceIds,
         playbackSpeed: params.stockPlaybackSpeed,
+        niche: params.niche,
       });
       visualAssetType = visual.assetType;
       visualPath = visual.path;

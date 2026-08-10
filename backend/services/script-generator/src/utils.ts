@@ -28,6 +28,7 @@ export function normalizeScenes(scenes: ScriptScene[]): ScriptScene[] {
     visualPrompt: s.visualPrompt,
     durationSec: durationSecFromNarration(s.narration, s.durationSec),
     preferredVisualSource: s.preferredVisualSource,
+    stockQuery: s.stockQuery?.trim() || undefined,
     transitionPreset: s.transitionPreset,
   }));
 }
@@ -36,6 +37,11 @@ export function parseRawScenes(scenesRaw: Array<Record<string, unknown>>): Scrip
   return scenesRaw.map((s, i) => {
     const narration = String(s.narration ?? s.text ?? '');
     const rawDuration = Number(s.durationSec ?? s.duration ?? 0);
+    const stockQueryRaw = s.stockQuery ?? s.stock_query;
+    const stockQuery =
+      typeof stockQueryRaw === 'string' && stockQueryRaw.trim()
+        ? stockQueryRaw.trim()
+        : undefined;
     return {
       index: i,
       narration,
@@ -45,6 +51,7 @@ export function parseRawScenes(scenesRaw: Array<Record<string, unknown>>): Scrip
         s.preferredVisualSource === 'stock' || s.preferredVisualSource === 'image'
           ? s.preferredVisualSource
           : undefined,
+      stockQuery,
     };
   });
 }

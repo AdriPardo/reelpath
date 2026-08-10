@@ -4,8 +4,10 @@ import type { ChannelConfig, ScriptScene } from '@autotube/shared';
 import {
   buildLongWordsPerSceneHint,
   getLongWordsPerSceneRange,
+  getVisualPromptGenerationRules,
   LONG_SCENE_WORDS_HARD_MIN,
   LONG_SCENE_WORDS_MIN,
+  resolveVisualSourceMode,
 } from '@autotube/shared';
 import type { ScriptOutline, ScriptOutlineSection } from './types.js';
 import { validateChunkScenes } from './validate.js';
@@ -19,6 +21,7 @@ function chunkSystemHint(language: string, config: ChannelConfig): string {
     config.retentionMode
       ? ' Si es el último bloque: ESCENA FINAL con pregunta, teaser o cliffhanger obligatorio.'
       : '';
+  const visualMode = resolveVisualSourceMode(config);
   if (language === 'es' || language.startsWith('es-')) {
     return (
       'Guionista de documentales investigativos en español (estilo El Fraude Silencioso). ' +
@@ -26,12 +29,15 @@ function chunkSystemHint(language: string, config: ChannelConfig): string {
       `Cada narration del bloque: ${getLongWordsPerSceneRange()} palabras (mínimo ${LONG_SCENE_WORDS_HARD_MIN}). ` +
       'Incluye datos concretos: nombres, fechas, cifras, citas documentadas. ' +
       'PROHIBIDO estilo Shorts. PROHIBIDO "hoy vamos a hablar de". ' +
-      'visualPrompt en inglés, único y específico por escena. ' +
+      `Visuales según modo ${visualMode}: sigue las reglas de visualPrompt/stockQuery del usuario. ` +
       'Mantén continuidad con el contexto previo y la frase puente indicada.' +
       retentionNote
     );
   }
-  return 'Documentary script chunk writer. Valid JSON only.';
+  return (
+    `Documentary script chunk writer. Valid JSON only. Visual mode: ${visualMode}. ` +
+    'Follow visualPrompt/stockQuery rules in the user message.'
+  );
 }
 
 function formatPreviousContext(scenes: ScriptScene[]): string {
@@ -69,6 +75,7 @@ function buildChunkPrompt(params: {
   const range = getLongWordsPerSceneRange();
   const startSceneNum = previousScenes.length + 2;
   const isLastSection = sectionIndex === totalSections - 1;
+  const visualMode = resolveVisualSourceMode(config);
   const finalSceneRule = isLastSection
     ? config.retentionMode
       ? `- ESCENA FINAL (OBLIGATORIO modo retención): la última escena DEBE terminar con pregunta abierta, teaser de continuación o cliffhanger.\n` +
@@ -103,14 +110,14 @@ function buildChunkPrompt(params: {
     `- EXACTAMENTE ${section.sceneCount} escenas en el array "scenes"\n` +
     `- Cada narration: ${range} palabras (mínimo ${LONG_SCENE_WORDS_HARD_MIN})\n` +
     `- Incluye en cada escena al menos un dato concreto: nombre, fecha, cifra o cita\n` +
-    `- visualPrompt único en inglés, 15-30 palabras, escena concreta (NO "cinematic, dramatic lighting")\n` +
+    `- ${getVisualPromptGenerationRules(visualMode).replace(/\n/g, '\n  ')}\n` +
     `- NO repitas el gancho ni escenas ya escritas\n` +
     `- Hilado: la primera escena del bloque debe fluir desde el contexto previo\n` +
     finalSceneRule +
     `\n${buildLongWordsPerSceneHint()}\n` +
     (wordBudgetHint ? `\n${wordBudgetHint}\n` : '') +
     channelContext +
-    `\n\nJSON: { "scenes": [{ "narration": "...", "visualPrompt": "...", "durationSec": 40 }] }`
+    `\n\nJSON: { "scenes": [{ "narration": "...", "visualPrompt": "...", "stockQuery": "optional 1-3 EN words", "durationSec": 40 }] }`
   );
 }
 

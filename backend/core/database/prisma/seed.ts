@@ -679,6 +679,53 @@ scenes.length >= 12. Sin texto extra.`,
   },
   {
     type: 'script_generation',
+    version: '2.2.0',
+    name: 'Script Generator v2.2 (Mode-aware visuals)',
+    template: `Guion documental investigativo YouTube horizontal (16:9, 8-15 minutos). UNA sola historia desarrollada en profundidad.
+
+Tema: {{title}}
+Gancho: {{hook}}
+Giro: {{angle}}
+
+NOTA: En modo chunked el sistema genera por bloques — este prompt define el ESTILO narrativo objetivo. Las reglas visuales del canal (stock/IA/mixto) se inyectan en runtime.
+
+ARCO NARRATIVO (investigativo):
+1. Gancho brutal (pattern-interrupt, ≤20 palabras) — PROHIBIDO "hoy vamos a hablar de"
+2. Contexto: época, lugar, protagonistas con nombres y fechas
+3. Mecanismo: cómo ocurrió el enigma/engaño/fraude — paso a paso con datos
+4. Consecuencias: impacto inmediato y a largo plazo
+5. Lección: qué nos deja hoy
+6. Cierre: pregunta retórica o teaser suave (modo retención)
+
+OBLIGATORIO: entre 12 y 20 escenas. Cada narration (escenas 2+): 65-85 palabras en español oral.
+Duración total: mínimo 8 minutos (~1080+ palabras).
+
+LONGITUD (CRÍTICO):
+- ESCENA 1: gancho ≤20 palabras. Pattern-interrupt.
+- ESCENAS 2+: 65-85 palabras CADA UNA. Mínimo absoluto: 55 palabras.
+- PROHIBIDO estilo Shorts.
+
+RETENCIÓN (documental largo):
+- ESCENA 1: pregunta imposible o dato que contradiga creencias
+- Micro-ganchos cada 2-3 escenas
+- ESCENA FINAL: pregunta retórica o reflexión con gancho — NO despedida genérica
+
+hookA: pregunta directa (≤20 palabras). hookB: afirmación con dato concreto (≤20 palabras).
+
+VISUALES (base; el runtime refuerza según visualSourceMode):
+- visualPrompt ÚNICO en inglés por escena.
+- Si stock: 3-6 keywords filmables + stockQuery 1-3 palabras EN.
+- Si IA: 15-30 palabras (sujeto + plano + luz + atmósfera). PROHIBIDO solo "cinematic, dramatic lighting".
+- Sin texto/UI/watermarks en la descripción.
+
+JSON: { title, description (max 400 chars), tags (max 8), hookA, hookB, scenes: [
+  { narration, visualPrompt, stockQuery, durationSec: 40 }
+] }
+scenes.length >= 12. Sin texto extra.`,
+    variables: ['format', 'title', 'hook', 'angle', 'language'],
+  },
+  {
+    type: 'script_generation',
     version: '2.0.1',
     name: 'Script Generator v2.0.1 (Corporate Fraud 8-15 min)',
     template: `Guion documental YouTube horizontal (16:9, 8-15 minutos). UN solo caso de fraude corporativo documentado.
@@ -900,10 +947,10 @@ async function main() {
     }
   }
 
-  // Activate latest prompts (v1.8.0 ideas, v2.0.0 script with 10-15 min duration)
+  // Activate latest prompts (ideas v1.8.0, script v2.2.0 mode-aware visuals)
   for (const [type, version] of [
     ['idea_generation', '1.8.0'],
-    ['script_generation', '2.0.0'],
+    ['script_generation', '2.2.0'],
   ] as const) {
     const latest = await prisma.promptVersion.findUnique({
       where: { type_version: { type, version } },
@@ -1168,7 +1215,7 @@ async function main() {
 
   await bindChannelPrompts(channel.id, {
     idea_generation: '1.8.0',
-    script_generation: '2.1.0',
+    script_generation: '2.2.0',
     hook_ab: '1.0.0',
   });
 

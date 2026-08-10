@@ -426,7 +426,7 @@ export async function generateTeaserScript(params: {
     variationLine +
     buildChannelPromptContext(config) +
     getStockVisualScriptHints(resolveVisualSourceMode(config)) +
-    `\n\nResponde JSON con: title (título corto y completo del Short, distinto del largo, máx ${youtubeShortsTitleBudget()} caracteres, sin cortar palabras a medias), description, tags[], hook, scenes[{narration, visualPrompt, durationSec}].`;
+    `\n\nResponde JSON con: title (título corto y completo del Short, distinto del largo, máx ${youtubeShortsTitleBudget()} caracteres, sin cortar palabras a medias), description, tags[], hook, scenes[{narration, visualPrompt, stockQuery, durationSec}].`;
 
   let lastError: string | null = null;
   let lastParsed: ReturnType<typeof extractScriptResponse> | null = null;

@@ -1,6 +1,12 @@
 import { getLlmClient, isLlmMockMode } from '@autotube/llm';
 import type { ChannelConfig, ScriptScene, VideoFormat } from '@autotube/shared';
-import { getMinScriptWords, LONG_SCENE_WORDS_HARD_MIN, LONG_SCENE_WORDS_MIN } from '@autotube/shared';
+import {
+  getMinScriptWords,
+  getVisualPromptGenerationRules,
+  LONG_SCENE_WORDS_HARD_MIN,
+  LONG_SCENE_WORDS_MIN,
+  resolveVisualSourceMode,
+} from '@autotube/shared';
 import {
   assembleScript,
   detectTransitionGaps,
@@ -113,11 +119,11 @@ function fixTransitionGaps(scenes: ScriptScene[]): ScriptScene[] {
 
 function diversifyVisualPrompt(scene: ScriptScene, index: number, title: string): string {
   const bases = [
-    `Aerial documentary shot of historical site related to "${title}", golden hour, scene ${index + 1}`,
-    `Close-up of archival documents and maps on wooden desk, warm lamp light, scene ${index + 1}`,
-    `Slow tracking shot through ancient stone corridor with torchlight, scene ${index + 1}`,
-    `Scholars examining artifacts in museum archive, dramatic side lighting, scene ${index + 1}`,
-    `Wide establishing shot of period-accurate landscape with dramatic clouds, scene ${index + 1}`,
+    `Aerial establishing shot of locations tied to "${title}", golden hour haze, scene ${index + 1}`,
+    `Close-up of archival documents and maps on wooden desk, warm lamp practical, scene ${index + 1}`,
+    `Medium tracking shot through stone corridor with torchlight pools, scene ${index + 1}`,
+    `Researchers examining artifacts in museum archive, dramatic side light, scene ${index + 1}`,
+    `Wide landscape establishing shot with storm clouds over period architecture, scene ${index + 1}`,
   ];
   return bases[index % bases.length]!;
 }
@@ -128,6 +134,8 @@ async function fixGenericVisualPrompts(
   config: ChannelConfig,
 ): Promise<ScriptScene[]> {
   let updated = [...scenes];
+  const visualMode = resolveVisualSourceMode(config);
+  const visualRules = getVisualPromptGenerationRules(visualMode);
 
   if (!isLlmMockMode()) {
     const genericIndices = updated
@@ -140,18 +148,29 @@ async function fixGenericVisualPrompts(
       const scene = updated[idx]!;
       try {
         const llm = getLlmClient();
-        const prompt =
-          `Genera UN visualPrompt en inglés (15-30 palabras) para esta escena del documental "${outline.title}".\n` +
-          `Debe ser concreto, único y cinematográfico — NO genérico.\n` +
-          `Narración: "${scene.narration.slice(0, 200)}"\n\n` +
-          `JSON: { "visualPrompt": "..." }`;
+        const wantsStock = visualMode === 'stock' || (visualMode === 'mixed' && idx % 2 === 0);
+        const prompt = wantsStock
+          ? `Genera UN visualPrompt de stock (3-6 keywords EN) y stockQuery (1-3 palabras EN) para escena ${idx + 1} de "${outline.title}".\n` +
+            `${visualRules}\n` +
+            `Narración: "${scene.narration.slice(0, 200)}"\n\n` +
+            `JSON: { "visualPrompt": "...", "stockQuery": "..." }`
+          : `Genera UN visualPrompt en inglés (15-30 palabras) para escena ${idx + 1} de "${outline.title}".\n` +
+            `${visualRules}\n` +
+            `Debe ser concreto, único y cinematográfico — sujeto + plano + luz.\n` +
+            `Narración: "${scene.narration.slice(0, 200)}"\n\n` +
+            `JSON: { "visualPrompt": "..." }`;
         const system = config.language.startsWith('es')
           ? 'Director de fotografía documental. visualPrompt único en inglés. JSON válido.'
           : 'Documentary cinematographer. Unique visualPrompt in English. Valid JSON.';
-        const raw = await llm.completeJson<{ visualPrompt?: string }>(prompt, system, { maxTokens: 300 });
+        const raw = await llm.completeJson<{ visualPrompt?: string; stockQuery?: string }>(
+          prompt,
+          system,
+          { maxTokens: 300 },
+        );
         const vp = String(raw.visualPrompt ?? '').trim();
-        if (vp.length >= 35 && !GENERIC_VISUAL_PATTERN.test(vp)) {
-          updated[idx] = { ...scene, visualPrompt: vp };
+        const stockQuery = String(raw.stockQuery ?? '').trim() || undefined;
+        if (vp && (wantsStock ? vp.split(/\s+/).length >= 2 : vp.length >= 35) && !GENERIC_VISUAL_PATTERN.test(vp)) {
+          updated[idx] = { ...scene, visualPrompt: vp, stockQuery: stockQuery ?? scene.stockQuery };
         }
       } catch {
         // fall through to programmatic uniqueness pass

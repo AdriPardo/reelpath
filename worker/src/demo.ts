@@ -61,6 +61,8 @@ async function main() {
     script: script.selectedVariant,
     language: config.language,
     aspectRatio: config.aspectRatio,
+    niche: config.niche,
+    visualSourceMode: config.visualSourceMode,
   });
   console.log(`   Assets: ${assets.length} files`);
 
