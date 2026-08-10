@@ -123,6 +123,7 @@ async function buildTeaserClip(params: {
     await generateVerticalClipThumbnail({
       title: displayTitle,
       overlayText: overlay.overlayText,
+      highlightWord: overlay.highlightWord,
       partIndex,
       partCount: 1,
       videoPath: outPath,

@@ -6,7 +6,7 @@ import { clearOrgOpenAiApiKey, resetLlmClient } from '@autotube/llm';
 import { scoreVideoQuality } from '@autotube/content-scorer';
 import { generateIdeas, ensureSelectedIdea } from '@autotube/idea-generator';
 import { enqueuePipelineStep } from '@autotube/job-queue';
-import { generateMedia } from '@autotube/media-generator';
+import { generateMedia, generateThumbnailBackground } from '@autotube/media-generator';
 import { generateScript } from '@autotube/script-generator';
 import type { ChannelConfig, PipelineJobPayload, PipelineRunMetadata, ScriptVariant } from '@autotube/shared';
 import { computeShortPublishSlots, parseScheduledPublishAt, resolveDefaultShortCount, resolveMixedShortsCounts, resolvePlannerConfig, resolveSplitShortsCount } from '@autotube/shared';
@@ -370,8 +370,42 @@ async function runPipelineStep(
       case 'render_video': {
         await updatePipelineStatus(pipelineRunId, 'rendering_video', step);
         const scriptRecord = await prisma.script.findFirstOrThrow({ where: { pipelineRunId } });
-        const assets = await prisma.mediaAsset.findMany({ where: { pipelineRunId } });
+        let assets = await prisma.mediaAsset.findMany({ where: { pipelineRunId } });
         const variant = scriptRecord.selectedVariant as unknown as ScriptVariant;
+
+        // Miniatura = producto #1: si falta fondo CTR dedicado, forzar generación antes del render.
+        const hasThumbBg = assets.some((a) => {
+          const meta = a.metadata as { role?: string } | null;
+          return a.type === 'image' && meta?.role === 'thumbnail-bg';
+        });
+        if (!hasThumbBg) {
+          const selectedIdea = await prisma.videoIdea.findFirst({
+            where: { pipelineRunId, isSelected: true },
+            select: { angle: true, hook: true },
+          });
+          console.info('[worker] render_video — sin thumbnail-bg; generando fondo CTR…');
+          const thumbBg = await generateThumbnailBackground({
+            pipelineRunId,
+            title: scriptRecord.title,
+            hook: variant.hook || selectedIdea?.hook,
+            angle: selectedIdea?.angle,
+            niche: config.niche,
+            aspectRatio: config.aspectRatio,
+            forceAiImages: true,
+          });
+          if (thumbBg) {
+            await prisma.mediaAsset.create({
+              data: {
+                pipelineRunId,
+                sceneIndex: -1,
+                type: 'image',
+                path: thumbBg,
+                metadata: { role: 'thumbnail-bg', visualOrigin: 'ai' },
+              },
+            });
+            assets = await prisma.mediaAsset.findMany({ where: { pipelineRunId } });
+          }
+        }
 
         await renderVideo({
           pipelineRunId,

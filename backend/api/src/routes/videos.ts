@@ -5,6 +5,7 @@ import { parseChannelConfig } from '@autotube/config';
 import { prisma } from '@autotube/database';
 import { enqueuePipelineStep } from '@autotube/job-queue';
 import { parseScheduledPublishAt } from '@autotube/shared';
+import { generateThumbnailBackground } from '@autotube/media-generator';
 import { generateYouTubeThumbnail, resolveThumbnailOverlayText } from '@autotube/video-renderer';
 import { streamVideoFile } from '../lib/video-file.js';
 import { deletePipelineRunCompletely, deleteVideoLocalFilesOnly } from '../lib/pipeline-cleanup.js';
@@ -631,19 +632,52 @@ videosRouter.post('/:id/regenerate-thumbnail', async (req, res) => {
   const height = isLandscape ? 1080 : 1920;
   const thumbnailPath = video.filePath.replace(/\.mp4$/, '-thumbnail.jpg');
   const assets = video.pipelineRun.mediaAssets;
-  const thumbBg =
+  let thumbBg =
     assets.find((a) => {
       const meta = a.metadata as { role?: string } | null;
       return a.type === 'image' && meta?.role === 'thumbnail-bg';
     })?.path ?? null;
+
+  const channelConfig = parseChannelConfig(video.pipelineRun.channel.config);
+  const script = video.pipelineRun.scripts[0];
+  const selectedVariant = script?.selectedVariant as { hook?: string } | null;
+
+  // Regenerar fondo CTR si no existe (miniatura = producto #1).
+  if (!thumbBg) {
+    try {
+      const freshBg = await generateThumbnailBackground({
+        pipelineRunId: video.pipelineRunId,
+        title: video.title,
+        hook: selectedVariant?.hook,
+        niche: channelConfig.niche,
+        aspectRatio: isLandscape ? '16:9' : '9:16',
+        forceAiImages: true,
+      });
+      if (freshBg) {
+        thumbBg = freshBg;
+        await prisma.mediaAsset.create({
+          data: {
+            pipelineRunId: video.pipelineRunId,
+            sceneIndex: -1,
+            type: 'image',
+            path: freshBg,
+            metadata: { role: 'thumbnail-bg', visualOrigin: 'ai' },
+          },
+        });
+      }
+    } catch (err) {
+      console.warn(
+        '[api] regenerate-thumbnail bg failed:',
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
+
   const firstImage =
     thumbBg ??
     assets.find((a) => a.type === 'image' && a.sceneIndex >= 0)?.path ??
     null;
 
-  const channelConfig = parseChannelConfig(video.pipelineRun.channel.config);
-  const script = video.pipelineRun.scripts[0];
-  const selectedVariant = script?.selectedVariant as { hook?: string } | null;
   const overlay = await resolveThumbnailOverlayText({
     title: video.title,
     hook: selectedVariant?.hook,
@@ -655,6 +689,7 @@ videosRouter.post('/:id/regenerate-thumbnail', async (req, res) => {
   await generateYouTubeThumbnail({
     title: video.title,
     overlayText: overlay.overlayText,
+    highlightWord: overlay.highlightWord,
     backgroundImagePath: firstImage,
     videoPath: video.filePath,
     outputPath: thumbnailPath,
@@ -673,6 +708,7 @@ videosRouter.post('/:id/regenerate-thumbnail', async (req, res) => {
     id: updated.id,
     thumbnailPath,
     overlayText: overlay.overlayText,
+    highlightWord: overlay.highlightWord,
     message: 'Miniatura regenerada',
   });
 });

@@ -219,12 +219,14 @@ export function scoreVideoQuality(input: VideoQualityInput): VideoQualityReport 
     detail: input.filePathExists ? 'Vídeo renderizado correctamente.' : 'No se encontró el archivo de vídeo.',
   });
 
-  // 7. Miniatura
+  // 7. Miniatura — producto #1 de atención (sin ella el CTR muere)
   checks.push({
     id: 'thumbnail',
     label: 'Miniatura',
-    status: input.hasThumbnail ? 'pass' : 'warn',
-    detail: input.hasThumbnail ? 'Miniatura disponible.' : 'Sin miniatura: YouTube generará una automática.',
+    status: input.hasThumbnail ? 'pass' : 'fail',
+    detail: input.hasThumbnail
+      ? 'Miniatura CTR lista para YouTube.'
+      : 'SIN MINIATURA: YouTube pondrá un frame aleatorio y el CTR cae. Regenera antes de publicar.',
   });
 
   // 8. Cumplimiento (temas prohibidos)

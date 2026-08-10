@@ -403,6 +403,7 @@ async function generateThumbnail(
   template: VideoTemplate,
   options?: {
     overlayText?: string | null;
+    highlightWord?: string | null;
     backgroundImagePath?: string | null;
     brandLabel?: string | null;
   },
@@ -416,6 +417,7 @@ async function generateThumbnail(
   await generateYouTubeThumbnail({
     title,
     overlayText: options?.overlayText,
+    highlightWord: options?.highlightWord,
     backgroundImagePath: firstImage,
     videoPath,
     outputPath: thumbnailPath,
@@ -622,7 +624,8 @@ export async function renderVideo(params: {
       language: params.language ?? 'es',
     });
     console.info(
-      `[video-renderer] Thumbnail overlay (${overlay.source}): "${overlay.overlayText}"`,
+      `[video-renderer] Thumbnail overlay (${overlay.source}): "${overlay.overlayText}"` +
+        (overlay.highlightWord ? ` hl="${overlay.highlightWord}"` : ''),
     );
 
     const thumbBgAsset = params.assets.find(
@@ -638,6 +641,7 @@ export async function renderVideo(params: {
       await generateVerticalClipThumbnail({
         title: params.title.replace(/ #Shorts$/i, ''),
         overlayText: overlay.overlayText,
+        highlightWord: overlay.highlightWord,
         partIndex: 0,
         partCount: 1,
         videoPath: outputPath,
@@ -648,6 +652,7 @@ export async function renderVideo(params: {
     } else {
       thumbnailPath = await generateThumbnail(timeline, outputPath, params.title, renderTemplate, {
         overlayText: overlay.overlayText,
+        highlightWord: overlay.highlightWord,
         backgroundImagePath: thumbBgAsset?.path,
         brandLabel,
       });

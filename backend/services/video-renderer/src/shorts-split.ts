@@ -208,6 +208,7 @@ export async function splitVideoForShorts(
       await generateVerticalClipThumbnail({
         title: video.title,
         overlayText: overlay.overlayText,
+        highlightWord: overlay.highlightWord,
         partIndex: i,
         partCount: effectiveDurations.length,
         videoPath: filePath,
@@ -307,6 +308,7 @@ async function createSingleShortClip(
     await generateVerticalClipThumbnail({
       title: video.title,
       overlayText: overlay.overlayText,
+      highlightWord: overlay.highlightWord,
       partIndex: 0,
       partCount: 1,
       videoPath: outPath,
