@@ -253,6 +253,11 @@ async function extractFrame(videoPath: string, outPath: string, atSec = 0.5): Pr
 /** Miniatura 16:9 con imagen de fondo + título para YouTube. */
 export async function generateYouTubeThumbnail(params: {
   title: string;
+  /**
+   * Texto corto de overlay (2-5 palabras CTR).
+   * Si falta, se usa `title` (puede quedar ilegible en móvil).
+   */
+  overlayText?: string | null;
   backgroundImagePath?: string | null;
   videoPath?: string;
   outputPath: string;
@@ -265,8 +270,9 @@ export async function generateYouTubeThumbnail(params: {
 }): Promise<string> {
   const width = params.width ?? 1280;
   const height = params.height ?? 720;
+  const overlaySource = (params.overlayText?.trim() || params.title).trim();
   const resolvedVariant = (params.variant ?? 'auto') === 'auto'
-    ? pickYouTubeVariant(params.title)
+    ? pickYouTubeVariant(overlaySource)
     : (params.variant as Exclude<YouTubeThumbVariant, 'auto'>);
   const workDir = path.join(path.dirname(params.outputPath), '.thumb-work');
   await fs.mkdir(workDir, { recursive: true });
@@ -304,7 +310,7 @@ export async function generateYouTubeThumbnail(params: {
   const overlayPng = path.join(workDir, 'overlay.png');
   await sharp(
     buildYouTubeOverlaySvg({
-      title: params.title,
+      title: overlaySource,
       width,
       height,
       variant: resolvedVariant,
@@ -325,11 +331,14 @@ export async function generateYouTubeThumbnail(params: {
 /** Miniatura 9:16 con badge de parte para clips verticales (Shorts). */
 export async function generateVerticalClipThumbnail(params: {
   title: string;
+  /** Texto corto overlay; si falta usa title. */
+  overlayText?: string | null;
   partIndex: number;
   partCount: number;
   videoPath: string;
   outputPath: string;
   showPartLabel?: boolean;
+  backgroundImagePath?: string | null;
 }): Promise<string> {
   const width = 1080;
   const height = 1920;
@@ -337,7 +346,19 @@ export async function generateVerticalClipThumbnail(params: {
   await fs.mkdir(workDir, { recursive: true });
 
   const framePath = path.join(workDir, `frame-p${params.partIndex}.jpg`);
-  await extractFrame(params.videoPath, framePath, 0.4);
+  if (params.backgroundImagePath) {
+    try {
+      await fs.access(params.backgroundImagePath);
+      await sharp(params.backgroundImagePath)
+        .resize(width, height, { fit: 'cover', position: 'centre' })
+        .jpeg({ quality: 90 })
+        .toFile(framePath);
+    } catch {
+      await extractFrame(params.videoPath, framePath, 0.4);
+    }
+  } else {
+    await extractFrame(params.videoPath, framePath, 0.4);
+  }
 
   const showPartLabel = params.showPartLabel !== false;
   const partLabel = showPartLabel
@@ -349,7 +370,7 @@ export async function generateVerticalClipThumbnail(params: {
   const overlayPng = path.join(workDir, `overlay-p${params.partIndex}.png`);
   await sharp(
     buildVerticalOverlaySvg({
-      title: params.title,
+      title: (params.overlayText?.trim() || params.title).trim(),
       partLabel,
       width,
       height,

@@ -401,19 +401,27 @@ async function generateThumbnail(
   videoPath: string,
   title: string,
   template: VideoTemplate,
+  options?: {
+    overlayText?: string | null;
+    backgroundImagePath?: string | null;
+    brandLabel?: string | null;
+  },
 ): Promise<string> {
   const thumbnailPath = videoPath.replace(/\.mp4$/, '-thumbnail.jpg');
   const firstImage =
-    timeline.find((c) => c.videoPath)?.videoPath ??
-    timeline.find((c) => c.imagePath)?.imagePath;
+    options?.backgroundImagePath ||
+    timeline.find((c) => c.imagePath)?.imagePath ||
+    timeline.find((c) => c.videoPath)?.videoPath;
 
   await generateYouTubeThumbnail({
     title,
+    overlayText: options?.overlayText,
     backgroundImagePath: firstImage,
     videoPath,
     outputPath: thumbnailPath,
     width: template.resolution.width,
     height: template.resolution.height,
+    brandLabel: options?.brandLabel,
   });
 
   return thumbnailPath;
@@ -464,6 +472,12 @@ export async function renderVideo(params: {
    * Shorts split still burns from subtitles.srt after cutting the long.
    */
   burnSubtitles?: boolean;
+  /** Channel niche — thumbnail CTR copy. */
+  niche?: string | null;
+  brandName?: string | null;
+  language?: string;
+  /** Idea angle for thumbnail overlay text. */
+  angle?: string | null;
 }): Promise<{
   videoId?: string;
   filePath: string;
@@ -598,19 +612,45 @@ export async function renderVideo(params: {
 
   let thumbnailPath: string | null = null;
   try {
+    const { resolveThumbnailOverlayText } = await import('./thumbnail-copy.js');
+    const overlay = await resolveThumbnailOverlayText({
+      title: params.title,
+      hook: params.script.hook,
+      angle: params.angle,
+      niche: params.niche,
+      format: params.format === 'shorts' ? 'shorts' : 'long',
+      language: params.language ?? 'es',
+    });
+    console.info(
+      `[video-renderer] Thumbnail overlay (${overlay.source}): "${overlay.overlayText}"`,
+    );
+
+    const thumbBgAsset = params.assets.find(
+      (a) =>
+        a.type === 'image' &&
+        (a.metadata as { role?: string } | undefined)?.role === 'thumbnail-bg',
+    );
+    const brandLabel = params.brandName?.trim() || null;
+
     if (params.aspectRatio === '9:16') {
       const { generateVerticalClipThumbnail } = await import('./thumbnail-generator.js');
       thumbnailPath = outputPath.replace(/\.mp4$/, '-thumbnail.jpg');
       await generateVerticalClipThumbnail({
         title: params.title.replace(/ #Shorts$/i, ''),
+        overlayText: overlay.overlayText,
         partIndex: 0,
         partCount: 1,
         videoPath: outputPath,
         outputPath: thumbnailPath,
         showPartLabel: false,
+        backgroundImagePath: thumbBgAsset?.path,
       });
     } else {
-      thumbnailPath = await generateThumbnail(timeline, outputPath, params.title, renderTemplate);
+      thumbnailPath = await generateThumbnail(timeline, outputPath, params.title, renderTemplate, {
+        overlayText: overlay.overlayText,
+        backgroundImagePath: thumbBgAsset?.path,
+        brandLabel,
+      });
     }
     console.info(`[video-renderer] Thumbnail: ${thumbnailPath}`);
   } catch (err) {
@@ -667,5 +707,6 @@ export type { ShortsSplitResult } from './shorts-split.js';
 export { applyClipOverlay, rawClipPath } from './clip-overlay.js';
 export { burnSubtitlesIntoClip, loadPipelineSrt, subClipPath } from './clip-subtitles.js';
 export { generateYouTubeThumbnail, generateVerticalClipThumbnail } from './thumbnail-generator.js';
+export { resolveThumbnailOverlayText } from './thumbnail-copy.js';
 export { getVideoDuration } from './ffmpeg-utils.js';
 export { listBgmFiles, mixBgmIntoVideo, resolveBgmFile, shouldUseBgm } from './bgm-mix.js';

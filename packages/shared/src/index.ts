@@ -13,6 +13,7 @@ export * from './analytics.js';
 export * from './visual-source.js';
 export * from './prompt-visual.js';
 export * from './prompt-pipeline.js';
+export * from './prompt-thumbnail.js';
 export * from './visual-origin.js';
 export * from './billing-plans.js';
 export * from './tts-voices.js';

@@ -300,8 +300,8 @@
     "semantic_hash": ""
   },
   "backend/api/src/routes/videos.ts": {
-    "mtime": 1786295247.2059991,
-    "ast_hash": "8050b294a02eeacf0baf432ccdc8a9f7",
+    "mtime": 1786390429.094754,
+    "ast_hash": "0387817d2ac3c1310bdc9339a503fb96",
     "semantic_hash": ""
   },
   "backend/api/tsconfig.json": {
@@ -680,8 +680,8 @@
     "semantic_hash": ""
   },
   "backend/services/media-generator/src/index.ts": {
-    "mtime": 1786387811.6129568,
-    "ast_hash": "b374fed29c170940bfa2861a64fca55d",
+    "mtime": 1786390274.1150126,
+    "ast_hash": "84d32cb60f7d2d3f9d20e466e26ea2a4",
     "semantic_hash": ""
   },
   "backend/services/media-generator/src/png-utils.ts": {
@@ -780,8 +780,8 @@
     "semantic_hash": ""
   },
   "backend/services/script-generator/src/index.ts": {
-    "mtime": 1786389109.7587817,
-    "ast_hash": "4358dd079955b43f11f8ff05981be263",
+    "mtime": 1786390207.7911143,
+    "ast_hash": "f50436726157ddcf6e4441025637e04f",
     "semantic_hash": ""
   },
   "backend/services/script-generator/src/monolithic.ts": {
@@ -830,8 +830,8 @@
     "semantic_hash": ""
   },
   "backend/services/video-renderer/package.json": {
-    "mtime": 1786275402.8364546,
-    "ast_hash": "bea8a26ba9d7a2ee9cba9d4f4cb57427",
+    "mtime": 1786390242.6710618,
+    "ast_hash": "28972748a01fabd42435b163cc7215d2",
     "semantic_hash": ""
   },
   "backend/services/video-renderer/src/clip-overlay.ts": {
@@ -850,13 +850,13 @@
     "semantic_hash": ""
   },
   "backend/services/video-renderer/src/index.ts": {
-    "mtime": 1786387309.0405133,
-    "ast_hash": "8f1d10fe1e9165fb1ccc33ed5abb3f38",
+    "mtime": 1786390345.454897,
+    "ast_hash": "b26315adc34dd1e9e7ba236a53875bcb",
     "semantic_hash": ""
   },
   "backend/services/video-renderer/src/shorts-split.ts": {
-    "mtime": 1786387309.0405133,
-    "ast_hash": "169b854bc64132b9cfa371a64a0925c8",
+    "mtime": 1786390408.6507895,
+    "ast_hash": "8e54fab45ab8b652f62e38f338a96ec0",
     "semantic_hash": ""
   },
   "backend/services/video-renderer/src/srt-utils.ts": {
@@ -865,8 +865,8 @@
     "semantic_hash": ""
   },
   "backend/services/video-renderer/src/thumbnail-generator.ts": {
-    "mtime": 1786295234.7100203,
-    "ast_hash": "d74cca34a0eb16f8b54440310ba5358a",
+    "mtime": 1786390243.175061,
+    "ast_hash": "5c27a9850eca8b97302991d422506b5d",
     "semantic_hash": ""
   },
   "backend/services/video-renderer/tsconfig.json": {
@@ -1915,8 +1915,8 @@
     "semantic_hash": ""
   },
   "packages/shared/src/index.ts": {
-    "mtime": 1786389060.1749244,
-    "ast_hash": "e627ac56fcaa0a2b470efce04a004c2f",
+    "mtime": 1786390207.355115,
+    "ast_hash": "2b77bcaecbc9fefcee14f8d49ee0b115",
     "semantic_hash": ""
   },
   "packages/shared/src/publication-planner-feedback.test.ts": {
@@ -2090,8 +2090,8 @@
     "semantic_hash": ""
   },
   "worker/src/dedicated-short.ts": {
-    "mtime": 1786387810.6969583,
-    "ast_hash": "b21b96337e33e942be9cca28e3360234",
+    "mtime": 1786390365.658863,
+    "ast_hash": "81c2e08a68d975a063cdd5fca31c0cb0",
     "semantic_hash": ""
   },
   "worker/src/demo.ts": {
@@ -2115,8 +2115,8 @@
     "semantic_hash": ""
   },
   "worker/src/pipeline.ts": {
-    "mtime": 1786387810.6969583,
-    "ast_hash": "b36448bd8fe84ec364d584a11d9ad2ba",
+    "mtime": 1786390327.266927,
+    "ast_hash": "d6ee6e7dfdd7c2079849130c8dcfa74c",
     "semantic_hash": ""
   },
   "worker/src/sentry.ts": {
@@ -2647,6 +2647,26 @@
   "packages/shared/src/prompt-pipeline.ts": {
     "mtime": 1786389060.2309241,
     "ast_hash": "29c224f06c6a2a32369df689663cbdd3",
+    "semantic_hash": ""
+  },
+  "backend/services/media-generator/src/thumbnail-bg.ts": {
+    "mtime": 1786390254.6470432,
+    "ast_hash": "124cb35af0aaf895d36ee42d75107cb4",
+    "semantic_hash": ""
+  },
+  "backend/services/video-renderer/src/thumbnail-copy.ts": {
+    "mtime": 1786390242.6310618,
+    "ast_hash": "b5de2c56ae7fe0e0c4de2671068fea54",
+    "semantic_hash": ""
+  },
+  "packages/shared/src/prompt-thumbnail.test.ts": {
+    "mtime": 1786390393.6508155,
+    "ast_hash": "6b114be4fa0fef0013f4bc6af3df3b4e",
+    "semantic_hash": ""
+  },
+  "packages/shared/src/prompt-thumbnail.ts": {
+    "mtime": 1786390207.4031148,
+    "ast_hash": "db3a91e93710d5482da2af9dbca0b77e",
     "semantic_hash": ""
   }
 }

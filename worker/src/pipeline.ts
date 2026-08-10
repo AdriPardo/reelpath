@@ -334,6 +334,10 @@ async function runPipelineStep(
         await updatePipelineStatus(pipelineRunId, 'generating_media', step);
         const scriptRecord = await prisma.script.findFirstOrThrow({ where: { pipelineRunId } });
         const variant = scriptRecord.selectedVariant as unknown as ScriptVariant;
+        const selectedIdea = await prisma.videoIdea.findFirst({
+          where: { pipelineRunId, isSelected: true },
+          select: { angle: true, hook: true },
+        });
         const org = await prisma.organization.findUnique({
           where: { id: run.channel.organizationId },
           select: { plan: true },
@@ -350,6 +354,9 @@ async function runPipelineStep(
           videoMotionIntensity: config.videoMotionIntensity,
           visualSourceMode: config.visualSourceMode,
           niche: config.niche,
+          title: scriptRecord.title,
+          hook: variant.hook || selectedIdea?.hook,
+          angle: selectedIdea?.angle,
           orgPlan: org?.plan,
           channelGenerateAiImages: config.generateAiImages,
           channelFalI2vEnabled: config.falI2vEnabled,
@@ -390,6 +397,9 @@ async function runPipelineStep(
           bgmFile: config.bgmFile,
           // Long: no burned-in captions. Shorts burn from SRT after split / dedicated render.
           burnSubtitles: false,
+          niche: config.niche,
+          brandName: config.brandName,
+          language: config.language,
         });
 
         const repairMeta = run.metadata as { repairAudioRepublish?: boolean } | null;

@@ -13,6 +13,7 @@ import {
   getScriptBodyPipelineHints,
   getStockVisualScriptHints,
   getTeaserPipelineHints,
+  getThumbnailPipelineHints,
   resolveVisualSourceMode,
   clampYouTubeTitle,
   formatYouTubeShortTitle,
@@ -195,6 +196,7 @@ export async function generateScript(params: {
   const visualMode = resolveVisualSourceMode(params.config);
   promptContent += getStockVisualScriptHints(visualMode);
   promptContent += `\n\n${getScriptBodyPipelineHints(params.config, visualMode)}`;
+  promptContent += getThumbnailPipelineHints(params.config);
 
   const channelContext = buildChannelPromptContext(params.config);
 

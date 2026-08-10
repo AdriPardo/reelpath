@@ -5,7 +5,7 @@ import { parseChannelConfig } from '@autotube/config';
 import { prisma } from '@autotube/database';
 import { enqueuePipelineStep } from '@autotube/job-queue';
 import { parseScheduledPublishAt } from '@autotube/shared';
-import { generateYouTubeThumbnail } from '@autotube/video-renderer';
+import { generateYouTubeThumbnail, resolveThumbnailOverlayText } from '@autotube/video-renderer';
 import { streamVideoFile } from '../lib/video-file.js';
 import { deletePipelineRunCompletely, deleteVideoLocalFilesOnly } from '../lib/pipeline-cleanup.js';
 import { resolveChannelAutoPublishAt } from '../lib/publication-plan.js';
@@ -615,7 +615,13 @@ videosRouter.post('/:id/regenerate-thumbnail', async (req, res) => {
   const video = await prisma.video.findUnique({
     where: { id: req.params.id },
     include: {
-      pipelineRun: { include: { mediaAssets: { where: { type: 'image' }, take: 1 } } },
+      pipelineRun: {
+        include: {
+          mediaAssets: true,
+          scripts: { take: 1, orderBy: { createdAt: 'desc' } },
+          channel: { select: { config: true, name: true } },
+        },
+      },
     },
   });
   if (!video) return res.status(404).json({ error: 'Video not found' });
@@ -624,16 +630,38 @@ videosRouter.post('/:id/regenerate-thumbnail', async (req, res) => {
   const width = isLandscape ? 1920 : 1080;
   const height = isLandscape ? 1080 : 1920;
   const thumbnailPath = video.filePath.replace(/\.mp4$/, '-thumbnail.jpg');
-  const firstImage = video.pipelineRun.mediaAssets[0]?.path ?? null;
+  const assets = video.pipelineRun.mediaAssets;
+  const thumbBg =
+    assets.find((a) => {
+      const meta = a.metadata as { role?: string } | null;
+      return a.type === 'image' && meta?.role === 'thumbnail-bg';
+    })?.path ?? null;
+  const firstImage =
+    thumbBg ??
+    assets.find((a) => a.type === 'image' && a.sceneIndex >= 0)?.path ??
+    null;
+
+  const channelConfig = parseChannelConfig(video.pipelineRun.channel.config);
+  const script = video.pipelineRun.scripts[0];
+  const selectedVariant = script?.selectedVariant as { hook?: string } | null;
+  const overlay = await resolveThumbnailOverlayText({
+    title: video.title,
+    hook: selectedVariant?.hook,
+    niche: channelConfig.niche,
+    format: video.format === 'shorts' ? 'shorts' : 'long',
+    language: channelConfig.language,
+  });
 
   await generateYouTubeThumbnail({
     title: video.title,
+    overlayText: overlay.overlayText,
     backgroundImagePath: firstImage,
     videoPath: video.filePath,
     outputPath: thumbnailPath,
     width,
     height,
     variant,
+    brandLabel: channelConfig.brandName ?? video.pipelineRun.channel.name,
   });
 
   const updated = await prisma.video.update({
@@ -641,7 +669,12 @@ videosRouter.post('/:id/regenerate-thumbnail', async (req, res) => {
     data: { thumbnailPath },
   });
 
-  res.json({ id: updated.id, thumbnailPath, message: 'Miniatura regenerada' });
+  res.json({
+    id: updated.id,
+    thumbnailPath,
+    overlayText: overlay.overlayText,
+    message: 'Miniatura regenerada',
+  });
 });
 
 videosRouter.post('/:id/regenerate-shorts', async (req, res) => {

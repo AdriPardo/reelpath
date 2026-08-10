@@ -26,9 +26,11 @@ import {
 import { buildFalI2vMotionPrompt, generateFalImageToVideo } from './providers/fal-i2v.js';
 import { pathExists, resolveSceneVisual } from './providers/stock-provider.js';
 import { resolveSceneStockQueries } from './stock-terms.js';
+import { generateThumbnailBackground } from './thumbnail-bg.js';
 
 export { generateSpeech, writeSceneSubtitle } from './providers/media-providers.js';
 export { isNearSilentAudio, getAudioDuration } from './ffmpeg-utils.js';
+export { generateThumbnailBackground } from './thumbnail-bg.js';
 
 async function ensureDir(dir: string) {
   await fs.mkdir(dir, { recursive: true });
@@ -44,6 +46,10 @@ export async function generateMedia(params: {
   visualSourceMode?: ChannelConfig['visualSourceMode'];
   /** Channel niche — styles AI image prompts. */
   niche?: string | null;
+  /** Metadata for dedicated YouTube thumbnail background. */
+  title?: string;
+  hook?: string;
+  angle?: string;
   /** Plan de la organización — solo fuerza IA si FORCE_AI_IMAGES_ON_PAID=true. */
   orgPlan?: string | null;
   /** Channel.config.generateAiImages — undefined = heredar org/env. */
@@ -355,6 +361,28 @@ export async function generateMedia(params: {
   const srtCues = buildSyncedSrtFromScenesWithBoundaries(timedScenes, phraseMaxLen);
   await fs.writeFile(srtPath, serializeSrt(srtCues), 'utf-8');
   assets.push({ sceneIndex: -1, type: 'subtitle', path: srtPath });
+
+  // Fondo dedicado de miniatura (CTR): espacio negativo para overlay de texto.
+  if (params.title?.trim() && persist) {
+    const thumbBg = await generateThumbnailBackground({
+      pipelineRunId: params.pipelineRunId,
+      title: params.title,
+      hook: params.hook ?? params.script.hook,
+      angle: params.angle,
+      niche: params.niche,
+      aspectRatio,
+      forceAiImages: forceAiImages || aiImagesBase,
+      subdir: params.subdir,
+    });
+    if (thumbBg) {
+      assets.push({
+        sceneIndex: -1,
+        type: 'image',
+        path: thumbBg,
+        metadata: { role: 'thumbnail-bg', visualOrigin: 'ai' },
+      });
+    }
+  }
 
   if (persist) {
     await prisma.mediaAsset.deleteMany({ where: { pipelineRunId: params.pipelineRunId } });
