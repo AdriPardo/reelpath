@@ -442,7 +442,9 @@ export function buildPublicationCalendar(
 export function resolveDefaultShortCount(config: ChannelConfig): number {
   if (!config.publishYoutubeShorts) return 0;
   if (config.shortsMode === 'split') {
-    return config.longShortsFromVideo ?? 2;
+    // Auto (sin longShortsFromVideo): el planificador no conoce la duración;
+    // usa 1 como mínimo y el worker ajusta con los clips reales.
+    return config.longShortsFromVideo ?? 1;
   }
   const perVideo = config.shortsPerVideo ?? 1;
   if (config.shortsMode === 'mixed') return Math.max(1, perVideo);

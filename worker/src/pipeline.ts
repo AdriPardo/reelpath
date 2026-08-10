@@ -636,7 +636,10 @@ async function runPipelineStep(
 
         if (usesMixedShorts(config)) {
           const { splitCount, dedicatedCount } = resolveMixedShortsCounts(config);
-          await splitVideoForShorts(video.id, config.shortsClipMaxSec, { maxParts: splitCount });
+          await splitVideoForShorts(video.id, config.shortsClipMaxSec, {
+            maxParts: splitCount,
+            coverFullVideo: false,
+          });
           if (dedicatedCount > 0) {
             await enqueuePipelineStep(
               { pipelineRunId, channelId, splitOnly: isPreReviewSplit || undefined },
@@ -652,7 +655,9 @@ async function runPipelineStep(
           await splitVideoForShorts(
             video.id,
             config.shortsClipMaxSec,
-            splitCount != null ? { maxParts: splitCount } : undefined,
+            splitCount != null
+              ? { maxParts: splitCount, coverFullVideo: true }
+              : { coverFullVideo: true },
           );
           if (isPreReviewSplit) {
             await finalizePreReviewClipStep(pipelineRunId, channelId);

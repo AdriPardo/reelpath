@@ -319,7 +319,7 @@ export const channelConfigSchema = z.object({
   autoApproveMinScore: z.coerce.number().min(0).max(100).default(80),
   shortsMode: z.enum(['split', 'dedicated', 'mixed']).default('split'),
   shortsPerVideo: z.coerce.number().int().min(1).max(7).default(1),
-  longShortsFromVideo: z.coerce.number().int().min(1).max(3).optional(),
+  longShortsFromVideo: z.coerce.number().int().min(1).max(30).optional(),
   shortsPublishIntervalDays: z.coerce.number().int().min(0).max(30).default(1),
   timezone: z.string().min(1).default('Europe/Madrid'),
   publishPlannerEnabled: z.boolean().default(false),

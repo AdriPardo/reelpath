@@ -476,7 +476,7 @@ Accede desde **Ajustes**:
 
 ## 14. Shorts y teasers
 
-Los Shorts son vídeos verticales **9:16**, máximo **60 segundos** por clip.
+Los Shorts son vídeos verticales **9:16**. Por defecto se trocean según la duración máx. del canal (p. ej. 60 s); si el resto sería muy corto, los clips salen un poco más largos. Si hace falta respetar el techo de YouTube (3 min), se crean más partes.
 
 ### 14.1 Activar Shorts
 
@@ -488,13 +488,13 @@ En **Contenido → Generación de Shorts**:
 
 | Modo | Qué produce |
 |------|-------------|
-| **Trocear el vídeo largo** | Partes del vídeo largo (*Parte 1 de N*) |
+| **Trocear el vídeo largo** | Partes del vídeo largo (*Parte 1 de N*), cubriendo todo el vídeo |
 | **Historia dedicada** | Teaser con guion independiente del mismo tema |
 | **Mixto** | Combina cortes del largo + teasers promocionales |
 
 Opciones:
 
-- **Partes del largo:** automático o 1/2/3 partes distribuidas
+- **Partes del largo:** automático (tantas como haga falta) o N partes (1–30); en split se cubre el largo entero
 - **Nº de Shorts por vídeo:** 1–7 (modos dedicado/mixto)
 - **Días entre Shorts:** escalonamiento en el planificador
 

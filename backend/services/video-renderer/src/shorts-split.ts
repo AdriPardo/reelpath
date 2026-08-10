@@ -3,7 +3,13 @@ import path from 'node:path';
 import { getStoragePath, loadConfig } from '@autotube/config';
 import { prisma } from '@autotube/database';
 import { runFfmpeg } from '@autotube/shared/ffmpeg-runner';
-import { formatYouTubePartTitle, formatYouTubeShortTitle } from '@autotube/shared';
+import {
+  expectedShortsPartCount as sharedExpectedShortsPartCount,
+  formatYouTubePartTitle,
+  formatYouTubeShortTitle,
+  planShortClipSegments,
+  type PlanShortClipSegmentsOptions,
+} from '@autotube/shared';
 import { applyClipOverlay } from './clip-overlay.js';
 import { burnSubtitlesIntoClip, loadPipelineSrt, subClipPath } from './clip-subtitles.js';
 import { assertValidVideoFile, buildLanczosScaleCrop, ffmpegH264EncodeArgs, getVideoDuration } from './ffmpeg-utils.js';
@@ -67,57 +73,6 @@ async function cleanShortArtifacts(outDir: string): Promise<void> {
   await fs.rm(path.join(outDir, '.overlay-work'), { recursive: true, force: true }).catch(() => {});
 }
 
-/** Evita un último clip ridículamente corto (resto tras segmentos de maxSec). */
-function planSegmentDurations(totalSec: number, maxSec: number, minTailSec = 15): number[] {
-  if (totalSec <= maxSec + 5) return [totalSec];
-
-  const fullParts = Math.floor(totalSec / maxSec);
-  const tail = totalSec - fullParts * maxSec;
-
-  if (tail === 0) return Array.from({ length: fullParts }, () => maxSec);
-  if (tail >= minTailSec) return [...Array.from({ length: fullParts }, () => maxSec), tail];
-
-  if (fullParts === 0) return [totalSec];
-  return [...Array.from({ length: fullParts - 1 }, () => maxSec), maxSec + tail];
-}
-
-/** Selecciona N segmentos distribuidos a lo largo del vídeo (inicio, medio, final…). */
-function selectDistributedSegments(
-  totalSec: number,
-  maxSec: number,
-  maxParts: number,
-): Array<{ startSec: number; durationSec: number }> {
-  const allDurations = planSegmentDurations(totalSec, maxSec);
-  if (maxParts >= allDurations.length) {
-    let startSec = 0;
-    return allDurations.map((durationSec) => {
-      const seg = { startSec, durationSec };
-      startSec += durationSec;
-      return seg;
-    });
-  }
-
-  const indices: number[] = [];
-  for (let i = 0; i < maxParts; i++) {
-    const idx =
-      maxParts === 1 ? 0 : Math.round((i * (allDurations.length - 1)) / (maxParts - 1));
-    indices.push(idx);
-  }
-  const uniqueIndices = [...new Set(indices)].sort((a, b) => a - b);
-
-  let cursor = 0;
-  const starts: number[] = [];
-  for (const d of allDurations) {
-    starts.push(cursor);
-    cursor += d;
-  }
-
-  return uniqueIndices.map((idx) => ({
-    startSec: starts[idx]!,
-    durationSec: allDurations[idx]!,
-  }));
-}
-
 async function extractShortPart(params: {
   inputPath: string;
   outputPath: string;
@@ -152,10 +107,14 @@ async function extractShortPart(params: {
 }
 
 /** Número de partes de Short que se generarán para un vídeo de `durationSec`. */
-export function expectedShortsPartCount(durationSec: number, maxPartSec?: number): number {
+export function expectedShortsPartCount(
+  durationSec: number,
+  maxPartSec?: number,
+  options?: PlanShortClipSegmentsOptions,
+): number {
   const config = loadConfig();
   const segmentSec = maxPartSec ?? config.SHORTS_CLIP_MAX_SEC;
-  return planSegmentDurations(durationSec, segmentSec).length;
+  return sharedExpectedShortsPartCount(durationSec, segmentSec, options);
 }
 
 export interface ShortsSplitResult {
@@ -163,12 +122,9 @@ export interface ShortsSplitResult {
   partCount: number;
 }
 
-export interface ShortsSplitOptions {
-  /** Limita cuántas partes se generan (p. ej. 1 highlight en modo mixto). */
-  maxParts?: number;
-}
+export interface ShortsSplitOptions extends PlanShortClipSegmentsOptions {}
 
-/** Split a long horizontal video into vertical Short parts (9:16, max N seconds each). */
+/** Split a long horizontal video into vertical Short parts (9:16, ~N seconds each). */
 export async function splitVideoForShorts(
   videoId: string,
   maxPartSec?: number,
@@ -181,27 +137,16 @@ export async function splitVideoForShorts(
   await fs.access(video.filePath);
 
   const duration = await getVideoDuration(video.filePath);
-  if (duration <= segmentSec + 5) {
-    // Short enough — single vertical reframe clip
+  const segments = planShortClipSegments(duration, segmentSec, options);
+
+  // Un solo clip (cabe en soft-max o maxParts=1 sin cubrir más): reframe completo.
+  if (
+    segments.length === 1 &&
+    segments[0]!.startSec <= 0.05 &&
+    Math.abs(segments[0]!.durationSec - duration) <= 0.5
+  ) {
     return createSingleShortClip(video, segmentSec);
   }
-
-  const durations = planSegmentDurations(duration, segmentSec);
-  const partLimit = options?.maxParts != null
-    ? Math.min(options.maxParts, durations.length)
-    : durations.length;
-
-  const segments =
-    options?.maxParts != null && options.maxParts < durations.length
-      ? selectDistributedSegments(duration, segmentSec, partLimit)
-      : (() => {
-          let startSec = 0;
-          return durations.slice(0, partLimit).map((durationSec) => {
-            const seg = { startSec, durationSec };
-            startSec += durationSec;
-            return seg;
-          });
-        })();
 
   const effectiveDurations = segments.map((s) => s.durationSec);
   const outDir = getStoragePath('videos', video.pipelineRunId, 'shorts');
